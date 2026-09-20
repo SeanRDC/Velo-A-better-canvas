@@ -5,41 +5,25 @@ The visual plan for this app. Your wireframes answered what goes where; the mock
 ## Mockup
 
 ### 1. Authentication
-![OAuth](assets/OAuth.png)
+<img src="assets/OAuth.png" width="250" alt="OAuth" />
 
 ### 2. Master Dashboard
-![Dashboard](assets/Dashboard.png)
-![Dashboard - Filtered](assets/Dashboard%20-_%20Filtered.png)
-![Dashboard - Selected Course](assets/Dashboard%20-_%20Selected%20Course.png)
-![Hamburger Menu](assets/Hamburger%20Menu.png)
+<img src="assets/Dashboard.png" width="250" alt="Dashboard" /> <img src="assets/Dashboard%20-_%20Filtered.png" width="250" alt="Dashboard - Filtered" /> <img src="assets/Dashboard%20-_%20Selected%20Course.png" width="250" alt="Dashboard - Selected Course" /> <img src="assets/Hamburger%20Menu.png" width="250" alt="Hamburger Menu" />
 
 ### 3. Courses & Modules
-![Courses](assets/Courses.png)
-![Courses - Net 201](assets/Courses%20-_%20%20Net%20201.png)
-![Net 201 - Modules](assets/Net%20201%20-_%20Modules.png)
-![Modules - Lecture OSPF](assets/Modules%20-_%20Lecture_%20OSPF.png)
-![Submit Work (File)](assets/Lecture_%20OSPF%20-_%20Submit%20Work%20(file%20upload).png)
-![Submit Work (Text)](assets/Lecture_%20OSPF%20-_%20Submit%20Work%20(text%20entry).png)
-![Net 201 - Assignments](assets/Net%20201%20-_%20Assignments.png)
-![Net 201 - Grades](assets/Net%20201%20-_%20Grades.png)
-![Net 201 - Announcements](assets/Net%20201%20-_%20Announcements.png)
-![1st Announcement](assets/Announcements%20-_%201st%20Announcement.png)
+<img src="assets/Courses.png" width="250" alt="Courses" /> <img src="assets/Courses%20-_%20%20Net%20201.png" width="250" alt="Courses - Net 201" /> <img src="assets/Net%20201%20-_%20Modules.png" width="250" alt="Net 201 - Modules" /> <img src="assets/Modules%20-_%20Lecture_%20OSPF.png" width="250" alt="Modules - Lecture OSPF" /> <img src="assets/Lecture_%20OSPF%20-_%20Submit%20Work%20(file%20upload).png" width="250" alt="Submit Work (File)" /> <img src="assets/Lecture_%20OSPF%20-_%20Submit%20Work%20(text%20entry).png" width="250" alt="Submit Work (Text)" /> <img src="assets/Net%20201%20-_%20Assignments.png" width="250" alt="Net 201 - Assignments" /> <img src="assets/Net%20201%20-_%20Grades.png" width="250" alt="Net 201 - Grades" /> <img src="assets/Net%20201%20-_%20Announcements.png" width="250" alt="Net 201 - Announcements" /> <img src="assets/Announcements%20-_%201st%20Announcement.png" width="250" alt="1st Announcement" />
 
 ### 4. AI Assistant
-![AI Assistant](assets/AI%20Assistant.png)
+<img src="assets/AI%20Assistant.png" width="250" alt="AI Assistant" />
 
 ### 5. Study Planner & Inbox
-![Planner - Month](assets/Planner%20-_%20Month.png)
-![Planner - Week](assets/Planner%20-_%20Week.png)
-![Inbox](assets/Inbox.png)
+<img src="assets/Planner%20-_%20Month.png" width="250" alt="Planner - Month" /> <img src="assets/Planner%20-_%20Week.png" width="250" alt="Planner - Week" /> <img src="assets/Inbox.png" width="250" alt="Inbox" />
 
 ### 6. Account & Settings
-![Account](assets/Account.png)
+<img src="assets/Account.png" width="250" alt="Account" />
 
-## Wireframes and Screen Flow
-
-*(Ensure you export your Figma arrow flow diagram and name it `screen-flow.png` in your assets folder!)*
-![Screen Flow Diagram](assets/screen-flow.png)
+## Screen Flow Link
+[Click here to view Screen Flow Link](https://www.figma.com/design/B8xP3kWQzuJQaBzrYkz5ni/AppDev-Design-Prototype?node-id=0-1&t=15hcK0RTQdcnX8kd-1)
 
 **High-Level Flow Mapping:**
 1. **Entry Point:** Authentication Screen.
