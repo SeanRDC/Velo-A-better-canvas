@@ -2,7 +2,12 @@
 
 The visual foundation and reusable components for Velo - A Better Canvas. 
 
-![Design system](assets/design-system.png)
+<img src="assets/dsystem-1.png" width="650" alt="Design System 1" /> 
+<img src="assets/dsystem-2.png" width="650" alt="Design System 2" /> 
+<img src="assets/dsystem-3.png" width="650" alt="Design System 3" /> 
+<img src="assets/dsystem-4.png" width="650" alt="Design System 4" /> 
+<img src="assets/dsystem-5.png" width="650" alt="Design System 5" />
+
 *(See `assets/design-system.pdf` for the full high-resolution visual breakdown).*
 
 ## Palette
