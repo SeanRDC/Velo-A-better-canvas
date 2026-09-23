@@ -1,6 +1,5 @@
-// Reusable Error Dialog
+// Reusable Error Dialog matching the design system
 import 'package:flutter/material.dart';
-import 'package:lucide_icons/lucide_icons.dart';
 
 class ErrorDialog extends StatelessWidget {
   final String title;
@@ -35,7 +34,7 @@ class ErrorDialog extends StatelessWidget {
                   color: theme.colorScheme.onSurface.withValues(alpha: 0.1),
                 ),
               ),
-              child: Icon(LucideIcons.alertTriangle, size: 26, color: theme.colorScheme.primary),
+              child: Icon(Icons.warning_amber_rounded, size: 26, color: theme.colorScheme.primary),
             ),
             const SizedBox(height: 16),
             Text(

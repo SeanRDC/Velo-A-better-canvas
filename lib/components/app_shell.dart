@@ -1,6 +1,5 @@
 // Main Application Layout Wrapper
 import 'package:flutter/material.dart';
-import 'package:lucide_icons/lucide_icons.dart';
 import 'bottom_nav.dart';
 
 class AppShell extends StatelessWidget {
@@ -28,7 +27,7 @@ class AppShell extends StatelessWidget {
       appBar: AppBar(
         title: Text(title),
         leading: leading ?? IconButton(
-          icon: const Icon(LucideIcons.menu),
+          icon: const Icon(Icons.menu),
           onPressed: () {
             // Open Side Drawer added in later update
           },

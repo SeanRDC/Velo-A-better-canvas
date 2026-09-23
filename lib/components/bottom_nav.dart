@@ -1,7 +1,6 @@
 // Persistent Bottom Navigation Bar
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:lucide_icons/lucide_icons.dart';
 
 class BottomNav extends StatelessWidget {
   final String activeTab;
@@ -19,9 +18,9 @@ class BottomNav extends StatelessWidget {
         height: 60,
         child: Row(
           children: [
-            _buildTab(context, 'courses', 'Courses', LucideIcons.bookOpen, '/courses'),
-            _buildTab(context, 'assistant', 'AI Assistant', LucideIcons.bot, '/assistant'),
-            _buildTab(context, 'tasks', 'Dashboard', LucideIcons.listChecks, '/dashboard'),
+            _buildTab(context, 'courses', 'Courses', Icons.menu_book_rounded, '/courses'),
+            _buildTab(context, 'assistant', 'AI Assistant', Icons.smart_toy_outlined, '/assistant'),
+            _buildTab(context, 'tasks', 'Dashboard', Icons.checklist_rtl, '/dashboard'),
           ],
         ),
       ),

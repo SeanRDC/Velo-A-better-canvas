@@ -1,7 +1,6 @@
 // Authentication Screen for Canvas login
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:lucide_icons/lucide_icons.dart';
 import '../components/error_dialog.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -47,7 +46,6 @@ class _LoginScreenState extends State<LoginScreen> {
           child: Column(
             children: [
               const Spacer(),
-              // Brand
               Container(
                 height: 64,
                 width: 64,
@@ -56,7 +54,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   borderRadius: BorderRadius.circular(16),
                 ),
                 child: Icon(
-                  LucideIcons.graduationCap,
+                  Icons.school,
                   size: 32,
                   color: theme.colorScheme.onPrimary,
                 ),
@@ -77,7 +75,6 @@ class _LoginScreenState extends State<LoginScreen> {
                 ),
               ),
               const Spacer(),
-              // Auth Actions
               SizedBox(
                 width: double.infinity,
                 child: FilledButton(
@@ -104,7 +101,7 @@ class _LoginScreenState extends State<LoginScreen> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(LucideIcons.shieldCheck, size: 14, color: theme.colorScheme.secondary),
+                  Icon(Icons.security, size: 14, color: theme.colorScheme.secondary),
                   const SizedBox(width: 6),
                   Text(
                     'Secure OAuth 2.0 — we never store your password',
