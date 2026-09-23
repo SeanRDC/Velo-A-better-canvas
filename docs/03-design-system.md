@@ -14,40 +14,48 @@ The visual foundation and reusable components for Velo - A Better Canvas.
 
 **Dark mode:** explicitly supported (Light and Dark).
 
-Instead of generating from a single seed, the application uses a strict 5-color minimalist palette to maintain high contrast and low cognitive load. The `color-error` token has been corrected from the prelim to ensure it contrasts with the background.
+Instead of generating from a single seed, the application uses a strict 5-color minimalist palette to maintain high contrast and low cognitive load. The primary color is strictly Black/White to match the high-fidelity mockups, while the original slate gray acts as the secondary accent.
 
 ```dart
-// Light Theme Colors
-final lightColorScheme = ColorScheme(
-  brightness: Brightness.light,
-  primary: const Color(0xFF78909C),     // Accent / Main Actions
-  onPrimary: const Color(0xFFFFFFFF),   // Text on primary buttons
-  surface: const Color(0xFFFFFFFF),     // Elevated elements / Dialogs
-  onSurface: const Color(0xFF000000),   // Primary Text
-  error: const Color(0xFFD32F2F),       // High-contrast red for failures
-  onError: const Color(0xFFFFFFFF),     // Text on error
-  background: const Color(0xFFFAFAFA),  // Universal backdrop
-  onBackground: const Color(0xFF000000), 
-  secondary: const Color(0xFF78909C),
-  onSecondary: const Color(0xFFFFFFFF),
-);
+// Core Design System Theme Configuration
+class AppTheme {
+  static const _accent = Color(0xFF78909C);
+  
+  static ThemeData get light {
+    return ThemeData(
+      useMaterial3: true,
+      brightness: Brightness.light,
+      colorScheme: const ColorScheme.light(
+        primary: Colors.black,        // High-contrast primary actions
+        onPrimary: Colors.white,      // Text on primary buttons
+        surface: Color(0xFFFFFFFF),   // Elevated elements / Dialogs
+        onSurface: Colors.black,      // Primary Text
+        error: Color(0xFFD32F2F),     // High-contrast red for failures
+        onError: Colors.white,        // Text on error
+        secondary: _accent,           // Slate gray for secondary elements
+      ),
+      scaffoldBackgroundColor: const Color(0xFFFAFAFA), // Universal backdrop
+    );
+  }
 
-// Dark Theme Colors
-final darkColorScheme = ColorScheme(
-  brightness: Brightness.dark,
-  primary: const Color(0xFF78909C),     // Accent / Main Actions
-  onPrimary: const Color(0xFFFFFFFF),   
-  surface: const Color(0xFF1E1E1E),     // Elevated elements / Dialogs
-  onSurface: const Color(0xFFFFFFFF),   // Primary Text
-  error: const Color(0xFFCF6679),       // Adjusted red for dark mode readability
-  onError: const Color(0xFF000000),     
-  background: const Color(0xFF121212),  // Universal backdrop
-  onBackground: const Color(0xFFFFFFFF),
-  secondary: const Color(0xFF78909C),
-  onSecondary: const Color(0xFFFFFFFF),
-);
+  static ThemeData get dark {
+    return ThemeData(
+      useMaterial3: true,
+      brightness: Brightness.dark,
+      colorScheme: const ColorScheme.dark(
+        primary: Colors.white,        // High-contrast primary actions
+        onPrimary: Colors.black,      
+        surface: Color(0xFF1E1E1E),   // Elevated elements / Dialogs
+        onSurface: Colors.white,      // Primary Text
+        error: Color(0xFFCF6679),     // Adjusted red for dark mode readability
+        onError: Colors.black,        
+        secondary: _accent,           // Slate gray for secondary elements
+      ),
+      scaffoldBackgroundColor: const Color(0xFF121212), // Universal backdrop
+    );
+  }
+}
 ```
-**Contrast Check:** `onSurface` (#000000) over `background` (#FAFAFA) yields a contrast ratio of 20.11:1, easily passing the WCAG AA 4.5:1 requirement.
 
 ## Type scale
 
@@ -86,16 +94,17 @@ class AppSpacing {
 
 | Component | File | Constructor parameters | Appears on |
 | --- | --- | --- | --- |
-| **Primary Action Button** | `lib/widgets/primary_button.dart` | `final String label`, `final VoidCallback onPressed` | Authentication Screen, Submission Overlay |
-| **Borderless List Tile** | `lib/widgets/task_list_tile.dart` | `final Task task`, `final VoidCallback onTap` | Dashboard, Course Details |
-| **Flush App Bar** | `lib/widgets/flush_app_bar.dart` | `final String title`, `final Widget? trailing` | Dashboard, Courses, AI Assistant |
-| **AI Chat Bubble** | `lib/widgets/chat_bubble.dart` | `final String text`, `final bool isUser` | AI Assistant Tab |
-| **Main Bottom Nav** | `lib/widgets/main_bottom_nav.dart` | `final int currentIndex`, `final ValueChanged<int> onTabSelected` | Dashboard, Courses, AI Assistant |
+| **Error Dialog** | `lib/components/error_dialog.dart` | `final String title`, `final String message`, `final VoidCallback onDismiss` | Login Screen, Global API Error Handling |
+| **App Shell** | `lib/components/app_shell.dart` | `final String title`, `final String activeTab`, `final Widget child` | Dashboard, Courses, AI Assistant, Inbox |
+| **Bottom Nav** | `lib/components/bottom_nav.dart` | `final String activeTab` | App Shell (Global) |
+| **Borderless List Tile** | `lib/components/task_list_tile.dart` | `final Task task`, `final VoidCallback onTap` | Dashboard, Course Details |
+| **AI Chat Bubble** | `lib/components/chat_bubble.dart` | `final String text`, `final bool isUser` | AI Assistant Tab |
 
 ## Changes since the last version
 
 | Element | Prelim said | Now says | Why it changed |
 | --- | --- | --- | --- |
+| Material 3 Backgrounds | Used `background` and `onBackground` in `ColorScheme` | Removed deprecated tokens; relies on `scaffoldBackgroundColor` | Flutter 3.18+ deprecated `background` properties in favor of unified `surface` mapping to avoid linter warnings and precision loss. |
+| Primary Action Color | `#78909C` (Slate) | `Colors.black` (Light) / `Colors.white` (Dark) | Adjusted to perfectly match the high-fidelity Figma mockups, ensuring maximum contrast. Slate gray was shifted to the `secondary` token. |
+| Reusable Components | Placeholder component names | Updated to match the actual Flutter modular architecture (`error_dialog.dart`, `app_shell.dart`, `bottom_nav.dart`) | Codebase restructuring to utilize an `AppShell` wrapper for global navigation instead of duplicating AppBars and NavBars on every screen. |
 | `color-error` Hex Code | `#FAFAFA` (Light) / `#121212` (Dark) | `#D32F2F` (Light) / `#CF6679` (Dark) | Instructor feedback pointed out an internal contradiction: the original hex codes mapped exactly to the background colors instead of a high-contrast red. |
-| Reusable Components | General descriptions only | Mapped to specific screens, file paths, and constructor parameters | Instructor feedback noted that the components didn't specify which screens they appeared on. Mapped them to actual Flutter state management requirements. |
-| Palette Format | Conceptual list of roles | Complete Flutter `ColorScheme` mapping | Updated to an implementation-ready format that explicitly handles both Light and Dark mode toggling. |
