@@ -87,7 +87,7 @@ Required section. Two or three honest sentences:
 | [Demo video](docs/05-demo-video.md) | the recording and what it shows |
 | [Security and privacy](docs/06-security-and-privacy.md) | the checklist, filled in |
 
-| Documentation Guide |
+| Documentation Guide | |
 | --- | --- |
 | [Documentation](docs/documentation/01-documentation-week-1.md) | View the project documentation guide for week 1 |
 | [Documentation](docs/documentation/02-documentation-week-2.md) | View the project documentation guide for week 2 |
