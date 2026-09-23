@@ -1,4 +1,4 @@
-/// Main Application Entry Point and Router
+// Main Application Entry Point and Router
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 
 import 'state/app_state.dart';
 import 'theme/app_theme.dart';
+import 'screens/login_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -25,11 +26,9 @@ final _router = GoRouter(
   routes: [
     GoRoute(
       path: '/',
-      builder: (context, state) => const Scaffold(
-        body: Center(child: Text('Login Screen (Coming Soon)')),
-      ),
+      builder: (context, state) => const LoginScreen(),
     ),
-    // Additional routes (Dashboard, Courses, AI) will be registered here
+    // dashboard route goes here later update
   ],
 );
 
