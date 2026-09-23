@@ -16,6 +16,11 @@ dependencies:
   # Lets you preview the app inside a phone frame while you develop in a
   # browser. It is switched off automatically in a release build.
   device_preview: ^1.3.1
+  provider: ^6.1.5+1
+  shared_preferences: ^2.5.5
+  go_router: ^18.0.1
+  lucide_icons: ^0.257.0
+  google_generative_ai: ^0.4.7
 
 dev_dependencies:
   flutter_test:
