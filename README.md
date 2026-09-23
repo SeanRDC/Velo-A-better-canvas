@@ -1,11 +1,3 @@
-<!--
-  This is your project's front page. Replace every placeholder below.
-  It is the first thing your instructor and any future employer will read, and
-  the live link in it is how your project gets opened for grading.
-
-  New here? Read START-HERE.md first. Delete this comment when you are done.
--->
-
 # App Name
 
 > One sentence: what this app does, and who it is for.
@@ -56,7 +48,7 @@ Three to five bullets. What can a user actually do?
 
 ```bash
 flutter pub get
-cp .env.example .env      # only if your app needs keys, see below
+cp .env.example .env
 flutter run -d web-server --web-port 8080
 ```
 
@@ -84,7 +76,7 @@ Required section. Two or three honest sentences:
 - Confirm that all sample data, screenshots and the video contain **no real
   personal information**.
 
-## Project documentation
+## Project documentations
 
 | Document | |
 | --- | --- |
@@ -93,8 +85,12 @@ Required section. Two or three honest sentences:
 | [Design system](docs/03-design-system.md) | colors, type, spacing, components |
 | [Weekly reports](docs/04-weekly-reports.md) | what happened each week |
 | [Demo video](docs/05-demo-video.md) | the recording and what it shows |
-| [Start here](START-HERE.md) | how this repo works (delete once you have read it) |
 | [Security and privacy](docs/06-security-and-privacy.md) | the checklist, filled in |
+
+| Documentation Guide |
+| --- | --- |
+| [Documentation](docs/documentation/01-documentation-week-1.md) | View the project documentation guide for week 1 |
+| [Documentation](docs/documentation/02-documentation-week-2.md) | View the project documentation guide for week 2 |
 
 ## Status and what is next
 
