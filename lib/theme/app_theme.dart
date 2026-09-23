@@ -2,20 +2,20 @@
 import 'package:flutter/material.dart';
 
 class AppTheme {
-  static const _primary = Color(0xFF78909C);
+  static const _accent = Color(0xFF78909C);
   
   static ThemeData get light {
     return ThemeData(
       useMaterial3: true,
       brightness: Brightness.light,
       colorScheme: const ColorScheme.light(
-        primary: _primary,
+        primary: Colors.black,
         onPrimary: Colors.white,
-        surface: Color(0xFFFFFFFF),
+        surface: Colors.white,
         onSurface: Colors.black,
         error: Color(0xFFD32F2F),
         onError: Colors.white,
-        secondary: Color(0xFF757575),
+        secondary: _accent,
       ),
       scaffoldBackgroundColor: const Color(0xFFFAFAFA),
       fontFamily: 'Inter',
@@ -38,13 +38,13 @@ class AppTheme {
       useMaterial3: true,
       brightness: Brightness.dark,
       colorScheme: const ColorScheme.dark(
-        primary: _primary,
-        onPrimary: Colors.white,
+        primary: Colors.white,
+        onPrimary: Colors.black,
         surface: Color(0xFF1E1E1E),
         onSurface: Colors.white,
         error: Color(0xFFCF6679),
         onError: Colors.black,
-        secondary: Color(0xFF9E9E9E),
+        secondary: _accent,
       ),
       scaffoldBackgroundColor: const Color(0xFF121212),
       fontFamily: 'Inter',
