@@ -1,27 +1,28 @@
-// A widget test: it builds your app in memory and checks what is on screen.
-// Run them all with: flutter test
-//
-// You are not required to write more of these, but a project with a few real
-// tests reads very differently from one with none.
-
-import 'package:flutter/material.dart';
+// Initial Widget Test for VeloApp
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:provider/provider.dart';
 
 import 'package:final_project/main.dart';
+import 'package:final_project/state/app_state.dart';
 
 void main() {
-  testWidgets('home screen shows its title and counts taps', (tester) async {
-    // Build the app. Note we build MyApp directly, not the DevicePreview
-    // wrapper, because a test does not need the phone frame.
-    await tester.pumpWidget(const MyApp());
+  testWidgets('App loads and displays the Login Screen', (tester) async {
+    // Inject mock SharedPreferences for the testing environment
+    SharedPreferences.setMockInitialValues({});
+    final prefs = await SharedPreferences.getInstance();
 
-    expect(find.text('It works'), findsOneWidget);
-    expect(find.text('Taps: 0'), findsOneWidget);
+    // Build the app using the new VeloApp class wrapped in its Provider
+    await tester.pumpWidget(
+      ChangeNotifierProvider(
+        create: (_) => AppState(prefs),
+        child: const VeloApp(),
+      ),
+    );
 
-    // Tap the button, then let the widget rebuild.
-    await tester.tap(find.byType(FilledButton));
-    await tester.pump();
+    await tester.pumpAndSettle();
 
-    expect(find.text('Taps: 1'), findsOneWidget);
+    expect(find.text('A Better Canvas'), findsOneWidget);
+    expect(find.text('Log in with Canvas'), findsOneWidget);
   });
 }
