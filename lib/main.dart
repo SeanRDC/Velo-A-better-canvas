@@ -7,6 +7,8 @@ import 'package:go_router/go_router.dart';
 import 'state/app_state.dart';
 import 'theme/app_theme.dart';
 import 'screens/login_screen.dart';
+import 'screens/login_screen.dart';
+import 'screens/dashboard_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -28,7 +30,14 @@ final _router = GoRouter(
       path: '/',
       builder: (context, state) => const LoginScreen(),
     ),
-    // dashboard route goes here later update
+    GoRoute(
+      path: '/',
+      builder: (context, state) => const LoginScreen(),
+    ),
+    GoRoute(
+      path: '/dashboard',
+      builder: (context, state) => const DashboardScreen(),
+    ),
   ],
 );
 
