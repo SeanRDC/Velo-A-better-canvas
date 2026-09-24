@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:google_generative_ai/google_generative_ai.dart';
 import '../components/app_shell.dart';
 import '../components/chat_bubble.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 // Simple message model for the UI
 class ChatMessage {
@@ -36,14 +37,20 @@ class _AiAssistantScreenState extends State<AiAssistantScreen> {
   @override
   void initState() {
     super.initState();
-    // For local testing --dart-define=GEMINI_API_KEY=your_key
-    const apiKey = String.fromEnvironment('GEMINI_API_KEY', defaultValue: 'YOUR_API_KEY_HERE');
+    
+    final apiKey = dotenv.env['GEMINI_API_KEY'] ?? '';
+    
+    if (apiKey.isEmpty) {
+      debugPrint('CRITICAL: GEMINI_API_KEY is missing from the .env file!');
+    }
     
     _model = GenerativeModel(
       model: 'gemini-1.5-flash',
       apiKey: apiKey,
     );
-    _chat = _model.startChat();
+    _chat = _model.startChat(history: [
+      Content.text("Hi Sean! I'm your Canvas Co-pilot. I can help you brainstorm, summarize notes, or organize your study plan. What are we working on today?"),
+    ]);
   }
 
   @override
