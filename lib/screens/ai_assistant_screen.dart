@@ -1,7 +1,15 @@
 // Conversational AI Interface
 import 'package:flutter/material.dart';
+import 'package:google_generative_ai/google_generative_ai.dart';
 import '../components/app_shell.dart';
 import '../components/chat_bubble.dart';
+
+// Simple message model for the UI
+class ChatMessage {
+  final String text;
+  final bool isUser;
+  ChatMessage({required this.text, required this.isUser});
+}
 
 class AiAssistantScreen extends StatefulWidget {
   const AiAssistantScreen({super.key});
@@ -12,11 +20,83 @@ class AiAssistantScreen extends StatefulWidget {
 
 class _AiAssistantScreenState extends State<AiAssistantScreen> {
   final TextEditingController _controller = TextEditingController();
+  final ScrollController _scrollController = ScrollController();
+  
+  late final GenerativeModel _model;
+  late final ChatSession _chat;
+  
+  bool _isLoading = false;
+  final List<ChatMessage> _messages = [
+    ChatMessage(
+      text: "Hi Sean! I'm your Canvas Co-pilot. I can help you brainstorm, summarize notes, or organize your study plan. What are we working on today?",
+      isUser: false,
+    ),
+  ];
+
+  @override
+  void initState() {
+    super.initState();
+    // For local testing --dart-define=GEMINI_API_KEY=your_key
+    const apiKey = String.fromEnvironment('GEMINI_API_KEY', defaultValue: 'YOUR_API_KEY_HERE');
+    
+    _model = GenerativeModel(
+      model: 'gemini-1.5-flash',
+      apiKey: apiKey,
+    );
+    _chat = _model.startChat();
+  }
 
   @override
   void dispose() {
     _controller.dispose();
+    _scrollController.dispose();
     super.dispose();
+  }
+
+  void _sendMessage() async {
+    final text = _controller.text.trim();
+    if (text.isEmpty) return;
+
+    setState(() {
+      _messages.add(ChatMessage(text: text, isUser: true));
+      _isLoading = true;
+    });
+    
+    _controller.clear();
+    _scrollToBottom();
+
+    try {
+      final response = await _chat.sendMessage(Content.text(text));
+      final responseText = response.text ?? 'I am having trouble processing that right now.';
+      
+      setState(() {
+        _messages.add(ChatMessage(text: responseText, isUser: false));
+      });
+    } catch (e) {
+      setState(() {
+        _messages.add(ChatMessage(
+          text: 'Connection error. Please check your API key or internet connection.', 
+          isUser: false
+        ));
+      });
+    } finally {
+      setState(() {
+        _isLoading = false;
+      });
+      _scrollToBottom();
+    }
+  }
+
+  void _scrollToBottom() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (_scrollController.hasClients) {
+        _scrollController.animateTo(
+          _scrollController.position.maxScrollExtent,
+          duration: const Duration(milliseconds: 300),
+          curve: Curves.easeOut,
+        );
+      }
+    });
   }
 
   @override
@@ -29,16 +109,31 @@ class _AiAssistantScreenState extends State<AiAssistantScreen> {
       child: Column(
         children: [
           Expanded(
-            child: ListView(
+            child: ListView.builder(
+              controller: _scrollController,
               padding: const EdgeInsets.symmetric(vertical: 16),
-              children: const [
-                ChatBubble(
-                  text: "Hi Sean! I'm your Canvas Co-pilot. I can check your grades, summarize announcements, or look up deadlines. What do you need?",
-                  isUser: false,
-                ),
-              ],
+              itemCount: _messages.length,
+              itemBuilder: (context, index) {
+                final msg = _messages[index];
+                return ChatBubble(
+                  text: msg.text,
+                  isUser: msg.isUser,
+                );
+              },
             ),
           ),
+          if (_isLoading)
+            Padding(
+              padding: const EdgeInsets.all(8.0),
+              child: SizedBox(
+                height: 20, 
+                width: 20, 
+                child: CircularProgressIndicator(
+                  strokeWidth: 2, 
+                  color: theme.colorScheme.primary
+                )
+              ),
+            ),
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
@@ -53,8 +148,9 @@ class _AiAssistantScreenState extends State<AiAssistantScreen> {
                   Expanded(
                     child: TextField(
                       controller: _controller,
+                      onSubmitted: (_) => _sendMessage(),
                       decoration: InputDecoration(
-                        hintText: 'Ask about deadlines, grades...',
+                        hintText: 'Ask your Co-pilot...',
                         hintStyle: TextStyle(color: theme.colorScheme.secondary),
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(24),
@@ -74,12 +170,16 @@ class _AiAssistantScreenState extends State<AiAssistantScreen> {
                   ),
                   const SizedBox(width: 8),
                   CircleAvatar(
-                    backgroundColor: theme.colorScheme.primary,
+                    backgroundColor: _isLoading 
+                      ? theme.colorScheme.surface 
+                      : theme.colorScheme.primary,
                     child: IconButton(
-                      icon: Icon(Icons.arrow_upward, color: theme.colorScheme.onPrimary, size: 20),
-                      onPressed: () {
-                        // TODO: Wire up Gemini API
-                      },
+                      icon: Icon(
+                        Icons.arrow_upward, 
+                        color: _isLoading ? theme.colorScheme.secondary : theme.colorScheme.onPrimary, 
+                        size: 20
+                      ),
+                      onPressed: _isLoading ? null : _sendMessage,
                     ),
                   ),
                 ],
