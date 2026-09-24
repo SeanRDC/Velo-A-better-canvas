@@ -1,6 +1,7 @@
 // Main Application Layout Wrapper
 import 'package:flutter/material.dart';
 import 'bottom_nav.dart';
+import 'side_drawer.dart';
 
 class AppShell extends StatelessWidget {
   final String title;
@@ -26,14 +27,17 @@ class AppShell extends StatelessWidget {
       backgroundColor: theme.scaffoldBackgroundColor,
       appBar: AppBar(
         title: Text(title),
-        leading: leading ?? IconButton(
-          icon: const Icon(Icons.menu),
-          onPressed: () {
-            // Open Side Drawer added in later update
-          },
+        leading: leading ?? Builder(
+          builder: (context) => IconButton(
+            icon: const Icon(Icons.menu),
+            onPressed: () {
+              Scaffold.of(context).openDrawer();
+            },
+          ),
         ),
         actions: actions,
       ),
+      drawer: const SideDrawer(),
       body: child,
       bottomNavigationBar: BottomNav(activeTab: activeTab),
     );
