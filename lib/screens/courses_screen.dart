@@ -1,4 +1,4 @@
-/// Enrolled Courses Screen Placeholder
+// Enrolled Courses Screen Placeholder
 import 'package:flutter/material.dart';
 import '../components/app_shell.dart';
 
