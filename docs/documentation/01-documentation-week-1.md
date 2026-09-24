@@ -1,63 +1,77 @@
-# Documentation guide (what your docs must contain)
-
-Your Documentation Update is graded in week 1 and again in week 2. Documentation
-is not an afterthought: a reader who has never seen your app should be able to
-understand what it is, get it running, and use it, from your docs alone. Keep
-your documentation in your project repository's `README.md` (and link it, or a
-copy, from your workspace `project/`).
-
-Your documentation must contain these sections. Aim for clear and complete, not
-long.
+# Velo: Your Canvas Co-pilot
 
 ## 1. Overview
 
-What the app is, in two or three sentences. What it does and who it is for.
+Velo is a distraction-free, local-first mobile client for the Canvas LMS designed to help university students manage heavy project workloads. It consolidates active tasks across all subjects into a single, chronologically sorted mobile feed and features a conversational AI Assistant for querying syllabus details and deadlines in natural language.
 
 ## 2. Setup and installation
 
-Every step to get the app running from nothing, in order:
+To get the application running from scratch (as of this moment), follow these steps:
 
-- The Flutter and Dart versions you built with.
-- How to get the code (clone).
-- `flutter pub get` and any other setup.
-- Any configuration the app needs (API keys, a backend URL). Never commit real
-  keys; show placeholders.
+- **Environment:** Built with the latest stable Flutter SDK (with strict Material 3 enforcement).
+- **Clone the repository:** 
+  ```bash
+  git clone <your-repository-url>
+  cd velo-better-canvas
+  ```
+- **Install dependencies:**
+  ```bash
+  flutter pub get
+  ```
+- **Configuration:** Copy the `.env.example` file to create your own `.env` file in the root directory. You will eventually need to populate this with your billable credentials (these are never committed to version control):
+  ```env
+  CANVAS_API_TOKEN=your_canvas_api_token_here
+  GEMINI_API_KEY=your_gemini_api_key_here
+  ```
 
 ## 3. How to run it
 
-The exact command to run the app (for example `flutter run -d chrome` or a device
-target) and what a reader should see when it works.
+Launch the app using the local web server with the following command:
+
+```bash
+flutter run -d web-server --web-port 8080
+```
+
+Once running, open `http://localhost:8080` in your browser. Because the application utilizes the `device_preview` package, you will see it running inside a desktop phone frame displaying the high-contrast "A Better Canvas" Login Screen.
 
 ## 4. Features and usage
 
-What the app does and how to use its main screens. Walk through the primary flow,
-screen by screen.
+- **Authentication (Login Screen):** The initial screen presents the application branding and a "Log in with Canvas" button. Tapping this initiates a simulated secure OAuth 2.0 handshake, showing a loading indicator before routing to the main application shell. A secondary text link exists to preview the Material 3 `ErrorDialog` fallback.
+- **Global Navigation (App Shell):** Once logged in, the user is placed inside the `AppShell`. This wrapper persists a flush top application bar and a borderless `BottomNav` to seamlessly switch between the Dashboard, AI Assistant, and Courses tabs without losing routing context.
+- **Dashboard (My Tasks):** Currently a visual and architectural placeholder demonstrating the successful routing state and persistent layout wrapper post-authentication.
 
 ## 5. Project structure
 
-A short map of `lib/` and the important files, so a reader knows where the
-screens, models, and state live.
+The `lib/` directory is strictly modularized to separate state, UI components, and theming:
+
+- `lib/main.dart`: Core entry point containing `VeloApp`, `go_router` configuration, and `ChangeNotifierProvider` initialization.
+- `lib/theme/app_theme.dart`: Defines the strict 5-color high-contrast minimalist palette for both Light and Dark modes.
+- `lib/state/app_state.dart`: Global state management handling `shared_preferences` for local data persistence.
+- `lib/screens/login_screen.dart`: The initial authentication UI.
+- `lib/screens/dashboard_screen.dart`: Master task feed placeholder.
+- `lib/components/app_shell.dart`: Persistent global layout wrapper.
+- `lib/components/bottom_nav.dart`: Borderless global navigation bar.
+- `lib/components/error_dialog.dart`: Reusable modal for API connection failures.
 
 ## 6. Screenshots
 
-At least one screenshot per screen the app has.
+| Login Screen | Connection Error | Dashboard Placeholder |
+| --- | --- | --- |
+| ![Login Screen](docs/assets/OAuth_Screen.png) | ![Error Dialog](docs/assets/placeholdererror_screen.png) | ![Dashboard](docs/assets/dashboard_screen.png) |
+
+*(Note: Assets are located in the `docs/assets/` directory.)*
 
 ## 7. Known issues and next steps
 
-What is not finished, what is known to be broken, and what you would do next.
-Being honest here scores; pretending everything is perfect does not.
+**Known Issues:** 
+- The Master Dashboard UI is currently a structural placeholder.
+- The Side Drawer is not yet wired to the menu icon.
+- The app utilizes simulated loading delays rather than live data; mock JSON data has not yet been translated into a Dart data layer.
 
-## How it is graded
-
-See `rubrics.md` in this unit for the exact point breakdown. In short: your setup
-and run steps must actually work (that is the largest share), your feature and
-usage docs must match what the app really does, and screenshots plus clear
-writing carry the rest.
+**Next Steps:**
+- Build the `SideDrawer` component and wire up the global Light/Dark mode toggle.
+- Begin laying the groundwork for live Canvas REST API HTTP requests.
 
 ## AI usage
 
-Your repository must also carry an `AI-USAGE.md` and a credit line in the
-README. That file is graded separately, as your finals badge, and it is worth
-100 points; see the `finals-badge` unit for what goes in it. For your weekly
-Documentation Update all that is checked is that the file **exists and is
-current**, so start it in week 1 and keep it up as you go.
+This repository includes an `AI-USAGE.md` file detailing the prompt engineering, generative models used, and implementation context utilized during the development of this application.
