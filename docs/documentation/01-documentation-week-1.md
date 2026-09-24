@@ -57,7 +57,7 @@ The `lib/` directory is strictly modularized to separate state, UI components, a
 
 | Login Screen | Connection Error | Dashboard Placeholder |
 | --- | --- | --- |
-| ![Login Screen](docs/assets/OAuth_Screen.png) | ![Error Dialog](docs/assets/placeholdererror_screen.png) | ![Dashboard](docs/assets/dashboard_screen.png) |
+| ![Login Screen](/docs/assets/OAuth_Screen.png) | ![Error Dialog](/docs/assets/placeholdererror_screen.png) | ![Dashboard](/docs/assets/dashboard_screen.png) |
 
 *(Note: Assets are located in the `docs/assets/` directory.)*
 
