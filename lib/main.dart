@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:go_router/go_router.dart';
 import 'package:device_preview/device_preview.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 import 'state/app_state.dart';
 import 'theme/app_theme.dart';
@@ -14,6 +15,8 @@ import 'screens/courses_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  await dotenv.load(fileName: ".env");
   
   final prefs = await SharedPreferences.getInstance();
   
