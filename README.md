@@ -21,7 +21,7 @@ this paragraph with them:
 
 | Login Screen | Connection Error | Dashboard Placeholder |
 | --- | --- | --- |
-| ![Login Screen](../assets/OAuth.png) | ![Error Dialog](../assets/placeholdererror_screen.png) | ![Dashboard](../assets/Dashboard.png) |
+| ![Login Screen](/docs/assets/OAuth_Screen.png) | ![Error Dialog](/docs/assets/placeholdererror_screen.png) | ![Dashboard](/docs/assets/dashboard_screen.png) |
 
 ## What it does
 
