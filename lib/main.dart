@@ -9,6 +9,8 @@ import 'state/app_state.dart';
 import 'theme/app_theme.dart';
 import 'screens/login_screen.dart';
 import 'screens/dashboard_screen.dart';
+import 'screens/ai_assistant_screen.dart';
+import 'screens/courses_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -36,6 +38,14 @@ final _router = GoRouter(
     GoRoute(
       path: '/dashboard',
       builder: (context, state) => const DashboardScreen(),
+    ),
+    GoRoute(
+      path: '/assistant',
+      builder: (context, state) => const AiAssistantScreen(),
+    ),
+    GoRoute(
+      path: '/courses',
+      builder: (context, state) => const CoursesScreen(),
     ),
   ],
 );
