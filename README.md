@@ -1,11 +1,11 @@
-# App Name
+# Velo - your canvas co-pilot
 
-> One sentence: what this app does, and who it is for.
+> Velo is a distraction-free, local-first mobile client for the Canvas LMS designed to help university students manage heavy project workloads.
 
-**Live demo:** https://YOURUSERNAME.github.io/YOUR-REPO/ <!-- GitHub Pages is set up already; replace if you host elsewhere -->
-**Demo video:** `docs/demo.mp4` (link it here once it exists)
+**Live demo:** PS: Will be hosting the website elsewhere (to be posted once finished)
+**Demo video:** `docs/demo.mp4` (to be posted once finished)
 **Course:** Applications Development and Emerging Technologies (6ADET), Holy Angel University
-**Author:** Your Name
+**Author:** Sean Rhani J. Dela Cruz
 
 This repository lives in the author's own GitHub account and is public on
 purpose. There is no `student.json` here and there should not be one: see
@@ -19,30 +19,26 @@ personal data.
 Put two or three real screenshots at phone size in `docs/assets/`, then replace
 this paragraph with them:
 
-```markdown
-| Home | Detail | Add |
+| Login Screen | Connection Error | Dashboard Placeholder |
 | --- | --- | --- |
-| ![Home](docs/assets/screen-home.png) | ![Detail](docs/assets/screen-detail.png) | ![Add](docs/assets/screen-add.png) |
-```
-
-A repo without screenshots reads as abandoned, whatever the code says.
+| ![Login Screen](../assets/OAuth.png) | ![Error Dialog](../assets/placeholdererror_screen.png) | ![Dashboard](../assets/Dashboard.png) |
 
 ## What it does
 
 Three to five bullets. What can a user actually do?
 
-- ...
-- ...
-- ...
+- **Secure Authentication:** Logs users in through the university's Canvas OAuth 2.0 web flow, ensuring passwords are never touched or stored.
+- **Unified Master Feed:** Consolidates active assignments across all enrolled subjects into a single, chronologically sorted mobile feed (currently in development).
+- **AI Assistant:** Provides a conversational interface powered by Gemini to query syllabus details, grades, and upcoming deadlines in natural language.
 
 ## Built with
 
 | | |
 | --- | --- |
 | Framework | Flutter (Dart) |
-| State | `setState` / provider / riverpod (say which) |
-| Storage | shared_preferences / Hive / Drift / Firebase / Supabase / other |
-| Other packages | list the ones that matter, with a word on why |
+| State | `provider` |
+| Storage | `shared_preferences` (local-first caching and offline fallback) |
+| Other packages | `go_router` (persistent navigation), `device_preview` (web-based device testing), `google_generative_ai` (AI Assistant integration) |
 
 ## Running it yourself
 
@@ -52,8 +48,7 @@ cp .env.example .env
 flutter run -d web-server --web-port 8080
 ```
 
-Then open http://localhost:8080. Requires Flutter (run `flutter --version` and
-put yours here).
+Then open http://localhost:8080. Requires Flutter 3.44.0 or higher.
 
 ### Environment variables
 
@@ -63,18 +58,16 @@ result.
 
 | Variable | What it is | Where to get one |
 | --- | --- | --- |
-| `EXAMPLE_API_KEY` | ... | ... |
+| `CANVAS_API_TOKEN` | Canvas LMS access token | Generated from your university Canvas portal settings |
+| `GEMINI_API_KEY` | Google Gemini AI key | Google AI Studio |
 
 ## Privacy and secrets
 
 Required section. Two or three honest sentences:
 
-- What personal data this app stores, if any, and where it goes.
-- Where the secrets live (`.env` locally, repository secrets in the deploy
-  workflow) and what protects the data on the service side (Firestore rules,
-  Supabase RLS, or "nothing leaves the device").
-- Confirm that all sample data, screenshots and the video contain **no real
-  personal information**.
+- Personal Data: Velo is a strictly local-first application. User profiles, Canvas tokens, and cached course tasks are stored entirely on the device using shared_preferences. No personal data is ever sent to a third-party database.
+- Secrets: API keys live exclusively in the local .env file. The application relies on Canvas as the definitive backend, meaning data security is handled entirely by the official LMS infrastructure.
+- All sample data and screenshots in this repository contain no real personal information.
 
 ## Project documentations
 
@@ -94,21 +87,23 @@ Required section. Two or three honest sentences:
 
 ## Status and what is next
 
-Be honest. What works, what is half done, what you would build next. An honest
-"known issues" section reads better than a claim the reader disproves in thirty
-seconds.
+**What works:** The core Flutter architecture is established. The Material 3 design system is fully implemented (supporting Light and Dark modes). The global routing (go_router), persistent navigation (AppShell and BottomNav), and authentication UI (LoginScreen and ErrorDialog) are completely functional.
+
+**What is half done / Next steps:**
+
+- The Dashboard currently acts as an architectural placeholder.
+- The next step is to build the SideDrawer component to wire up the global theme toggle.
+- TypeScript mock JSON data needs to be translated into a Dart data layer to populate the assignment feed before hooking up live Canvas REST API requests.
 
 ## Credits
 
-- Packages: see `pubspec.yaml`
-- Assets, icons, 3D models, sounds: name the author and the licence for each
-- People who helped, and how
+- Packages: see pubspec.yaml
+- Icons: Flutter native Material Icons (zero-dependency approach)
+- Backend: Officially supported Canvas LMS REST API
 
 ## AI use
 
-If you used AI tools while building this, say so in a sentence or two and say
-where. Honest disclosure is the standard in this course and increasingly outside
-it.
+Generative AI was utilized as a collaborative thought partner during development and for debugging strict Material 3 SDK deprecations, and configuring the global routing layout. See AI-USAGE.md for a complete breakdown of prompt engineering and model usage.
 
 ## Licence
 
