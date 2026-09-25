@@ -14,6 +14,7 @@ import 'screens/ai_assistant_screen.dart';
 import 'screens/courses_screen.dart';
 import 'models/course.dart';
 import 'screens/course_detail_screen.dart';
+import 'screens/course_grades_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -58,6 +59,13 @@ final _router = GoRouter(
         // Retrieve the Course object passed from the InkWell
         final course = state.extra as Course;
         return CourseDetailScreen(course: course);
+      },
+    ),
+    GoRoute(
+      path: '/course-grades',
+      builder: (context, state) {
+        final course = state.extra as Course;
+        return CourseGradesScreen(course: course);
       },
     ),
   ],
