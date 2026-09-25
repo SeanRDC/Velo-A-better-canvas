@@ -50,6 +50,14 @@ final _router = GoRouter(
       path: '/courses',
       builder: (context, state) => const CoursesScreen(),
     ),
+    GoRoute(
+      path: '/course', // Using 'extra' to pass the object directly
+      builder: (context, state) {
+        // Retrieve the Course object passed from the InkWell
+        final course = state.extra as Course;
+        return CourseDetailScreen(course: course);
+      },
+    ),
   ],
 );
 
