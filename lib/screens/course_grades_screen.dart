@@ -3,8 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../components/app_shell.dart';
 import '../models/course.dart';
+import '../services/canvas_service.dart';
 
-// Temporary model until we wire up the Canvas enrollments/grades endpoint
 class GradeItem {
   final String label;
   final num score;
@@ -22,15 +22,44 @@ class CourseGradesScreen extends StatefulWidget {
 }
 
 class _CourseGradesScreenState extends State<CourseGradesScreen> {
-  // Hardcoded for UI layout testing; replacing with live Canvas data next
-  final List<GradeItem> _items = [
-    GradeItem('Quiz 3 Link-State Routing', 88, 100),
-    GradeItem('Switching Fundamentals Lab', 54, 60),
-    GradeItem('Midterm Exam', 141, 160),
-  ];
+  final CanvasService _canvasService = CanvasService();
   
-  final num _pct = 88;
-  final String _letter = 'B+';
+  List<GradeItem> _items = [];
+  num _pct = 0;
+  String _letter = 'N/A';
+  
+  bool _isLoading = true;
+  String? _errorMessage;
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchGrades();
+  }
+
+  Future<void> _fetchGrades() async {
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
+
+    try {
+      final data = await _canvasService.fetchGradesForCourse(widget.course.id);
+      final rawItems = data['items'] as List<Map<String, dynamic>>;
+      
+      setState(() {
+        _items = rawItems.map((e) => GradeItem(e['label'], e['score'], e['total'])).toList();
+        _pct = data['current_score'] as num;
+        _letter = data['letter_grade'] as String;
+        _isLoading = false;
+      });
+    } catch (e) {
+      setState(() {
+        _errorMessage = e.toString();
+        _isLoading = false;
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -43,86 +72,143 @@ class _CourseGradesScreenState extends State<CourseGradesScreen> {
         icon: const Icon(Icons.chevron_left, size: 28),
         onPressed: () => context.pop(),
       ),
-      child: ListView(
-        padding: const EdgeInsets.only(bottom: 32),
-        children: [
-          // Header
-          Padding(
-            padding: const EdgeInsets.fromLTRB(24, 8, 24, 16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  widget.course.courseCode,
-                  style: theme.textTheme.headlineSmall?.copyWith(
-                    fontWeight: FontWeight.bold,
-                    color: theme.colorScheme.onSurface,
-                    letterSpacing: -0.5,
-                  ),
+      child: _buildContent(theme),
+    );
+  }
+
+  Widget _buildContent(ThemeData theme) {
+    if (_isLoading) {
+      return Center(
+        child: CircularProgressIndicator(color: theme.colorScheme.primary),
+      );
+    }
+
+    if (_errorMessage != null) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24.0),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(Icons.error_outline, size: 48, color: theme.colorScheme.error),
+              const SizedBox(height: 16),
+              Text(
+                'Failed to load grades.',
+                style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                _errorMessage!,
+                textAlign: TextAlign.center,
+                style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.secondary),
+              ),
+              const SizedBox(height: 24),
+              ElevatedButton(
+                onPressed: _fetchGrades,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: theme.colorScheme.primary,
+                  foregroundColor: theme.colorScheme.onPrimary,
+                  elevation: 0,
                 ),
-                const SizedBox(height: 4),
-                Text(
-                  '${_items.length} graded items',
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: theme.colorScheme.secondary,
+                child: const Text('Retry'),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    return ListView(
+      padding: const EdgeInsets.only(bottom: 32),
+      children: [
+        // Header
+        Padding(
+          padding: const EdgeInsets.fromLTRB(24, 8, 24, 16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                widget.course.courseCode,
+                style: theme.textTheme.headlineSmall?.copyWith(
+                  fontWeight: FontWeight.bold,
+                  color: theme.colorScheme.onSurface,
+                  letterSpacing: -0.5,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                '${_items.length} graded items',
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: theme.colorScheme.secondary,
+                ),
+              ),
+            ],
+          ),
+        ),
+
+        // Summary Block
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+          child: Container(
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              color: theme.colorScheme.surface,
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Current grade',
+                      style: theme.textTheme.labelSmall?.copyWith(
+                        color: theme.colorScheme.secondary,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      '$_pct%',
+                      style: theme.textTheme.headlineMedium?.copyWith(
+                        fontWeight: FontWeight.bold,
+                        color: theme.colorScheme.onSurface,
+                        letterSpacing: -1.0,
+                      ),
+                    ),
+                  ],
+                ),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                  decoration: BoxDecoration(
+                    color: theme.colorScheme.primary,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Text(
+                    _letter,
+                    style: theme.textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.bold,
+                      color: theme.colorScheme.onPrimary,
+                    ),
                   ),
                 ),
               ],
             ),
           ),
+        ),
 
-          // Summary Block
+        // Grades List
+        if (_items.isEmpty)
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-            child: Container(
-              padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                color: theme.colorScheme.surface,
-                borderRadius: BorderRadius.circular(16),
-              ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Current grade',
-                        style: theme.textTheme.labelSmall?.copyWith(
-                          color: theme.colorScheme.secondary,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        '$_pct%',
-                        style: theme.textTheme.headlineMedium?.copyWith(
-                          fontWeight: FontWeight.bold,
-                          color: theme.colorScheme.onSurface,
-                          letterSpacing: -1.0,
-                        ),
-                      ),
-                    ],
-                  ),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                    decoration: BoxDecoration(
-                      color: theme.colorScheme.primary,
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Text(
-                      _letter,
-                      style: theme.textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.bold,
-                        color: theme.colorScheme.onPrimary,
-                      ),
-                    ),
-                  ),
-                ],
+            padding: const EdgeInsets.all(32.0),
+            child: Center(
+              child: Text(
+                'No grades posted yet.',
+                style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.secondary),
               ),
             ),
-          ),
-
-          // Grades List
+          )
+        else
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 24),
             child: Container(
@@ -181,8 +267,7 @@ class _CourseGradesScreenState extends State<CourseGradesScreen> {
               ),
             ),
           ),
-        ],
-      ),
+      ],
     );
   }
 }
