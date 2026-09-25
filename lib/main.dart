@@ -12,6 +12,8 @@ import 'screens/login_screen.dart';
 import 'screens/dashboard_screen.dart';
 import 'screens/ai_assistant_screen.dart';
 import 'screens/courses_screen.dart';
+import 'models/course.dart';
+import 'screens/course_detail_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
