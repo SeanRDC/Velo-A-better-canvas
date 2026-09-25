@@ -1,14 +1,14 @@
 // Conversational AI Interface
 import 'package:flutter/material.dart';
 import 'package:google_generative_ai/google_generative_ai.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import '../components/app_shell.dart';
 import '../components/chat_bubble.dart';
-import 'package:flutter_dotenv/flutter_dotenv.dart';
 
-// Simple message model for the UI
 class ChatMessage {
   final String text;
   final bool isUser;
+
   ChatMessage({required this.text, required this.isUser});
 }
 
@@ -29,7 +29,7 @@ class _AiAssistantScreenState extends State<AiAssistantScreen> {
   bool _isLoading = false;
   final List<ChatMessage> _messages = [
     ChatMessage(
-      text: "Hi Sean! I'm your Canvas Co-pilot. I can help you brainstorm, summarize notes, or organize your study plan. What are we working on today?",
+      text: "Hi Sean! I'm your Canvas Co-pilot. I can check your grades, summarize announcements, or look up deadlines. What do you need?",
       isUser: false,
     ),
   ];
@@ -40,22 +40,15 @@ class _AiAssistantScreenState extends State<AiAssistantScreen> {
     
     final apiKey = dotenv.env['GEMINI_API_KEY'] ?? '';
     
-    if (apiKey.isEmpty) {
-      debugPrint('CRITICAL: GEMINI_API_KEY is missing from the .env file!');
-    }
-    
     _model = GenerativeModel(
       model: 'gemini-1.5-flash',
       apiKey: apiKey,
-      generationConfig: GenerationConfig(
-        temperature: 0.4,
-        maxOutputTokens: 800,
-        topP: 0.8, 
-      )
+      systemInstruction: Content.system(
+        "You are Velo, a distraction-free Canvas LMS Co-pilot for a university student. Keep answers concise, factual, and strictly relevant to academic scheduling.",
+      ),
     );
-    _chat = _model.startChat(history: [
-      Content.text("Hi Sean! I'm your Canvas Co-pilot. I can help you brainstorm, summarize notes, or organize your study plan. What are we working on today?"),
-    ]);
+    
+    _chat = _model.startChat();
   }
 
   @override
