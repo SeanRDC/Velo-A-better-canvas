@@ -1,6 +1,6 @@
-// Courses screen 
-
+// Enrolled Courses List Screen
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import '../components/app_shell.dart';
 import '../models/course.dart';
 import '../services/canvas_service.dart';
@@ -110,58 +110,107 @@ class _CoursesScreenState extends State<CoursesScreen> {
 
     return ListView.builder(
       padding: const EdgeInsets.all(16.0),
-      itemCount: _courses.length,
+      itemCount: _courses.length + 1,
       itemBuilder: (context, index) {
-        final course = _courses[index];
+        if (index == 0) {
+          // Summary Header matching React design
+          return Padding(
+            padding: const EdgeInsets.only(left: 8.0, bottom: 12.0, top: 8.0),
+            child: Text(
+              'Spring 2026 · ${_courses.length} courses',
+              style: theme.textTheme.labelMedium?.copyWith(
+                color: theme.colorScheme.secondary,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          );
+        }
+
+        final course = _courses[index - 1];
         return Padding(
           padding: const EdgeInsets.only(bottom: 12.0),
-          child: InkWell(
-            onTap: () {
-              // TODO: Navigate to individual Course Detail Screen
-            },
+          child: Material(
+            color: theme.colorScheme.surface,
             borderRadius: BorderRadius.circular(12),
-            child: Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: theme.colorScheme.surface,
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(
-                  color: theme.colorScheme.onSurface.withValues(alpha: 0.05),
-                ),
-              ),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: Column(
+            child: InkWell(
+              onTap: () {
+                // Route to Course Detail using GoRouter and passing the Course object
+                context.push('/course', extra: course);
+              },
+              borderRadius: BorderRadius.circular(12),
+              child: Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                          decoration: BoxDecoration(
-                            color: theme.colorScheme.onSurface.withValues(alpha: 0.1),
-                            borderRadius: BorderRadius.circular(4),
-                          ),
-                          child: Text(
-                            course.courseCode,
-                            style: theme.textTheme.labelSmall?.copyWith(
-                              fontWeight: FontWeight.bold,
-                              color: theme.colorScheme.secondary,
-                            ),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              // Course Code Chip
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                decoration: BoxDecoration(
+                                  color: theme.colorScheme.secondary.withValues(alpha: 0.15),
+                                  borderRadius: BorderRadius.circular(4),
+                                ),
+                                child: Text(
+                                  course.courseCode,
+                                  style: theme.textTheme.labelSmall?.copyWith(
+                                    fontWeight: FontWeight.w600,
+                                    color: theme.colorScheme.secondary,
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(height: 6),
+                              // Course Name
+                              Text(
+                                course.name,
+                                style: theme.textTheme.bodyLarge?.copyWith(
+                                  fontWeight: FontWeight.w500,
+                                  color: theme.colorScheme.onSurface,
+                                  height: 1.2,
+                                ),
+                              ),
+                              const SizedBox(height: 2),
+                              // Meta Text
+                              Text(
+                                'Course Instructor · Spring 2026', // Placeholder until added to Canvas model
+                                style: theme.textTheme.bodySmall?.copyWith(
+                                  color: theme.colorScheme.secondary,
+                                ),
+                              ),
+                            ],
                           ),
                         ),
-                        const SizedBox(height: 12),
-                        Text(
-                          course.name,
-                          style: theme.textTheme.bodyMedium?.copyWith(
-                            fontWeight: FontWeight.w600,
-                            color: theme.colorScheme.onSurface,
-                          ),
-                        ),
+                        Icon(Icons.chevron_right, color: theme.colorScheme.secondary, size: 20),
                       ],
                     ),
-                  ),
-                  Icon(Icons.chevron_right, color: theme.colorScheme.secondary),
-                ],
+                    const SizedBox(height: 12),
+                    // Card Footer
+                    Container(
+                      padding: const EdgeInsets.only(top: 12),
+                      decoration: BoxDecoration(
+                        border: Border(
+                          top: BorderSide(color: theme.colorScheme.onSurface.withValues(alpha: 0.1)),
+                        ),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(Icons.menu_book, size: 14, color: theme.colorScheme.secondary),
+                          const SizedBox(width: 6),
+                          Text(
+                            'View course tasks', 
+                            style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.secondary),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
           ),
