@@ -141,4 +141,19 @@ class CanvasService {
       throw Exception('Failed to load modules from Canvas.');
     }
   }
+
+  Future<List<Map<String, dynamic>>> fetchAnnouncementsForCourse(String courseId) async {
+    // Canvas stores announcements as discussion topics with a specific filter
+    final response = await http.get(
+      Uri.parse('$_baseUrl/api/v1/courses/$courseId/discussion_topics?only_announcements=true&per_page=50'),
+      headers: _headers,
+    );
+
+    if (response.statusCode == 200) {
+      final List<dynamic> data = jsonDecode(response.body);
+      return data.cast<Map<String, dynamic>>();
+    } else {
+      throw Exception('Failed to load announcements from Canvas.');
+    }
+  }
 }
