@@ -2,6 +2,7 @@
 import 'package:flutter/material.dart';
 import '../components/app_shell.dart';
 import '../models/course.dart';
+import 'package:go_router/go_router.dart';
 
 class CourseDetailScreen extends StatelessWidget {
   final Course course;
@@ -67,7 +68,7 @@ class CourseDetailScreen extends StatelessWidget {
                     child: InkWell(
                       borderRadius: BorderRadius.circular(16),
                       onTap: () {
-                        // TODO: Implement sub-screen routing
+                        context.push(s['path'] as String, extra: course);
                       },
                       child: Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
