@@ -47,6 +47,11 @@ class _AiAssistantScreenState extends State<AiAssistantScreen> {
     _model = GenerativeModel(
       model: 'gemini-1.5-flash',
       apiKey: apiKey,
+      generationConfig: GenerationConfig(
+        temperature: 0.4,
+        maxOutputTokens: 800,
+        topP: 0.8, 
+      )
     );
     _chat = _model.startChat(history: [
       Content.text("Hi Sean! I'm your Canvas Co-pilot. I can help you brainstorm, summarize notes, or organize your study plan. What are we working on today?"),
