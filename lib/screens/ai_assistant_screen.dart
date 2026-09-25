@@ -35,17 +35,32 @@ class _AiAssistantScreenState extends State<AiAssistantScreen> {
     ),
   ];
 
-  @override
+@override
   void initState() {
     super.initState();
     
     final apiKey = dotenv.env['GEMINI_API_KEY'] ?? '';
     
+    if (apiKey.isEmpty) {
+      debugPrint('CRITICAL DIAGNOSTIC: API Key is EMPTY. .env failed to load.');
+    }
+    
+    // TODO: Replace these with dynamic values from AppState/Canvas API post-authentication
+    final String currentUserName = "Sean";
+    final String universityName = "Holy Angel University";
+
     _model = GenerativeModel(
-      model: 'gemini-3.5-flash-lite',
+      model: 'gemini-3.5-flash-lite', 
       apiKey: apiKey,
       systemInstruction: Content.system(
-        "You are Velo, a distraction-free Canvas LMS Co-pilot for a university student. Keep answers concise, factual, and strictly relevant to academic scheduling.",
+        '''You are Velo, a highly efficient, distraction-free Canvas LMS Co-pilot.
+Your user is $currentUserName, a student at $universityName. Your primary goal is to help them manage heavy project workloads, track grades, and organize their schedule.
+
+CRITICAL RULES:
+1. STRUCTURE: Be incredibly concise. Use bullet points and bold text for easy scanning.
+2. TONE: Cut the fluff. Do not use generic pleasantries or robotic introductions; deliver data and advice instantly.
+3. AUTO-PLANNING: When asked to plan or organize, automatically break down large assignments into logical, step-by-step daily milestones.
+4. CONTEXT: Base all schedule and grade advice strictly on the course and assignment data provided in the conversational context.'''
       ),
     );
     
