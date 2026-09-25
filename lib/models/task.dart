@@ -1,4 +1,6 @@
 // Data model representing a Canvas assignment, quiz, or discussion task.
+import 'course.dart';
+
 class Task {
   final String id;
   final String title;
@@ -20,17 +22,18 @@ class Task {
     this.isSubmitted = false,
   });
 
-  // Factory constructor to parse your mock JSON
-  factory Task.fromJson(Map<String, dynamic> json) {
+  factory Task.fromCanvasJson(Map<String, dynamic> json, Course course) {
     return Task(
-      id: json['id'] as String,
-      title: json['title'] as String,
-      courseName: json['courseName'] as String,
-      courseCode: json['courseCode'] as String,
-      dueDate: DateTime.parse(json['dueDate'] as String),
-      points: json['points'] as int,
-      type: json['type'] as String,
-      isSubmitted: json['isSubmitted'] as bool? ?? false,
+      id: json['id'].toString(),
+      title: json['name'] ?? 'Untitled Assignment',
+      courseName: course.name,
+      courseCode: course.courseCode,
+      dueDate: json['due_at'] != null 
+          ? DateTime.parse(json['due_at']).toLocal() 
+          : DateTime.now().add(const Duration(days: 365)),
+      points: (json['points_possible'] as num?)?.toInt() ?? 0,
+      type: 'assignment',
+      isSubmitted: json['has_submitted_submissions'] as bool? ?? false,
     );
   }
 }
