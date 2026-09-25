@@ -37,8 +37,15 @@ class _AiAssistantScreenState extends State<AiAssistantScreen> {
   @override
   void initState() {
     super.initState();
-    
+  
     final apiKey = dotenv.env['GEMINI_API_KEY'] ?? '';
+    
+    // DIAGNOSTIC CHECK 1: Is the key actually loading?
+    if (apiKey.isEmpty) {
+      debugPrint('CRITICAL DIAGNOSTIC: API Key is EMPTY. .env failed to load.');
+    } else {
+      debugPrint('CRITICAL DIAGNOSTIC: API Key loaded successfully. Starts with: ${apiKey.length > 4 ? apiKey.substring(0, 4) : "INVALID"}');
+    }
     
     _model = GenerativeModel(
       model: 'gemini-1.5-flash',
@@ -77,10 +84,14 @@ class _AiAssistantScreenState extends State<AiAssistantScreen> {
       setState(() {
         _messages.add(ChatMessage(text: responseText, isUser: false));
       });
-    } catch (e) {
+    } catch (e, stackTrace) {
+      // DIAGNOSTIC CHECK 2: What is the actual exception?
+      debugPrint('CRITICAL DIAGNOSTIC ERROR: $e');
+      debugPrint('CRITICAL DIAGNOSTIC STACKTRACE: $stackTrace');
+      
       setState(() {
         _messages.add(ChatMessage(
-          text: 'Connection error. Please check your API key or internet connection.', 
+          text: 'Error caught: $e', // Displaying the error in the UI temporarily
           isUser: false
         ));
       });
