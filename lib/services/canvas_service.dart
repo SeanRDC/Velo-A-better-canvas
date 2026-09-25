@@ -127,4 +127,18 @@ class CanvasService {
     if (score == 0) return 'N/A';
     return 'F';
   }
+
+  Future<List<Map<String, dynamic>>> fetchModulesForCourse(String courseId) async {
+    final response = await http.get(
+      Uri.parse('$_baseUrl/api/v1/courses/$courseId/modules?include[]=items&per_page=100'),
+      headers: _headers,
+    );
+
+    if (response.statusCode == 200) {
+      final List<dynamic> data = jsonDecode(response.body);
+      return data.cast<Map<String, dynamic>>();
+    } else {
+      throw Exception('Failed to load modules from Canvas.');
+    }
+  }
 }
