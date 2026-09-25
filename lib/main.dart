@@ -16,6 +16,9 @@ import 'models/course.dart';
 import 'screens/course_detail_screen.dart';
 import 'screens/course_grades_screen.dart';
 import 'screens/course_modules_screen.dart';
+import 'screens/course_assignments_screen.dart';
+import 'screens/task_detail_screen.dart';
+import 'models/task.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -74,6 +77,22 @@ final _router = GoRouter(
       builder: (context, state) {
         final course = state.extra as Course;
         return CourseModulesScreen(course: course);
+      },
+    ),
+    GoRoute(
+      path: '/course-assignments',
+      builder: (context, state) {
+        final course = state.extra as Course;
+        return CourseAssignmentsScreen(course: course);
+      },
+    ),
+    GoRoute(
+      path: '/task',
+      builder: (context, state) {
+        final Map<String, dynamic> extras = state.extra as Map<String, dynamic>;
+        final course = extras['course'] as Course;
+        final task = extras['task'] as Task;
+        return TaskDetailScreen(course: course, task: task);
       },
     ),
   ],
