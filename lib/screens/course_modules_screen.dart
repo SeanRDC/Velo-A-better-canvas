@@ -3,11 +3,12 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../components/app_shell.dart';
 import '../models/course.dart';
+import '../services/canvas_service.dart';
 
-// Temporary models until we wire up the Canvas modules endpoint
+// Internal models mapped to the Canvas response
 class ModuleItem {
   final String label;
-  final String kind; // 'reading', 'lab', 'quiz', 'lecture'
+  final String kind; 
   ModuleItem(this.label, this.kind);
 }
 
@@ -28,32 +29,79 @@ class CourseModulesScreen extends StatefulWidget {
 }
 
 class _CourseModulesScreenState extends State<CourseModulesScreen> {
-  // Hardcoded for UI layout testing
-  final List<Module> _modules = [
-    Module('Week 7', 'Dynamic Routing Protocols', [
-      ModuleItem('Lecture: OSPF Areas & LSAs', 'lecture'),
-      ModuleItem('Lab: Multi-Area OSPF Setup', 'lab'),
-      ModuleItem('Quiz 4 Link-State Routing', 'quiz'),
-    ]),
-    Module('Week 6', 'IP Addressing & Subnetting', [
-      ModuleItem('Reading: VLSM & CIDR', 'reading'),
-      ModuleItem('Lab: Subnetting Practice', 'lab'),
-    ]),
-  ];
+  final CanvasService _canvasService = CanvasService();
+  
+  List<Module> _modules = [];
+  bool _isLoading = true;
+  String? _errorMessage;
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchModules();
+  }
+
+  Future<void> _fetchModules() async {
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
+
+    try {
+      final data = await _canvasService.fetchModulesForCourse(widget.course.id);
+      
+      final List<Module> parsedModules = [];
+      for (int i = 0; i < data.length; i++) {
+        final modJson = data[i];
+        final List<dynamic>? itemsJson = modJson['items'];
+        
+        final List<ModuleItem> items = [];
+        if (itemsJson != null) {
+          for (var item in itemsJson) {
+            // Canvas item types: 'File', 'Page', 'Discussion', 'Assignment', 'Quiz', 'SubHeader', 'ExternalUrl'
+            items.add(ModuleItem(
+              item['title'] ?? 'Untitled',
+              item['type'] ?? 'Unknown',
+            ));
+          }
+        }
+
+        parsedModules.add(Module(
+          'Module ${i + 1}', // Generating the sequential label
+          modJson['name'] ?? 'Unnamed Module',
+          items,
+        ));
+      }
+
+      setState(() {
+        _modules = parsedModules;
+        _isLoading = false;
+      });
+    } catch (e) {
+      setState(() {
+        _errorMessage = e.toString();
+        _isLoading = false;
+      });
+    }
+  }
 
   IconData _getIconForKind(String kind) {
-    switch (kind) {
-      case 'reading': return Icons.menu_book_outlined;
-      case 'lab': return Icons.science_outlined;
+    switch (kind.toLowerCase()) {
+      case 'page': return Icons.menu_book_outlined;
+      case 'file': return Icons.insert_drive_file_outlined;
       case 'quiz': return Icons.help_outline;
-      case 'lecture': return Icons.co_present_outlined;
-      default: return Icons.insert_drive_file_outlined;
+      case 'assignment': return Icons.assignment_outlined;
+      case 'discussion': return Icons.forum_outlined;
+      case 'externalurl': return Icons.link;
+      case 'externaltool': return Icons.build_circle_outlined;
+      case 'subheader': return Icons.label_outline;
+      default: return Icons.article_outlined;
     }
   }
 
   String _capitalize(String text) {
     if (text.isEmpty) return text;
-    return text[0].toUpperCase() + text.substring(1);
+    return text[0].toUpperCase() + text.substring(1).toLowerCase();
   }
 
   @override
@@ -67,8 +115,8 @@ class _CourseModulesScreenState extends State<CourseModulesScreen> {
         icon: const Icon(Icons.chevron_left, size: 28),
         onPressed: () => context.pop(),
       ),
-      child: ListView(
-        padding: const EdgeInsets.only(bottom: 32),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // Header
           Padding(
@@ -85,160 +133,225 @@ class _CourseModulesScreenState extends State<CourseModulesScreen> {
                   ),
                 ),
                 const SizedBox(height: 4),
-                Text(
-                  '${_modules.length} sequential modules',
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: theme.colorScheme.secondary,
+                if (!_isLoading && _errorMessage == null)
+                  Text(
+                    '${_modules.length} sequential modules',
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: theme.colorScheme.secondary,
+                    ),
                   ),
-                ),
               ],
             ),
           ),
 
-          // Timeline List
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
-            child: Column(
-              children: List.generate(_modules.length, (index) {
-                final mod = _modules[index];
-                final isLast = index == _modules.length - 1;
+          // Main Content
+          Expanded(
+            child: _buildContent(theme),
+          ),
+        ],
+      ),
+    );
+  }
 
-                return IntrinsicHeight(
-                  child: Row(
+  Widget _buildContent(ThemeData theme) {
+    if (_isLoading) {
+      return Center(
+        child: CircularProgressIndicator(color: theme.colorScheme.primary),
+      );
+    }
+
+    if (_errorMessage != null) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24.0),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(Icons.error_outline, size: 48, color: theme.colorScheme.error),
+              const SizedBox(height: 16),
+              Text(
+                'Failed to load modules.',
+                style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                _errorMessage!,
+                textAlign: TextAlign.center,
+                style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.secondary),
+              ),
+              const SizedBox(height: 24),
+              ElevatedButton(
+                onPressed: _fetchModules,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: theme.colorScheme.primary,
+                  foregroundColor: theme.colorScheme.onPrimary,
+                  elevation: 0,
+                ),
+                child: const Text('Retry'),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    if (_modules.isEmpty) {
+      return Center(
+        child: Text(
+          'No modules found.',
+          style: theme.textTheme.bodyLarge?.copyWith(color: theme.colorScheme.secondary),
+        ),
+      );
+    }
+
+    return ListView.builder(
+      padding: const EdgeInsets.only(left: 24, right: 24, top: 8, bottom: 32),
+      itemCount: _modules.length,
+      itemBuilder: (context, index) {
+        final mod = _modules[index];
+        final isLast = index == _modules.length - 1;
+
+        return IntrinsicHeight(
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Sequential Rail
+              Column(
+                children: [
+                  Container(
+                    height: 32,
+                    width: 32,
+                    decoration: BoxDecoration(
+                      color: theme.colorScheme.primary,
+                      shape: BoxShape.circle,
+                    ),
+                    alignment: Alignment.center,
+                    child: Text(
+                      '${index + 1}',
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        fontWeight: FontWeight.bold,
+                        color: theme.colorScheme.onPrimary,
+                      ),
+                    ),
+                  ),
+                  if (!isLast)
+                    Expanded(
+                      child: Container(
+                        width: 1,
+                        margin: const EdgeInsets.symmetric(vertical: 4),
+                        color: theme.colorScheme.onSurface.withValues(alpha: 0.15),
+                      ),
+                    ),
+                ],
+              ),
+              const SizedBox(width: 16),
+              // Module Block
+              Expanded(
+                child: Padding(
+                  padding: EdgeInsets.only(bottom: isLast ? 0 : 24.0),
+                  child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // Sequential Rail
-                      Column(
-                        children: [
-                          Container(
-                            height: 32,
-                            width: 32,
-                            decoration: BoxDecoration(
-                              color: theme.colorScheme.primary,
-                              shape: BoxShape.circle,
-                            ),
-                            alignment: Alignment.center,
-                            child: Text(
-                              '${index + 1}',
-                              style: theme.textTheme.bodySmall?.copyWith(
-                                fontWeight: FontWeight.bold,
-                                color: theme.colorScheme.onPrimary,
-                              ),
-                            ),
-                          ),
-                          if (!isLast)
-                            Expanded(
-                              child: Container(
-                                width: 1,
-                                margin: const EdgeInsets.symmetric(vertical: 4),
-                                color: theme.colorScheme.onSurface.withValues(alpha: 0.15),
-                              ),
-                            ),
-                        ],
+                      Text(
+                        mod.week,
+                        style: theme.textTheme.labelSmall?.copyWith(
+                          color: theme.colorScheme.secondary,
+                        ),
                       ),
-                      const SizedBox(width: 16),
-                      // Module Block
-                      Expanded(
-                        child: Padding(
-                          padding: EdgeInsets.only(bottom: isLast ? 0 : 24.0),
+                      const SizedBox(height: 2),
+                      Text(
+                        mod.title,
+                        style: theme.textTheme.bodyLarge?.copyWith(
+                          fontWeight: FontWeight.w600,
+                          color: theme.colorScheme.onSurface,
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      if (mod.items.isEmpty)
+                        Text(
+                          'No items in this module.',
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: theme.colorScheme.secondary,
+                            fontStyle: FontStyle.italic,
+                          ),
+                        )
+                      else
+                        Container(
+                          decoration: BoxDecoration(
+                            color: theme.colorScheme.surface,
+                            borderRadius: BorderRadius.circular(16),
+                          ),
                           child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                mod.week,
-                                style: theme.textTheme.labelSmall?.copyWith(
-                                  color: theme.colorScheme.secondary,
-                                ),
-                              ),
-                              const SizedBox(height: 2),
-                              Text(
-                                mod.title,
-                                style: theme.textTheme.bodyLarge?.copyWith(
-                                  fontWeight: FontWeight.w600,
-                                  color: theme.colorScheme.onSurface,
-                                ),
-                              ),
-                              const SizedBox(height: 12),
-                              Container(
-                                decoration: BoxDecoration(
-                                  color: theme.colorScheme.surface,
-                                  borderRadius: BorderRadius.circular(16),
-                                ),
-                                child: Column(
-                                  children: List.generate(mod.items.length, (itemIndex) {
-                                    final item = mod.items[itemIndex];
-                                    final isFirstItem = itemIndex == 0;
+                            children: List.generate(mod.items.length, (itemIndex) {
+                              final item = mod.items[itemIndex];
+                              final isFirstItem = itemIndex == 0;
 
-                                    return InkWell(
-                                      onTap: () {
-                                        // Route to Task Detail
-                                      },
-                                      borderRadius: isFirstItem 
-                                          ? const BorderRadius.vertical(top: Radius.circular(16))
-                                          : (itemIndex == mod.items.length - 1 
-                                              ? const BorderRadius.vertical(bottom: Radius.circular(16)) 
-                                              : BorderRadius.zero),
-                                      child: Container(
-                                        decoration: BoxDecoration(
-                                          border: isFirstItem 
-                                              ? null 
-                                              : Border(top: BorderSide(color: theme.colorScheme.onSurface.withValues(alpha: 0.1))),
-                                        ),
-                                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                                        child: Row(
+                              return InkWell(
+                                onTap: () {
+                                  // External link handling or internal task routing can go here
+                                },
+                                borderRadius: isFirstItem 
+                                    ? const BorderRadius.vertical(top: Radius.circular(16))
+                                    : (itemIndex == mod.items.length - 1 
+                                        ? const BorderRadius.vertical(bottom: Radius.circular(16)) 
+                                        : BorderRadius.zero),
+                                child: Container(
+                                  decoration: BoxDecoration(
+                                    border: isFirstItem 
+                                        ? null 
+                                        : Border(top: BorderSide(color: theme.colorScheme.onSurface.withValues(alpha: 0.1))),
+                                  ),
+                                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                                  child: Row(
+                                    children: [
+                                      Icon(
+                                        _getIconForKind(item.kind),
+                                        size: 18,
+                                        color: theme.colorScheme.secondary,
+                                      ),
+                                      const SizedBox(width: 12),
+                                      Expanded(
+                                        child: Column(
+                                          crossAxisAlignment: CrossAxisAlignment.start,
                                           children: [
-                                            Icon(
-                                              _getIconForKind(item.kind),
-                                              size: 18,
-                                              color: theme.colorScheme.secondary,
-                                            ),
-                                            const SizedBox(width: 12),
-                                            Expanded(
-                                              child: Column(
-                                                crossAxisAlignment: CrossAxisAlignment.start,
-                                                children: [
-                                                  Text(
-                                                    item.label,
-                                                    style: theme.textTheme.bodyMedium?.copyWith(
-                                                      fontWeight: FontWeight.w500,
-                                                      color: theme.colorScheme.onSurface,
-                                                    ),
-                                                    maxLines: 1,
-                                                    overflow: TextOverflow.ellipsis,
-                                                  ),
-                                                  Text(
-                                                    _capitalize(item.kind),
-                                                    style: theme.textTheme.bodySmall?.copyWith(
-                                                      color: theme.colorScheme.secondary,
-                                                    ),
-                                                  ),
-                                                ],
+                                            Text(
+                                              item.label,
+                                              style: theme.textTheme.bodyMedium?.copyWith(
+                                                fontWeight: FontWeight.w500,
+                                                color: theme.colorScheme.onSurface,
                                               ),
+                                              maxLines: 1,
+                                              overflow: TextOverflow.ellipsis,
                                             ),
-                                            Icon(
-                                              Icons.chevron_right,
-                                              size: 18,
-                                              color: theme.colorScheme.secondary,
+                                            Text(
+                                              _capitalize(item.kind),
+                                              style: theme.textTheme.bodySmall?.copyWith(
+                                                color: theme.colorScheme.secondary,
+                                              ),
                                             ),
                                           ],
                                         ),
                                       ),
-                                    );
-                                  }),
+                                      Icon(
+                                        Icons.chevron_right,
+                                        size: 18,
+                                        color: theme.colorScheme.secondary,
+                                      ),
+                                    ],
+                                  ),
                                 ),
-                              ),
-                            ],
+                              );
+                            }),
                           ),
                         ),
-                      ),
                     ],
                   ),
-                );
-              }),
-            ),
+                ),
+              ),
+            ],
           ),
-        ],
-      ),
+        );
+      },
     );
   }
 }
