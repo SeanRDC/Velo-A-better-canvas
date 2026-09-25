@@ -4,6 +4,7 @@ import 'package:google_generative_ai/google_generative_ai.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import '../components/app_shell.dart';
 import '../components/chat_bubble.dart';
+import 'dart:math' as math;
 
 class ChatMessage {
   final String text;
@@ -37,18 +38,11 @@ class _AiAssistantScreenState extends State<AiAssistantScreen> {
   @override
   void initState() {
     super.initState();
-  
+    
     final apiKey = dotenv.env['GEMINI_API_KEY'] ?? '';
     
-    // DIAGNOSTIC CHECK 1: Is the key actually loading?
-    if (apiKey.isEmpty) {
-      debugPrint('CRITICAL DIAGNOSTIC: API Key is EMPTY. .env failed to load.');
-    } else {
-      debugPrint('CRITICAL DIAGNOSTIC: API Key loaded successfully. Starts with: ${apiKey.length > 4 ? apiKey.substring(0, 4) : "INVALID"}');
-    }
-    
     _model = GenerativeModel(
-      model: 'gemini-1.5-flash',
+      model: 'gemini-3.5-flash-lite',
       apiKey: apiKey,
       systemInstruction: Content.system(
         "You are Velo, a distraction-free Canvas LMS Co-pilot for a university student. Keep answers concise, factual, and strictly relevant to academic scheduling.",
@@ -67,7 +61,8 @@ class _AiAssistantScreenState extends State<AiAssistantScreen> {
 
   void _sendMessage() async {
     final text = _controller.text.trim();
-    if (text.isEmpty) return;
+    
+    if (text.isEmpty || _isLoading) return;
 
     setState(() {
       _messages.add(ChatMessage(text: text, isUser: true));
@@ -78,20 +73,44 @@ class _AiAssistantScreenState extends State<AiAssistantScreen> {
     _scrollToBottom();
 
     try {
-      final response = await _chat.sendMessage(Content.text(text));
+      late GenerateContentResponse response;
+      const int maxRetries = 4;
+      final random = math.Random();
+      
+      for (int attempt = 0; attempt < maxRetries; attempt++) {
+        try {
+          response = await _chat.sendMessage(Content.text(text));
+          break;
+        } catch (e) {
+          final errorStr = e.toString().toLowerCase();
+          final isRateLimit = errorStr.contains('429') || 
+                              errorStr.contains('quota') || 
+                              errorStr.contains('exhausted');
+                              
+          if (isRateLimit && attempt < maxRetries - 1) {
+            final int baseDelay = 2000 * (1 << attempt);
+            
+            final int jitteredDelay = random.nextInt(baseDelay + 1);
+            
+            final int totalDelayMs = 1000 + jitteredDelay; 
+            
+            debugPrint('Rate limit hit. Retrying in ${totalDelayMs}ms (Attempt ${attempt + 1})');
+            await Future.delayed(Duration(milliseconds: totalDelayMs));
+            continue;
+          }
+          rethrow;
+        }
+      }
+
       final responseText = response.text ?? 'I am having trouble processing that right now.';
       
       setState(() {
         _messages.add(ChatMessage(text: responseText, isUser: false));
       });
-    } catch (e, stackTrace) {
-      // DIAGNOSTIC CHECK 2: What is the actual exception?
-      debugPrint('CRITICAL DIAGNOSTIC ERROR: $e');
-      debugPrint('CRITICAL DIAGNOSTIC STACKTRACE: $stackTrace');
-      
+    } catch (e) {
       setState(() {
         _messages.add(ChatMessage(
-          text: 'Error caught: $e', // Displaying the error in the UI temporarily
+          text: 'Connection error or rate limit exhausted. Please try again later.', 
           isUser: false
         ));
       });
