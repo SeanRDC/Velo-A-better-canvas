@@ -15,6 +15,7 @@ import 'screens/courses_screen.dart';
 import 'models/course.dart';
 import 'screens/course_detail_screen.dart';
 import 'screens/course_grades_screen.dart';
+import 'screens/course_modules_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -66,6 +67,13 @@ final _router = GoRouter(
       builder: (context, state) {
         final course = state.extra as Course;
         return CourseGradesScreen(course: course);
+      },
+    ),
+    GoRoute(
+      path: '/course-modules',
+      builder: (context, state) {
+        final course = state.extra as Course;
+        return CourseModulesScreen(course: course);
       },
     ),
   ],
