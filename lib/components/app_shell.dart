@@ -1,7 +1,10 @@
 // Main Application Layout Wrapper
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import '../state/app_state.dart';
 import 'bottom_nav.dart';
 import 'side_drawer.dart';
+import 'offline_banner.dart';
 
 class AppShell extends StatelessWidget {
   final String title;
@@ -22,6 +25,8 @@ class AppShell extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    
+    final isOffline = context.watch<AppState>().isOffline;
 
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
@@ -38,7 +43,13 @@ class AppShell extends StatelessWidget {
         actions: actions,
       ),
       drawer: const SideDrawer(),
-      body: child,
+      body: Column(
+        children: [
+          if (isOffline) const OfflineBanner(),
+          
+          Expanded(child: child),
+        ],
+      ),
       bottomNavigationBar: BottomNav(activeTab: activeTab),
     );
   }
