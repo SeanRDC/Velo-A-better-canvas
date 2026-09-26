@@ -5,11 +5,14 @@ import '../components/app_shell.dart';
 import '../models/course.dart';
 import '../services/canvas_service.dart';
 
-// Internal models mapped to the Canvas response
 class ModuleItem {
   final String label;
-  final String kind; 
-  ModuleItem(this.label, this.kind);
+  final String kind;
+  final String htmlUrl;
+  final String? apiUrl;
+  final String? pageUrl;
+
+  ModuleItem(this.label, this.kind, this.htmlUrl, this.apiUrl, this.pageUrl);
 }
 
 class Module {
@@ -41,6 +44,9 @@ class _CourseModulesScreenState extends State<CourseModulesScreen> {
     _fetchModules();
   }
 
+  // We store a flattened list of items to power the Next/Previous buttons
+  List<ModuleItem> _allNavigableItems = [];
+
   Future<void> _fetchModules() async {
     setState(() {
       _isLoading = true;
@@ -51,6 +57,8 @@ class _CourseModulesScreenState extends State<CourseModulesScreen> {
       final data = await _canvasService.fetchModulesForCourse(widget.course.id);
       
       final List<Module> parsedModules = [];
+      final List<ModuleItem> flatList = [];
+
       for (int i = 0; i < data.length; i++) {
         final modJson = data[i];
         final List<dynamic>? itemsJson = modJson['items'];
@@ -58,16 +66,25 @@ class _CourseModulesScreenState extends State<CourseModulesScreen> {
         final List<ModuleItem> items = [];
         if (itemsJson != null) {
           for (var item in itemsJson) {
-            // Canvas item types: 'File', 'Page', 'Discussion', 'Assignment', 'Quiz', 'SubHeader', 'ExternalUrl'
-            items.add(ModuleItem(
+            final type = item['type'] ?? 'Unknown';
+            final modItem = ModuleItem(
               item['title'] ?? 'Untitled',
-              item['type'] ?? 'Unknown',
-            ));
+              type,
+              item['html_url'] ?? '',
+              item['url'],
+              item['page_url'],
+            );
+            items.add(modItem);
+            
+            // SubHeaders are just labels; they aren't clickable pages
+            if (type.toLowerCase() != 'subheader') {
+              flatList.add(modItem);
+            }
           }
         }
 
         parsedModules.add(Module(
-          'Module ${i + 1}', // Generating the sequential label
+          'Module ${i + 1}',
           modJson['name'] ?? 'Unnamed Module',
           items,
         ));
@@ -75,6 +92,7 @@ class _CourseModulesScreenState extends State<CourseModulesScreen> {
 
       setState(() {
         _modules = parsedModules;
+        _allNavigableItems = flatList;
         _isLoading = false;
       });
     } catch (e) {
@@ -288,7 +306,16 @@ class _CourseModulesScreenState extends State<CourseModulesScreen> {
 
                               return InkWell(
                                 onTap: () {
-                                  // External link handling or internal task routing can go here
+                                  if (item.kind.toLowerCase() == 'subheader') return;
+                                  
+                                  final initialIndex = _allNavigableItems.indexOf(item);
+                                  if (initialIndex != -1) {
+                                    context.push('/module-item', extra: {
+                                      'course': widget.course,
+                                      'items': _allNavigableItems,
+                                      'index': initialIndex,
+                                    });
+                                  }
                                 },
                                 borderRadius: isFirstItem 
                                     ? const BorderRadius.vertical(top: Radius.circular(16))
