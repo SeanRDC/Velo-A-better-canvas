@@ -1,7 +1,8 @@
-// Handles all HTTP REST communication with the Canvas LMS API.
+// Handles all HTTP REST communication with the Canvas LMS API with Offline Caching.
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../models/course.dart';
 import '../models/task.dart';
 
@@ -14,37 +15,62 @@ class CanvasService {
     'Accept': 'application/json',
   };
 
-  Future<List<Course>> fetchActiveCourses() async {
-    final response = await http.get(
-      Uri.parse('$_baseUrl/api/v1/courses?enrollment_state=active&include[]=term&include[]=teachers&per_page=50'),
-      headers: _headers,
-    );
+  /// Core Caching Logic: Routes requests to network or local storage
+  Future<String> _fetchWithCache(String url, String cacheKey) async {
+    final prefs = await SharedPreferences.getInstance();
+    final isOffline = prefs.getBool('isOffline') ?? false;
 
-    if (response.statusCode == 200) {
-      final List<dynamic> data = jsonDecode(response.body);
-      return data
-          .map((json) => Course.fromJson(json))
-          .where((course) => course.name != 'Unnamed Course') 
-          .toList();
-    } else {
-      throw Exception('Failed to load courses.');
+    // 1. If Offline mode is explicitly enabled, pull from cache
+    if (isOffline) {
+      final cachedData = prefs.getString(cacheKey);
+      if (cachedData != null) {
+        return cachedData;
+      } else {
+        throw Exception('You are offline. No saved data available for this screen.');
+      }
     }
+
+    // 2. If Online, attempt to hit the Canvas API
+    try {
+      final response = await http.get(Uri.parse(url), headers: _headers);
+      
+      if (response.statusCode == 200) {
+        // Save the successful payload to local storage for future offline use
+        await prefs.setString(cacheKey, response.body);
+        return response.body;
+      } else {
+        throw Exception('Failed to load data from Canvas (Status: ${response.statusCode}).');
+      }
+    } catch (e) {
+      // 3. Fallback: If network drops unexpectedly but Offline toggle wasn't flipped
+      final cachedData = prefs.getString(cacheKey);
+      if (cachedData != null) {
+        return cachedData;
+      } else {
+        throw Exception('Network error. No connection and no saved data available.');
+      }
+    }
+  }
+
+  Future<List<Course>> fetchActiveCourses() async {
+    final url = '$_baseUrl/api/v1/courses?enrollment_state=active&include[]=term&include[]=teachers&per_page=50';
+    final body = await _fetchWithCache(url, 'cache_active_courses');
+    
+    final List<dynamic> data = jsonDecode(body);
+    return data
+        .map((json) => Course.fromJson(json))
+        .where((course) => course.name != 'Unnamed Course')
+        .toList();
   }
 
   Future<List<Task>> fetchAssignmentsForCourse(Course course) async {
-    final response = await http.get(
-      Uri.parse('$_baseUrl/api/v1/courses/${course.id}/assignments?per_page=100'),
-      headers: _headers,
-    );
-
-    if (response.statusCode == 200) {
-      final List<dynamic> data = jsonDecode(response.body);
-      return data.map((json) => Task.fromCanvasJson(json, course)).toList();
-    } else {
-      throw Exception('Failed to load assignments for ${course.courseCode}');
-    }
+    final url = '$_baseUrl/api/v1/courses/${course.id}/assignments?per_page=100';
+    final body = await _fetchWithCache(url, 'cache_assignments_${course.id}');
+    
+    final List<dynamic> data = jsonDecode(body);
+    return data.map((json) => Task.fromCanvasJson(json, course)).toList();
   }
-  
+
   Future<List<Task>> fetchAllActiveTasks() async {
     final courses = await fetchActiveCourses();
     final List<Task> allTasks = [];
@@ -63,68 +89,58 @@ class CanvasService {
   }
 
   Future<Map<String, dynamic>> fetchGradesForCourse(String courseId) async {
-    final assignmentsRes = await http.get(
-      Uri.parse('$_baseUrl/api/v1/courses/$courseId/assignments?include[]=submission&per_page=100'),
-      headers: _headers,
-    );
+    final assignUrl = '$_baseUrl/api/v1/courses/$courseId/assignments?include[]=submission&per_page=100';
+    final enrollUrl = '$_baseUrl/api/v1/courses/$courseId/enrollments?user_id=self';
 
-    final enrollmentsRes = await http.get(
-      Uri.parse('$_baseUrl/api/v1/courses/$courseId/enrollments?user_id=self'),
-      headers: _headers,
-    );
+    final assignmentsBody = await _fetchWithCache(assignUrl, 'cache_grades_assign_$courseId');
+    final enrollmentsBody = await _fetchWithCache(enrollUrl, 'cache_grades_enroll_$courseId');
 
-    if (assignmentsRes.statusCode == 200 && enrollmentsRes.statusCode == 200) {
-      final List<dynamic> assignmentsData = jsonDecode(assignmentsRes.body);
-      final List<dynamic> enrollmentsData = jsonDecode(enrollmentsRes.body);
+    final List<dynamic> assignmentsData = jsonDecode(assignmentsBody);
+    final List<dynamic> enrollmentsData = jsonDecode(enrollmentsBody);
 
-      // Parse ALL items (graded and ungraded) with status flags
-      final List<Map<String, dynamic>> gradedItems = [];
-      for (var item in assignmentsData) {
-        final submission = item['submission'];
-        
-        bool isLate = submission?['late'] ?? false;
-        bool isMissing = submission?['missing'] ?? false;
-        bool isExcused = submission?['excused'] ?? false;
-        
-        String? status;
-        if (isExcused) {
-          status = 'Excused';
-        } else if (isMissing) {
-          status = 'Missing';
-        } else if (isLate) {
-          status = 'Late';
-        }
-
-        gradedItems.add({
-          'label': item['name'] ?? 'Unknown Assignment',
-          'score': submission?['score'],
-          'total': item['points_possible'] ?? 0,
-          'status': status,
-        });
-      }
-
-      num currentScore = 0;
-      String letterGrade = 'N/A';
+    final List<Map<String, dynamic>> gradedItems = [];
+    for (var item in assignmentsData) {
+      final submission = item['submission'];
       
-      if (enrollmentsData.isNotEmpty) {
-        final grades = enrollmentsData.first['grades'];
-        if (grades != null) {
-          currentScore = grades['current_score'] ?? 0;
-          letterGrade = grades['current_grade'] ?? _calculateLetterGrade(currentScore);
-        }
+      bool isLate = submission?['late'] ?? false;
+      bool isMissing = submission?['missing'] ?? false;
+      bool isExcused = submission?['excused'] ?? false;
+      
+      String? status;
+      if (isExcused) {
+        status = 'Excused';
+      } else if (isMissing) {
+        status = 'Missing';
+      } else if (isLate) {
+        status = 'Late';
       }
 
-      return {
-        'items': gradedItems,
-        'current_score': currentScore,
-        'letter_grade': letterGrade,
-      };
-    } else {
-      throw Exception('Failed to load grades from Canvas.');
+      gradedItems.add({
+        'label': item['name'] ?? 'Unknown Assignment',
+        'score': submission?['score'],
+        'total': item['points_possible'] ?? 0,
+        'status': status,
+      });
     }
+
+    num currentScore = 0;
+    String letterGrade = 'N/A';
+    
+    if (enrollmentsData.isNotEmpty) {
+      final grades = enrollmentsData.first['grades'];
+      if (grades != null) {
+        currentScore = grades['current_score'] ?? 0;
+        letterGrade = grades['current_grade'] ?? _calculateLetterGrade(currentScore);
+      }
+    }
+
+    return {
+      'items': gradedItems,
+      'current_score': currentScore,
+      'letter_grade': letterGrade,
+    };
   }
 
-  // Fallback calculator if the instructor hasn't enabled letter grades in Canvas
   String _calculateLetterGrade(num score) {
     if (score >= 97) return 'A+';
     if (score >= 93) return 'A';
@@ -140,60 +156,44 @@ class CanvasService {
   }
 
   Future<List<Map<String, dynamic>>> fetchModulesForCourse(String courseId) async {
-    final response = await http.get(
-      Uri.parse('$_baseUrl/api/v1/courses/$courseId/modules?include[]=items&per_page=100'),
-      headers: _headers,
-    );
-
-    if (response.statusCode == 200) {
-      final List<dynamic> data = jsonDecode(response.body);
-      return data.cast<Map<String, dynamic>>();
-    } else {
-      throw Exception('Failed to load modules from Canvas.');
-    }
+    final url = '$_baseUrl/api/v1/courses/$courseId/modules?include[]=items&per_page=100';
+    final body = await _fetchWithCache(url, 'cache_modules_$courseId');
+    
+    final List<dynamic> data = jsonDecode(body);
+    return data.cast<Map<String, dynamic>>();
   }
 
   Future<List<Map<String, dynamic>>> fetchAnnouncementsForCourse(String courseId) async {
-    // Canvas stores announcements as discussion topics with a specific filter
-    final response = await http.get(
-      Uri.parse('$_baseUrl/api/v1/courses/$courseId/discussion_topics?only_announcements=true&per_page=50'),
-      headers: _headers,
-    );
-
-    if (response.statusCode == 200) {
-      final List<dynamic> data = jsonDecode(response.body);
-      return data.cast<Map<String, dynamic>>();
-    } else {
-      throw Exception('Failed to load announcements from Canvas.');
-    }
+    final url = '$_baseUrl/api/v1/courses/$courseId/discussion_topics?only_announcements=true&per_page=50';
+    final body = await _fetchWithCache(url, 'cache_announcements_$courseId');
+    
+    final List<dynamic> data = jsonDecode(body);
+    return data.cast<Map<String, dynamic>>();
   }
 
   Future<String> fetchModuleItemHtml(String courseId, String type, String? pageUrl, String? apiUrl) async {
-    if (type.toLowerCase() == 'page' && pageUrl != null) {
-      final res = await http.get(Uri.parse('$_baseUrl/api/v1/courses/$courseId/pages/$pageUrl'), headers: _headers);
-      if (res.statusCode == 200) return jsonDecode(res.body)['body'] ?? '';
-    } 
-    else if (apiUrl != null && (type.toLowerCase() == 'assignment' || type.toLowerCase() == 'discussion')) {
-      final res = await http.get(Uri.parse(apiUrl), headers: _headers);
-      if (res.statusCode == 200) {
-        final data = jsonDecode(res.body);
+    try {
+      if (type.toLowerCase() == 'page' && pageUrl != null) {
+        final url = '$_baseUrl/api/v1/courses/$courseId/pages/$pageUrl';
+        final body = await _fetchWithCache(url, 'cache_page_${courseId}_$pageUrl');
+        return jsonDecode(body)['body'] ?? '';
+      } 
+      else if (apiUrl != null && (type.toLowerCase() == 'assignment' || type.toLowerCase() == 'discussion')) {
+        final body = await _fetchWithCache(apiUrl, 'cache_api_${apiUrl.hashCode}');
+        final data = jsonDecode(body);
         return data['description'] ?? data['message'] ?? '';
       }
+    } catch (e) {
+      return '<p><em>Content is not available offline. Please connect to the internet to view this item.</em></p>';
     }
-    return ''; 
+    return '';
   }
 
   Future<List<Map<String, dynamic>>> fetchRawAssignmentPayloads(String courseId) async {
-    final response = await http.get(
-      Uri.parse('$_baseUrl/api/v1/courses/$courseId/assignments?include[]=submission&per_page=100'),
-      headers: _headers,
-    );
-
-    if (response.statusCode == 200) {
-      final List<dynamic> data = jsonDecode(response.body);
-      return data.cast<Map<String, dynamic>>();
-    } else {
-      throw Exception('Failed to load assignments from Canvas.');
-    }
+    final url = '$_baseUrl/api/v1/courses/$courseId/assignments?include[]=submission&per_page=100';
+    final body = await _fetchWithCache(url, 'cache_raw_assignments_$courseId');
+    
+    final List<dynamic> data = jsonDecode(body);
+    return data.cast<Map<String, dynamic>>();
   }
 }
