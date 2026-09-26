@@ -2,6 +2,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../components/app_shell.dart';
 import '../models/course.dart';
 import '../services/canvas_service.dart';
@@ -22,7 +23,6 @@ class _CourseAnnouncementsScreenState extends State<CourseAnnouncementsScreen> {
   bool _isLoading = true;
   String? _errorMessage;
   
-  // Controls the view state (null = list view, index = detail view)
   int? _selectedIndex;
 
   @override
@@ -57,10 +57,29 @@ class _CourseAnnouncementsScreenState extends State<CourseAnnouncementsScreen> {
     return DateFormat('MMM d, yyyy').format(date);
   }
 
-  // Canvas returns raw HTML; this strips it for clean text rendering
   String _stripHtml(String htmlString) {
     RegExp exp = RegExp(r'<[^>]*>', multiLine: true, caseSensitive: false);
     return htmlString.replaceAll(exp, '').replaceAll('&nbsp;', ' ').trim();
+  }
+
+  String _formatFileSize(int bytes) {
+    if (bytes < 1024) return '$bytes B';
+    if (bytes < 1024 * 1024) return '${(bytes / 1024).toStringAsFixed(1)} KB';
+    return '${(bytes / (1024 * 1024)).toStringAsFixed(1)} MB';
+  }
+
+  Future<void> _downloadAttachment(String url) async {
+    if (url.isEmpty) return;
+    final uri = Uri.parse(url);
+    if (await canLaunchUrl(uri)) {
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    } else {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Could not open the file link.')),
+        );
+      }
+    }
   }
 
   @override
@@ -71,6 +90,7 @@ class _CourseAnnouncementsScreenState extends State<CourseAnnouncementsScreen> {
     if (_selectedIndex != null) {
       final ann = _announcements[_selectedIndex!];
       final bodyText = _stripHtml(ann['message'] ?? 'No content provided.');
+      final List<dynamic> attachments = ann['attachments'] ?? [];
 
       return AppShell(
         title: widget.course.courseCode,
@@ -115,6 +135,66 @@ class _CourseAnnouncementsScreenState extends State<CourseAnnouncementsScreen> {
                 color: theme.colorScheme.onSurface,
               ),
             ),
+            
+            // Render Attachments Block
+            if (attachments.isNotEmpty) ...[
+              const SizedBox(height: 32),
+              Text(
+                'ATTACHMENTS',
+                style: theme.textTheme.labelSmall?.copyWith(
+                  fontWeight: FontWeight.bold, 
+                  color: theme.colorScheme.secondary, 
+                  letterSpacing: 1.0,
+                ),
+              ),
+              const SizedBox(height: 12),
+              ...attachments.map((file) {
+                final name = file['display_name'] ?? 'Unknown File';
+                final size = file['size'] ?? 0;
+                final url = file['url'] ?? '';
+
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: 8.0),
+                  child: InkWell(
+                    onTap: () => _downloadAttachment(url),
+                    borderRadius: BorderRadius.circular(12),
+                    child: Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: theme.colorScheme.surface,
+                        border: Border.all(color: theme.colorScheme.onSurface.withValues(alpha: 0.05)),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(Icons.attach_file, size: 20, color: theme.colorScheme.primary),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  name,
+                                  style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  _formatFileSize(size),
+                                  style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.secondary),
+                                ),
+                              ],
+                            ),
+                          ),
+                          Icon(Icons.download_outlined, size: 20, color: theme.colorScheme.secondary),
+                        ],
+                      ),
+                    ),
+                  ),
+                );
+              }),
+            ],
           ],
         ),
       );
@@ -131,7 +211,6 @@ class _CourseAnnouncementsScreenState extends State<CourseAnnouncementsScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Header
           Padding(
             padding: const EdgeInsets.fromLTRB(24, 8, 24, 16),
             child: Column(
@@ -156,7 +235,6 @@ class _CourseAnnouncementsScreenState extends State<CourseAnnouncementsScreen> {
               ],
             ),
           ),
-          
           Expanded(child: _buildListContent(theme)),
         ],
       ),
@@ -206,11 +284,12 @@ class _CourseAnnouncementsScreenState extends State<CourseAnnouncementsScreen> {
       itemBuilder: (context, index) {
         final ann = _announcements[index];
         final cleanBody = _stripHtml(ann['message'] ?? '');
+        final hasAttachments = (ann['attachments'] as List<dynamic>? ?? []).isNotEmpty;
 
         return Padding(
           padding: const EdgeInsets.only(bottom: 16.0),
           child: Material(
-            color: theme.scaffoldBackgroundColor, // Flush with background
+            color: theme.scaffoldBackgroundColor,
             child: InkWell(
               onTap: () => setState(() => _selectedIndex = index),
               borderRadius: BorderRadius.circular(12),
@@ -224,11 +303,21 @@ class _CourseAnnouncementsScreenState extends State<CourseAnnouncementsScreen> {
                       textBaseline: TextBaseline.alphabetic,
                       children: [
                         Expanded(
-                          child: Text(
-                            ann['title'] ?? 'Untitled',
-                            style: theme.textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.bold),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
+                          child: Row(
+                            children: [
+                              Flexible(
+                                child: Text(
+                                  ann['title'] ?? 'Untitled',
+                                  style: theme.textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.bold),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                              if (hasAttachments) ...[
+                                const SizedBox(width: 8),
+                                Icon(Icons.attach_file, size: 14, color: theme.colorScheme.secondary),
+                              ],
+                            ],
                           ),
                         ),
                         const SizedBox(width: 12),
