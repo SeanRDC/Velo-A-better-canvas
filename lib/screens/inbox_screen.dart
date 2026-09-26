@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../components/app_shell.dart';
 import '../services/canvas_service.dart';
+import 'package:go_router/go_router.dart';
 
 class InboxScreen extends StatefulWidget {
   const InboxScreen({super.key});
