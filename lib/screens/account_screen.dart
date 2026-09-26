@@ -210,8 +210,8 @@ class _AccountScreenState extends State<AccountScreen> {
                 _buildToggleRow(
                   theme: theme, icon: Icons.notifications_none_outlined,
                   label: 'Push notifications', sub: 'Deadlines and announcements',
-                  value: _pushEnabled,
-                  onToggle: () => setState(() => _pushEnabled = !_pushEnabled),
+                  value: appState.pushEnabled,
+                  onToggle: appState.togglePushNotifications,
                 ),
                 _buildToggleRow(
                   theme: theme, icon: Icons.wifi_off_outlined,
