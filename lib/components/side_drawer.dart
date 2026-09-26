@@ -1,6 +1,8 @@
 // Side Drawer Component
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:provider/provider.dart';
+import '../state/app_state.dart';
 
 // Local mock data mirroring the TypeScript context
 const _currentUser = {
@@ -133,7 +135,9 @@ class SideDrawer extends StatelessWidget {
 
                         GestureDetector(
                           onTap: () {
-                            // TODO: Tie into your AppState/Theme controller
+                            context.read<AppState>().setTheme(
+                              isDark ? ThemeMode.light : ThemeMode.dark
+                            );
                           },
                           child: AnimatedContainer(
                             duration: const Duration(milliseconds: 200),
