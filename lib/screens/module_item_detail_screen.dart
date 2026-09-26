@@ -30,6 +30,12 @@ class _ModuleItemDetailScreenState extends State<ModuleItemDetailScreen> {
   late int _currentIndex;
   String _htmlContent = '';
   bool _isLoading = true;
+  
+  // Submission state
+  bool _submitted = false;
+  bool _isUploading = false;
+  String _selectedTab = 'file';
+  final TextEditingController _textController = TextEditingController();
 
   @override
   void initState() {
@@ -75,6 +81,135 @@ class _ModuleItemDetailScreenState extends State<ModuleItemDetailScreen> {
     if (url.isEmpty) return;
     final uri = Uri.parse(url);
     await launchUrl(uri, mode: LaunchMode.externalApplication);
+  }
+
+  void _openSubmitSheet(ThemeData theme) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: theme.colorScheme.surface,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      builder: (BuildContext context) {
+        return StatefulBuilder(
+          builder: (BuildContext context, StateSetter setModalState) {
+            final canSubmit = _selectedTab == 'file' || _textController.text.trim().isNotEmpty;
+            return Padding(
+              padding: EdgeInsets.only(
+                bottom: MediaQuery.of(context).viewInsets.bottom + 24,
+                left: 24, right: 24, top: 12,
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Center(
+                    child: Container(
+                      height: 4, width: 40,
+                      decoration: BoxDecoration(color: theme.colorScheme.onSurface.withValues(alpha: 0.2), borderRadius: BorderRadius.circular(2)),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text('Submit work', style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold)),
+                      IconButton(icon: const Icon(Icons.close), onPressed: () => Navigator.pop(context)),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  Container(
+                    padding: const EdgeInsets.all(4),
+                    decoration: BoxDecoration(color: theme.scaffoldBackgroundColor, borderRadius: BorderRadius.circular(8)),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: GestureDetector(
+                            onTap: () => setModalState(() => _selectedTab = 'file'),
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(vertical: 10),
+                              decoration: BoxDecoration(
+                                color: _selectedTab == 'file' ? theme.colorScheme.primary : Colors.transparent,
+                                borderRadius: BorderRadius.circular(6),
+                              ),
+                              alignment: Alignment.center,
+                              child: Text('File upload', style: TextStyle(fontWeight: FontWeight.w600, color: _selectedTab == 'file' ? theme.colorScheme.onPrimary : theme.colorScheme.secondary)),
+                            ),
+                          ),
+                        ),
+                        Expanded(
+                          child: GestureDetector(
+                            onTap: () => setModalState(() => _selectedTab = 'text'),
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(vertical: 10),
+                              decoration: BoxDecoration(
+                                color: _selectedTab == 'text' ? theme.colorScheme.primary : Colors.transparent,
+                                borderRadius: BorderRadius.circular(6),
+                              ),
+                              alignment: Alignment.center,
+                              child: Text('Text entry', style: TextStyle(fontWeight: FontWeight.w600, color: _selectedTab == 'text' ? theme.colorScheme.onPrimary : theme.colorScheme.secondary)),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  if (_selectedTab == 'file')
+                    InkWell(
+                      onTap: () {},
+                      borderRadius: BorderRadius.circular(12),
+                      child: Container(
+                        width: double.infinity, padding: const EdgeInsets.symmetric(vertical: 32),
+                        decoration: BoxDecoration(color: theme.scaffoldBackgroundColor, borderRadius: BorderRadius.circular(12)),
+                        child: Column(
+                          children: [
+                            Icon(Icons.cloud_upload_outlined, size: 32, color: theme.colorScheme.secondary),
+                            const SizedBox(height: 8),
+                            Text('Choose a file', style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w500)),
+                            Text('PDF, DOCX, ZIP up to 50 MB', style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.secondary)),
+                          ],
+                        ),
+                      ),
+                    )
+                  else
+                    TextField(
+                      controller: _textController,
+                      maxLines: 5,
+                      onChanged: (val) => setModalState(() {}),
+                      decoration: InputDecoration(
+                        hintText: 'Type your submission here...', filled: true, fillColor: theme.scaffoldBackgroundColor,
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                      ),
+                    ),
+                  const SizedBox(height: 24),
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton(
+                      onPressed: canSubmit && !_isUploading
+                          ? () async {
+                              setModalState(() => _isUploading = true);
+                              await Future.delayed(const Duration(milliseconds: 900)); // Simulate API call
+                              setState(() => _submitted = true);
+                              if (context.mounted) Navigator.pop(context);
+                            }
+                          : null,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: theme.colorScheme.primary, foregroundColor: theme.colorScheme.onPrimary,
+                        padding: const EdgeInsets.symmetric(vertical: 16), elevation: 0,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      ),
+                      child: _isUploading
+                          ? SizedBox(height: 20, width: 20, child: CircularProgressIndicator(color: theme.colorScheme.onPrimary, strokeWidth: 2))
+                          : Text(_submitted ? 'Submitted' : 'Submit to Canvas', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                    ),
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
   }
 
   @override
@@ -184,7 +319,7 @@ class _ModuleItemDetailScreenState extends State<ModuleItemDetailScreen> {
                 ),
           ),
           
-          // Persistent Next/Previous Navigation Bar
+          // Persistent Bottom Navigation & Submission Bar
           Container(
             padding: EdgeInsets.only(
               left: 16, right: 16, top: 12, 
@@ -194,32 +329,59 @@ class _ModuleItemDetailScreenState extends State<ModuleItemDetailScreen> {
               color: theme.colorScheme.surface,
               border: Border(top: BorderSide(color: theme.colorScheme.onSurface.withValues(alpha: 0.1))),
             ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
               children: [
-                TextButton.icon(
-                  onPressed: canGoBack ? _goToPrevious : null,
-                  icon: const Icon(Icons.arrow_back),
-                  label: const Text('Previous'),
-                  style: TextButton.styleFrom(
-                    foregroundColor: theme.colorScheme.primary,
-                    disabledForegroundColor: theme.colorScheme.secondary.withValues(alpha: 0.5),
+                // Only show the submit button if this module item is an assignment
+                if (currentItem.kind.toLowerCase() == 'assignment') ...[
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton.icon(
+                      onPressed: () => _openSubmitSheet(theme),
+                      icon: const Icon(Icons.cloud_upload_outlined),
+                      label: Text(
+                        _submitted ? 'Resubmit' : 'Submit Assignment',
+                        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                      ),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: theme.colorScheme.primary,
+                        foregroundColor: theme.colorScheme.onPrimary,
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        elevation: 0,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      ),
+                    ),
                   ),
-                ),
-                TextButton(
-                  onPressed: canGoForward ? _goToNext : null,
-                  style: TextButton.styleFrom(
-                    foregroundColor: theme.colorScheme.primary,
-                    disabledForegroundColor: theme.colorScheme.secondary.withValues(alpha: 0.5),
-                  ),
-                  child: const Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text('Next'),
-                      SizedBox(width: 8),
-                      Icon(Icons.arrow_forward),
-                    ],
-                  ),
+                  const SizedBox(height: 8),
+                ],
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    TextButton.icon(
+                      onPressed: canGoBack ? _goToPrevious : null,
+                      icon: const Icon(Icons.arrow_back),
+                      label: const Text('Previous'),
+                      style: TextButton.styleFrom(
+                        foregroundColor: theme.colorScheme.primary,
+                        disabledForegroundColor: theme.colorScheme.secondary.withValues(alpha: 0.5),
+                      ),
+                    ),
+                    TextButton(
+                      onPressed: canGoForward ? _goToNext : null,
+                      style: TextButton.styleFrom(
+                        foregroundColor: theme.colorScheme.primary,
+                        disabledForegroundColor: theme.colorScheme.secondary.withValues(alpha: 0.5),
+                      ),
+                      child: const Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text('Next'),
+                          SizedBox(width: 8),
+                          Icon(Icons.arrow_forward),
+                        ],
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ),
