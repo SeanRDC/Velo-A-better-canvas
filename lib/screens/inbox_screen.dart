@@ -18,6 +18,7 @@ class _InboxScreenState extends State<InboxScreen> {
   List<Map<String, dynamic>> _threads = [];
   bool _isLoading = true;
   String? _errorMessage;
+  String _activeFolder = 'inbox';
 
   @override
   void initState() {
@@ -32,7 +33,7 @@ class _InboxScreenState extends State<InboxScreen> {
     });
 
     try {
-      final data = await _canvasService.fetchConversations();
+      final data = await _canvasService.fetchConversations(scope: _activeFolder);
       setState(() {
         _threads = data;
         _isLoading = false;
@@ -94,7 +95,7 @@ class _InboxScreenState extends State<InboxScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Padding(
-            padding: const EdgeInsets.fromLTRB(24, 16, 24, 12),
+            padding: const EdgeInsets.fromLTRB(24, 16, 24, 8), // Adjusted bottom padding
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -117,6 +118,20 @@ class _InboxScreenState extends State<InboxScreen> {
               ],
             ),
           ),
+          
+          // Add the Folder Chips here
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 8.0),
+            child: Row(
+              children: [
+                _buildFolderChip('Inbox', 'inbox', theme),
+                const SizedBox(width: 8),
+                _buildFolderChip('Sent', 'sent', theme),
+              ],
+            ),
+          ),
+          
           Expanded(child: _buildContent(theme)),
         ],
       ),
@@ -311,6 +326,38 @@ class _InboxScreenState extends State<InboxScreen> {
           ),
         );
       },
+    );
+  }
+
+  Widget _buildFolderChip(String label, String folder, ThemeData theme) {
+    final isSelected = _activeFolder == folder;
+    return GestureDetector(
+      onTap: () {
+        if (!isSelected) {
+          setState(() => _activeFolder = folder);
+          _fetchInbox();
+        }
+      },
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        decoration: BoxDecoration(
+          color: isSelected ? theme.colorScheme.primary : Colors.transparent,
+          border: Border.all(
+            color: isSelected
+                ? theme.colorScheme.primary
+                : theme.colorScheme.onSurface.withValues(alpha: 0.2),
+          ),
+          borderRadius: BorderRadius.circular(20),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            fontSize: 14,
+            fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+            color: isSelected ? theme.colorScheme.onPrimary : theme.colorScheme.onSurface,
+          ),
+        ),
+      ),
     );
   }
 }
