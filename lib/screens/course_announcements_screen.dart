@@ -91,6 +91,7 @@ Future<void> _launchLink(String url) async {
     if (_selectedIndex != null) {
       final ann = _announcements[_selectedIndex!];
       final List<dynamic> attachments = ann['attachments'] ?? [];
+      final int replyCount = ann['discussion_subentry_count'] ?? 0;
 
       return AppShell(
         title: widget.course.courseCode,
@@ -122,7 +123,7 @@ Future<void> _launchLink(String url) async {
             ),
             const SizedBox(height: 8),
             Text(
-              '${ann['user_name'] ?? 'Instructor'} · ${_formatDate(ann['posted_at'])}',
+              '${ann['user_name'] ?? 'Instructor'} · ${_formatDate(ann['posted_at'])}${replyCount > 0 ? ' · $replyCount replies' : ''}',
               style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.secondary),
             ),
             const SizedBox(height: 20),
@@ -298,13 +299,23 @@ Future<void> _launchLink(String url) async {
         final ann = _announcements[index];
         final cleanBody = _stripHtml(ann['message'] ?? '');
         final hasAttachments = (ann['attachments'] as List<dynamic>? ?? []).isNotEmpty;
+        
+        // Canvas parity fields
+        final bool isUnread = ann['read_state'] == 'unread';
+        final int replyCount = ann['discussion_subentry_count'] ?? 0;
 
         return Padding(
           padding: const EdgeInsets.only(bottom: 16.0),
           child: Material(
             color: theme.scaffoldBackgroundColor,
             child: InkWell(
-              onTap: () => setState(() => _selectedIndex = index),
+              onTap: () {
+                setState(() {
+                  _selectedIndex = index;
+                  // Optimistically mark as read locally so the indicator clears
+                  _announcements[index]['read_state'] = 'read';
+                });
+              },
               borderRadius: BorderRadius.circular(12),
               child: Padding(
                 padding: const EdgeInsets.symmetric(vertical: 8.0),
@@ -315,13 +326,27 @@ Future<void> _launchLink(String url) async {
                       crossAxisAlignment: CrossAxisAlignment.baseline,
                       textBaseline: TextBaseline.alphabetic,
                       children: [
+                        if (isUnread) ...[
+                          Container(
+                            width: 8,
+                            height: 8,
+                            margin: const EdgeInsets.only(right: 8),
+                            decoration: BoxDecoration(
+                              color: theme.colorScheme.primary,
+                              shape: BoxShape.circle,
+                            ),
+                          ),
+                        ],
                         Expanded(
                           child: Row(
                             children: [
                               Flexible(
                                 child: Text(
                                   ann['title'] ?? 'Untitled',
-                                  style: theme.textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.bold),
+                                  style: theme.textTheme.bodyLarge?.copyWith(
+                                    fontWeight: isUnread ? FontWeight.bold : FontWeight.w600,
+                                    color: isUnread ? theme.colorScheme.onSurface : theme.colorScheme.onSurface.withValues(alpha: 0.8),
+                                  ),
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
                                 ),
@@ -336,14 +361,30 @@ Future<void> _launchLink(String url) async {
                         const SizedBox(width: 12),
                         Text(
                           _formatDate(ann['posted_at']),
-                          style: theme.textTheme.labelSmall?.copyWith(color: theme.colorScheme.secondary),
+                          style: theme.textTheme.labelSmall?.copyWith(
+                            color: isUnread ? theme.colorScheme.onSurface : theme.colorScheme.secondary,
+                            fontWeight: isUnread ? FontWeight.bold : FontWeight.normal,
+                          ),
                         ),
                       ],
                     ),
                     const SizedBox(height: 4),
-                    Text(
-                      ann['user_name'] ?? 'Instructor',
-                      style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.secondary),
+                    Row(
+                      children: [
+                        Text(
+                          ann['user_name'] ?? 'Instructor',
+                          style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.secondary),
+                        ),
+                        if (replyCount > 0) ...[
+                          const SizedBox(width: 8),
+                          Icon(Icons.chat_bubble_outline, size: 12, color: theme.colorScheme.secondary),
+                          const SizedBox(width: 4),
+                          Text(
+                            '$replyCount',
+                            style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.secondary),
+                          ),
+                        ]
+                      ],
                     ),
                     const SizedBox(height: 6),
                     Text(
