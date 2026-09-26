@@ -196,4 +196,13 @@ class CanvasService {
     final List<dynamic> data = jsonDecode(body);
     return data.cast<Map<String, dynamic>>();
   }
+
+  Future<List<Map<String, dynamic>>> fetchConversations() async {
+    // Fetches the user's Canvas inbox messages
+    final url = '$_baseUrl/api/v1/conversations?per_page=50';
+    final body = await _fetchWithCache(url, 'cache_inbox_conversations');
+    
+    final List<dynamic> data = jsonDecode(body);
+    return data.cast<Map<String, dynamic>>();
+  }
 }
