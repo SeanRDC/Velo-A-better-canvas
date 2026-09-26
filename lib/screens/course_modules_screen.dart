@@ -11,8 +11,9 @@ class ModuleItem {
   final String htmlUrl;
   final String? apiUrl;
   final String? pageUrl;
+  final int indent;
 
-  ModuleItem(this.label, this.kind, this.htmlUrl, this.apiUrl, this.pageUrl);
+  ModuleItem(this.label, this.kind, this.htmlUrl, this.apiUrl, this.pageUrl, this.indent);
 }
 
 class Module {
@@ -73,6 +74,7 @@ class _CourseModulesScreenState extends State<CourseModulesScreen> {
               item['html_url'] ?? '',
               item['url'],
               item['page_url'],
+              item['indent'] ?? 0,
             );
             items.add(modItem);
             
@@ -328,7 +330,12 @@ class _CourseModulesScreenState extends State<CourseModulesScreen> {
                                         ? null 
                                         : Border(top: BorderSide(color: theme.colorScheme.onSurface.withValues(alpha: 0.1))),
                                   ),
-                                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                                  padding: EdgeInsets.only(
+                                    left: 16.0 + (item.indent * 16.0), 
+                                    right: 16.0, 
+                                    top: 14.0, 
+                                    bottom: 14.0
+                                  ),
                                   child: Row(
                                     children: [
                                       Icon(
