@@ -96,18 +96,15 @@ final _router = GoRouter(
         
         Map<String, dynamic> safeMap;
         
-        // 1. If it came from the Course Assignments screen (Raw Canvas JSON)
         if (incomingData is Map<String, dynamic>) {
           safeMap = incomingData;
         } 
-        // 2. If it came from the Dashboard (Your custom Task model)
         else {
           safeMap = {
-            'name': incomingData.title, // Adjust property names if your Task model differs
+            'name': incomingData.title,
             'due_at': incomingData.dueDate.toIso8601String(),
             'points_possible': incomingData.points,
             'has_submitted_submissions': incomingData.isSubmitted,
-            // Safe fallbacks for the Dashboard so the UI doesn't break
             'submission_types': ['online_upload', 'online_text_entry'],
             'locked_for_user': false,
             'description': '<p><em>Full instructions available by opening this assignment through the Course Hub.</em></p>'
