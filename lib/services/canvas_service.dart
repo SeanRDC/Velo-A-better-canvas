@@ -79,17 +79,30 @@ class CanvasService {
       final List<dynamic> assignmentsData = jsonDecode(assignmentsRes.body);
       final List<dynamic> enrollmentsData = jsonDecode(enrollmentsRes.body);
 
-      // Parse individual graded items
+      // Parse ALL items (graded and ungraded) with status flags
       final List<Map<String, dynamic>> gradedItems = [];
       for (var item in assignmentsData) {
         final submission = item['submission'];
-        if (submission != null && submission['score'] != null) {
-          gradedItems.add({
-            'label': item['name'] ?? 'Unknown Assignment',
-            'score': submission['score'],
-            'total': item['points_possible'] ?? 0,
-          });
+        
+        bool isLate = submission?['late'] ?? false;
+        bool isMissing = submission?['missing'] ?? false;
+        bool isExcused = submission?['excused'] ?? false;
+        
+        String? status;
+        if (isExcused) {
+          status = 'Excused';
+        } else if (isMissing) {
+          status = 'Missing';
+        } else if (isLate) {
+          status = 'Late';
         }
+
+        gradedItems.add({
+          'label': item['name'] ?? 'Unknown Assignment',
+          'score': submission?['score'],
+          'total': item['points_possible'] ?? 0,
+          'status': status,
+        });
       }
 
       num currentScore = 0;
