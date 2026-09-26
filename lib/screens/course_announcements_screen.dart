@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:flutter_html/flutter_html.dart';
 import '../components/app_shell.dart';
 import '../models/course.dart';
 import '../services/canvas_service.dart';
@@ -57,6 +58,7 @@ class _CourseAnnouncementsScreenState extends State<CourseAnnouncementsScreen> {
     return DateFormat('MMM d, yyyy').format(date);
   }
 
+  // Used only for the list view preview snippets
   String _stripHtml(String htmlString) {
     RegExp exp = RegExp(r'<[^>]*>', multiLine: true, caseSensitive: false);
     return htmlString.replaceAll(exp, '').replaceAll('&nbsp;', ' ').trim();
@@ -68,7 +70,7 @@ class _CourseAnnouncementsScreenState extends State<CourseAnnouncementsScreen> {
     return '${(bytes / (1024 * 1024)).toStringAsFixed(1)} MB';
   }
 
-  Future<void> _downloadAttachment(String url) async {
+  Future<void> _launchLink(String url) async {
     if (url.isEmpty) return;
     final uri = Uri.parse(url);
     if (await canLaunchUrl(uri)) {
@@ -76,7 +78,7 @@ class _CourseAnnouncementsScreenState extends State<CourseAnnouncementsScreen> {
     } else {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Could not open the file link.')),
+          const SnackBar(content: Text('Could not open the link.')),
         );
       }
     }
@@ -86,10 +88,9 @@ class _CourseAnnouncementsScreenState extends State<CourseAnnouncementsScreen> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
-    // Detail View Layout
+    // Detail View Layout (Rich HTML)
     if (_selectedIndex != null) {
       final ann = _announcements[_selectedIndex!];
-      final bodyText = _stripHtml(ann['message'] ?? 'No content provided.');
       final List<dynamic> attachments = ann['attachments'] ?? [];
 
       return AppShell(
@@ -127,18 +128,36 @@ class _CourseAnnouncementsScreenState extends State<CourseAnnouncementsScreen> {
             ),
             const SizedBox(height: 20),
             Container(height: 1, color: theme.colorScheme.onSurface.withValues(alpha: 0.1)),
-            const SizedBox(height: 20),
-            Text(
-              bodyText,
-              style: theme.textTheme.bodyMedium?.copyWith(
-                height: 1.6,
-                color: theme.colorScheme.onSurface,
-              ),
+            const SizedBox(height: 12),
+            
+            // Rich HTML Rendering
+            Html(
+              data: ann['message'] ?? 'No content provided.',
+              onLinkTap: (url, attributes, element) {
+                if (url != null) _launchLink(url);
+              },
+              style: {
+                "body": Style(
+                  fontSize: FontSize(16.0),
+                  color: theme.colorScheme.onSurface,
+                  lineHeight: LineHeight(1.6),
+                  margin: Margins.zero,
+                  padding: HtmlPaddings.zero,
+                ),
+                "a": Style(
+                  color: theme.colorScheme.primary,
+                  textDecoration: TextDecoration.underline,
+                  fontWeight: FontWeight.w600,
+                ),
+                "p": Style(
+                  margin: Margins.only(bottom: 12.0),
+                ),
+              },
             ),
             
             // Render Attachments Block
             if (attachments.isNotEmpty) ...[
-              const SizedBox(height: 32),
+              const SizedBox(height: 24),
               Text(
                 'ATTACHMENTS',
                 style: theme.textTheme.labelSmall?.copyWith(
@@ -156,7 +175,7 @@ class _CourseAnnouncementsScreenState extends State<CourseAnnouncementsScreen> {
                 return Padding(
                   padding: const EdgeInsets.only(bottom: 8.0),
                   child: InkWell(
-                    onTap: () => _downloadAttachment(url),
+                    onTap: () => _launchLink(url),
                     borderRadius: BorderRadius.circular(12),
                     child: Container(
                       padding: const EdgeInsets.all(16),
