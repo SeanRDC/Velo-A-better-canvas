@@ -22,7 +22,6 @@ class TaskDetailScreen extends StatefulWidget {
 }
 
 class _TaskDetailScreenState extends State<TaskDetailScreen> {
-  bool _sheetOpen = false;
   String _selectedTab = 'file';
   String? _fileName;
   final TextEditingController _textController = TextEditingController();
@@ -69,7 +68,6 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
     setState(() {
       _isUploading = false;
       _submitted = true;
-      _sheetOpen = false;
     });
   }
 
@@ -221,7 +219,7 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
           },
         );
       },
-    ).then((_) => setState(() => _sheetOpen = false));
+    );
   }
 
   @override
@@ -360,10 +358,7 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
               child: SizedBox(
                 width: double.infinity,
                 child: ElevatedButton.icon(
-                  onPressed: () {
-                    setState(() => _sheetOpen = true);
-                    _openSubmitSheet(theme);
-                  },
+                  onPressed: () => _openSubmitSheet(theme),
                   icon: const Icon(Icons.cloud_upload_outlined),
                   label: Text(
                     _submitted ? 'Resubmit' : 'Submit Assignment',
