@@ -7,9 +7,11 @@ import '../services/canvas_service.dart';
 
 class GradeItem {
   final String label;
-  final num score;
+  final num? score;
   final num total;
-  GradeItem(this.label, this.score, this.total);
+  final String? status;
+
+  GradeItem(this.label, this.score, this.total, this.status);
 }
 
 class CourseGradesScreen extends StatefulWidget {
@@ -48,7 +50,7 @@ class _CourseGradesScreenState extends State<CourseGradesScreen> {
       final rawItems = data['items'] as List<Map<String, dynamic>>;
       
       setState(() {
-        _items = rawItems.map((e) => GradeItem(e['label'], e['score'], e['total'])).toList();
+        _items = rawItems.map((e) => GradeItem(e['label'], e['score'], e['total'], e['status'])).toList();
         _pct = data['current_score'] as num;
         _letter = data['letter_grade'] as String;
         _isLoading = false;
@@ -231,13 +233,41 @@ class _CourseGradesScreenState extends State<CourseGradesScreen> {
                     child: Row(
                       children: [
                         Expanded(
-                          child: Text(
-                            item.label,
-                            style: theme.textTheme.bodyMedium?.copyWith(
-                              color: theme.colorScheme.onSurface,
-                            ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                item.label,
+                                style: theme.textTheme.bodyMedium?.copyWith(
+                                  color: theme.colorScheme.onSurface,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              // Render Canvas Parity Status Badges
+                              if (item.status != null) ...[
+                                const SizedBox(height: 4),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                  decoration: BoxDecoration(
+                                    color: item.status == 'Missing' 
+                                        ? theme.colorScheme.error.withValues(alpha: 0.1)
+                                        : theme.colorScheme.secondary.withValues(alpha: 0.1),
+                                    borderRadius: BorderRadius.circular(4),
+                                  ),
+                                  child: Text(
+                                    item.status!.toUpperCase(),
+                                    style: theme.textTheme.labelSmall?.copyWith(
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.bold,
+                                      color: item.status == 'Missing' 
+                                          ? theme.colorScheme.error
+                                          : theme.colorScheme.secondary,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ],
                           ),
                         ),
                         const SizedBox(width: 12),
@@ -246,14 +276,14 @@ class _CourseGradesScreenState extends State<CourseGradesScreen> {
                           textBaseline: TextBaseline.alphabetic,
                           children: [
                             Text(
-                              '${item.score}',
+                              item.score != null ? '${item.score}' : '-',
                               style: theme.textTheme.bodyMedium?.copyWith(
                                 fontWeight: FontWeight.bold,
-                                color: theme.colorScheme.onSurface,
+                                color: item.score != null ? theme.colorScheme.onSurface : theme.colorScheme.secondary,
                               ),
                             ),
                             Text(
-                              '/${item.total}',
+                              ' / ${item.total}',
                               style: theme.textTheme.bodyMedium?.copyWith(
                                 color: theme.colorScheme.secondary,
                               ),
