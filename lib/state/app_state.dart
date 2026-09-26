@@ -43,7 +43,7 @@ class AppState extends ChangeNotifier {
       iOS: iosSettings
     );
     
-    await _notificationsPlugin.initialize(initSettings);
+    await _notificationsPlugin.initialize(settings: initSettings);
   }
 
   void toggleOffline() {
