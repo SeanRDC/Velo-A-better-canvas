@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
-import 'package:flutter_html/flutter_html.dart';
+import 'package:flutter_widget_from_html/flutter_widget_from_html.dart';
 import '../components/app_shell.dart';
 import '../models/course.dart';
 import '../services/canvas_service.dart';
@@ -131,27 +131,22 @@ class _CourseAnnouncementsScreenState extends State<CourseAnnouncementsScreen> {
             const SizedBox(height: 12),
             
             // Rich HTML Rendering
-            Html(
-              data: ann['message'] ?? 'No content provided.',
-              onLinkTap: (url, attributes, element) {
-                if (url != null) _launchLink(url);
+            HtmlWidget(
+              ann['message'] ?? 'No content provided.',
+              onTapUrl: (url) async {
+                await _launchLink(url);
+                return true;
               },
-              style: {
-                "body": Style(
-                  fontSize: FontSize(16.0),
-                  color: theme.colorScheme.onSurface,
-                  lineHeight: LineHeight(1.6),
-                  margin: Margins.zero,
-                  padding: HtmlPaddings.zero,
-                ),
-                "a": Style(
-                  color: theme.colorScheme.primary,
-                  textDecoration: TextDecoration.underline,
-                  fontWeight: FontWeight.w600,
-                ),
-                "p": Style(
-                  margin: Margins.only(bottom: 12.0),
-                ),
+              textStyle: TextStyle(
+                fontSize: 16.0,
+                color: theme.colorScheme.onSurface,
+                height: 1.6,
+              ),
+              customStylesBuilder: (element) {
+                if (element.localName == 'a') {
+                  return {'font-weight': '600', 'text-decoration': 'underline'};
+                }
+                return null;
               },
             ),
             
