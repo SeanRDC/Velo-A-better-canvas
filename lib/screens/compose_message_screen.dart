@@ -37,12 +37,16 @@ class _ComposeMessageScreenState extends State<ComposeMessageScreen> {
   Future<void> _fetchCourses() async {
     try {
       final courses = await _canvasService.fetchActiveCourses();
-      if (mounted) setState(() {
-        _courses = courses;
-        _isLoadingCourses = false;
-      });
+      if (mounted) {
+        setState(() {
+          _courses = courses;
+          _isLoadingCourses = false;
+        });
+      }
     } catch (e) {
-      if (mounted) setState(() => _isLoadingCourses = false);
+      if (mounted) {
+        setState(() => _isLoadingCourses = false);
+      }
     }
   }
 
@@ -54,12 +58,16 @@ class _ComposeMessageScreenState extends State<ComposeMessageScreen> {
     });
     try {
       final users = await _canvasService.fetchUsersForCourse(course.id);
-      if (mounted) setState(() {
-        _users = users;
-        _isLoadingUsers = false;
-      });
+      if (mounted) {
+        setState(() {
+          _users = users;
+          _isLoadingUsers = false;
+        });
+      }
     } catch (e) {
-      if (mounted) setState(() => _isLoadingUsers = false);
+      if (mounted) {
+        setState(() => _isLoadingUsers = false);
+      }
     }
   }
 
@@ -147,7 +155,7 @@ class _ComposeMessageScreenState extends State<ComposeMessageScreen> {
               else if (_selectedCourse != null)
                 DropdownButtonFormField<String>(
                   decoration: _inputDeco(theme, 'To'),
-                  value: _selectedUserId,
+                  initialValue: _selectedUserId,
                   items: _users.map((u) => DropdownMenuItem(value: u['id'].toString(), child: Text(u['name'] ?? 'Unknown'))).toList(),
                   onChanged: (val) => setState(() => _selectedUserId = val),
                 ),
