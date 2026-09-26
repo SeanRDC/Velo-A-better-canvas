@@ -20,8 +20,6 @@ class AccountScreen extends StatefulWidget {
 }
 
 class _AccountScreenState extends State<AccountScreen> {
-  // Local state for the push notification toggle since it doesn't need global persistence yet
-  bool _pushEnabled = true;
 
   void _showPrivacySheet(ThemeData theme) {
     showModalBottomSheet(
@@ -279,7 +277,7 @@ class _AccountScreenState extends State<AccountScreen> {
           const SizedBox(height: 16),
           Center(
             child: Text(
-              'A Better Canvas · v1.0',
+              'Velo - Canvas Co-pilot · v1.0',
               style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.secondary),
             ),
           ),
