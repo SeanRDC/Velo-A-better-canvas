@@ -205,4 +205,60 @@ class CanvasService {
     final List<dynamic> data = jsonDecode(body);
     return data.cast<Map<String, dynamic>>();
   }
+
+  Future<void> markConversationAsRead(String conversationId) async {
+    final prefs = await SharedPreferences.getInstance();
+    if (prefs.getBool('isOffline') ?? false) return;
+
+    await http.put(
+      Uri.parse('$_baseUrl/api/v1/conversations/$conversationId'),
+      headers: _headers,
+      body: {'workflow_state': 'read'},
+    );
+  }
+
+  Future<Map<String, dynamic>> fetchConversationDetail(String conversationId) async {
+    final url = '$_baseUrl/api/v1/conversations/$conversationId';
+    final body = await _fetchWithCache(url, 'cache_conv_$conversationId');
+    return jsonDecode(body) as Map<String, dynamic>;
+  }
+
+  Future<void> replyToConversation(String conversationId, String messageBody) async {
+    final response = await http.post(
+      Uri.parse('$_baseUrl/api/v1/conversations/$conversationId/add_message'),
+      headers: _headers,
+      body: {'body': messageBody},
+    );
+    if (response.statusCode != 200 && response.statusCode != 201) {
+      throw Exception('Failed to send reply.');
+    }
+  }
+
+  Future<List<Map<String, dynamic>>> fetchUsersForCourse(String courseId) async {
+    final url = '$_baseUrl/api/v1/courses/$courseId/users?per_page=100';
+    final body = await _fetchWithCache(url, 'cache_users_$courseId');
+    final List<dynamic> data = jsonDecode(body);
+    return data.cast<Map<String, dynamic>>();
+  }
+
+  Future<void> createConversation(String courseId, String recipientId, String subject, String messageBody) async {
+    final response = await http.post(
+      Uri.parse('$_baseUrl/api/v1/conversations'),
+      headers: {
+        'Authorization': 'Bearer $_token',
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+      },
+      body: jsonEncode({
+        'recipients': [recipientId],
+        'subject': subject,
+        'body': messageBody,
+        'context_code': 'course_$courseId',
+        'force_new': true,
+      }),
+    );
+    if (response.statusCode != 200 && response.statusCode != 201) {
+      throw Exception('Failed to send message.');
+    }
+  }
 }
