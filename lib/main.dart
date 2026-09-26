@@ -21,6 +21,7 @@ import 'screens/task_detail_screen.dart';
 // import 'models/task.dart';
 import 'screens/course_announcements_screen.dart';
 import 'screens/module_item_detail_screen.dart';
+import 'screens/account_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -134,6 +135,10 @@ final _router = GoRouter(
           initialIndex: extras['index'] as int,
         );
       },
+    ),
+    GoRoute(
+      path: '/account',
+      builder: (context, state) => const AccountScreen(),
     ),
   ],
 );
