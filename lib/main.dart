@@ -18,7 +18,7 @@ import 'screens/course_grades_screen.dart';
 import 'screens/course_modules_screen.dart';
 import 'screens/course_assignments_screen.dart';
 import 'screens/task_detail_screen.dart';
-import 'models/task.dart';
+// import 'models/task.dart';
 import 'screens/course_announcements_screen.dart';
 import 'screens/module_item_detail_screen.dart';
 
@@ -91,10 +91,33 @@ final _router = GoRouter(
     GoRoute(
       path: '/task',
       builder: (context, state) {
-        final Map<String, dynamic> extras = state.extra as Map<String, dynamic>;
-        final course = extras['course'] as Course;
-        final task = extras['task'] as Task;
-        return TaskDetailScreen(course: course, task: task);
+        final extras = state.extra as Map<String, dynamic>;
+        final incomingData = extras['assignment'];
+        
+        Map<String, dynamic> safeMap;
+        
+        // 1. If it came from the Course Assignments screen (Raw Canvas JSON)
+        if (incomingData is Map<String, dynamic>) {
+          safeMap = incomingData;
+        } 
+        // 2. If it came from the Dashboard (Your custom Task model)
+        else {
+          safeMap = {
+            'name': incomingData.title, // Adjust property names if your Task model differs
+            'due_at': incomingData.dueDate.toIso8601String(),
+            'points_possible': incomingData.points,
+            'has_submitted_submissions': incomingData.isSubmitted,
+            // Safe fallbacks for the Dashboard so the UI doesn't break
+            'submission_types': ['online_upload', 'online_text_entry'],
+            'locked_for_user': false,
+            'description': '<p><em>Full instructions available by opening this assignment through the Course Hub.</em></p>'
+          };
+        }
+
+        return TaskDetailScreen(
+          course: extras['course'] as Course,
+          assignment: safeMap,
+        );
       },
     ),
     GoRoute(
