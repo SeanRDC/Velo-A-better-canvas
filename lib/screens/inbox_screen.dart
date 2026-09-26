@@ -45,10 +45,13 @@ class _InboxScreenState extends State<InboxScreen> {
   }
 
   void _markAsReadLocal(int index) {
-    setState(() {
-      _threads[index]['workflow_state'] = 'read';
-    });
-    // TODO: Implement Canvas API PUT request to officially mark as read
+    final t = _threads[index];
+    if (t['workflow_state'] == 'unread') {
+      setState(() {
+        _threads[index]['workflow_state'] = 'read';
+      });
+      _canvasService.markConversationAsRead(t['id'].toString());
+    }
   }
 
   String _formatTime(String? dateStr) {
@@ -79,11 +82,9 @@ class _InboxScreenState extends State<InboxScreen> {
       actions: [
         IconButton(
           icon: const Icon(Icons.edit_square),
-          onPressed: () {
-            // TODO: Route to Compose Message screen
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Compose message feature coming soon.')),
-            );
+          onPressed: () async {
+            final result = await context.push('/compose');
+            if (result == true) _fetchInbox();
           },
           tooltip: 'Compose Message',
         ),
@@ -179,7 +180,11 @@ class _InboxScreenState extends State<InboxScreen> {
             color: theme.colorScheme.surface,
             borderRadius: BorderRadius.circular(12),
             child: InkWell(
-              onTap: () => _markAsReadLocal(index),
+              onTap: () async {
+                _markAsReadLocal(index);
+                final result = await context.push('/conversation', extra: t);
+                if (result == true) _fetchInbox();
+              },
               borderRadius: BorderRadius.circular(12),
               child: Container(
                 padding: const EdgeInsets.all(16),
