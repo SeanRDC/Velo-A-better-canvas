@@ -18,9 +18,12 @@ class CourseAssignmentsScreen extends StatefulWidget {
 class _CourseAssignmentsScreenState extends State<CourseAssignmentsScreen> {
   final CanvasService _canvasService = CanvasService();
   
-  List<Map<String, dynamic>> _assignments = [];
+  List<Map<String, dynamic>> _originalAssignments = [];
+  List<Map<String, dynamic>> _displayAssignments = [];
+  
   bool _isLoading = true;
   String? _errorMessage;
+  bool _sortByDueSoon = false; // Tracks our toggle state
 
   @override
   void initState() {
@@ -37,7 +40,8 @@ class _CourseAssignmentsScreenState extends State<CourseAssignmentsScreen> {
     try {
       final data = await _canvasService.fetchRawAssignmentPayloads(widget.course.id);
       setState(() {
-        _assignments = data;
+        _originalAssignments = data;
+        _applySort();
         _isLoading = false;
       });
     } catch (e) {
@@ -45,6 +49,43 @@ class _CourseAssignmentsScreenState extends State<CourseAssignmentsScreen> {
         _errorMessage = e.toString();
         _isLoading = false;
       });
+    }
+  }
+
+  void _applySort() {
+    if (!_sortByDueSoon) {
+      _displayAssignments = List.from(_originalAssignments);
+    } else {
+      // Group by status
+      final List<Map<String, dynamic>> pending = [];
+      final List<Map<String, dynamic>> submitted = [];
+      final List<Map<String, dynamic>> noDate = [];
+
+      for (var a in _originalAssignments) {
+        if (a['has_submitted_submissions'] == true) {
+          submitted.add(a);
+        } else if (a['due_at'] != null) {
+          pending.add(a);
+        } else {
+          noDate.add(a);
+        }
+      }
+
+      pending.sort((a, b) {
+        final dA = DateTime.parse(a['due_at']);
+        final dB = DateTime.parse(b['due_at']);
+        return dA.compareTo(dB);
+      });
+
+      submitted.sort((a, b) {
+        if (a['due_at'] == null) return 1;
+        if (b['due_at'] == null) return -1;
+        final dA = DateTime.parse(a['due_at']);
+        final dB = DateTime.parse(b['due_at']);
+        return dB.compareTo(dA); 
+      });
+
+      _displayAssignments = [...pending, ...noDate, ...submitted];
     }
   }
 
@@ -106,23 +147,67 @@ class _CourseAssignmentsScreenState extends State<CourseAssignmentsScreen> {
         children: [
           Padding(
             padding: const EdgeInsets.fromLTRB(24, 8, 24, 16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              crossAxisAlignment: CrossAxisAlignment.end,
               children: [
-                Text(
-                  widget.course.courseCode,
-                  style: theme.textTheme.headlineSmall?.copyWith(
-                    fontWeight: FontWeight.bold,
-                    color: theme.colorScheme.onSurface,
-                    letterSpacing: -0.5,
-                  ),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      widget.course.courseCode,
+                      style: theme.textTheme.headlineSmall?.copyWith(
+                        fontWeight: FontWeight.bold,
+                        color: theme.colorScheme.onSurface,
+                        letterSpacing: -0.5,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    if (!_isLoading && _errorMessage == null)
+                      Text(
+                        '${_displayAssignments.length} assignments',
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: theme.colorScheme.secondary,
+                        ),
+                      ),
+                  ],
                 ),
-                const SizedBox(height: 4),
-                if (!_isLoading && _errorMessage == null)
-                  Text(
-                    '${_assignments.length} assignments',
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: theme.colorScheme.secondary,
+                
+                // Sort Toggle Button
+                if (!_isLoading && _errorMessage == null && _displayAssignments.isNotEmpty)
+                  InkWell(
+                    onTap: () {
+                      setState(() {
+                        _sortByDueSoon = !_sortByDueSoon;
+                        _applySort();
+                      });
+                    },
+                    borderRadius: BorderRadius.circular(8),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: _sortByDueSoon 
+                            ? theme.colorScheme.primary.withValues(alpha: 0.1) 
+                            : theme.colorScheme.secondary.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(
+                            Icons.sort, 
+                            size: 16, 
+                            color: _sortByDueSoon ? theme.colorScheme.primary : theme.colorScheme.secondary,
+                          ),
+                          const SizedBox(width: 6),
+                          Text(
+                            _sortByDueSoon ? 'Due Soon' : 'Default',
+                            style: theme.textTheme.labelSmall?.copyWith(
+                              fontWeight: FontWeight.bold,
+                              color: _sortByDueSoon ? theme.colorScheme.primary : theme.colorScheme.secondary,
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
               ],
@@ -161,7 +246,7 @@ class _CourseAssignmentsScreenState extends State<CourseAssignmentsScreen> {
       );
     }
 
-    if (_assignments.isEmpty) {
+    if (_displayAssignments.isEmpty) {
       return Center(
         child: Text('No assignments found.', style: theme.textTheme.bodyLarge?.copyWith(color: theme.colorScheme.secondary)),
       );
@@ -169,9 +254,9 @@ class _CourseAssignmentsScreenState extends State<CourseAssignmentsScreen> {
 
     return ListView.builder(
       padding: const EdgeInsets.only(left: 24, right: 24, bottom: 32),
-      itemCount: _assignments.length,
+      itemCount: _displayAssignments.length,
       itemBuilder: (context, index) {
-        final a = _assignments[index];
+        final a = _displayAssignments[index];
         return Padding(
           padding: const EdgeInsets.only(bottom: 12.0),
           child: InkWell(
