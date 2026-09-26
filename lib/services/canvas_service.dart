@@ -15,21 +15,19 @@ class CanvasService {
   };
 
   Future<List<Course>> fetchActiveCourses() async {
-    if (_token.isEmpty || _baseUrl.isEmpty) return [];
-
     final response = await http.get(
-      Uri.parse('$_baseUrl/api/v1/courses?enrollment_state=active&per_page=50'),
+      Uri.parse('$_baseUrl/api/v1/courses?enrollment_state=active&include[]=term&include[]=teachers&per_page=50'),
       headers: _headers,
     );
 
     if (response.statusCode == 200) {
       final List<dynamic> data = jsonDecode(response.body);
       return data
-          .where((json) => json['id'] != null && json['name'] != null)
           .map((json) => Course.fromJson(json))
+          .where((course) => course.name != 'Unnamed Course') 
           .toList();
     } else {
-      throw Exception('Failed to load courses: ${response.statusCode}');
+      throw Exception('Failed to load courses.');
     }
   }
 
