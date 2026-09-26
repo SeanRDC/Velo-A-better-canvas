@@ -156,4 +156,19 @@ class CanvasService {
       throw Exception('Failed to load announcements from Canvas.');
     }
   }
+
+  Future<String> fetchModuleItemHtml(String courseId, String type, String? pageUrl, String? apiUrl) async {
+    if (type.toLowerCase() == 'page' && pageUrl != null) {
+      final res = await http.get(Uri.parse('$_baseUrl/api/v1/courses/$courseId/pages/$pageUrl'), headers: _headers);
+      if (res.statusCode == 200) return jsonDecode(res.body)['body'] ?? '';
+    } 
+    else if (apiUrl != null && (type.toLowerCase() == 'assignment' || type.toLowerCase() == 'discussion')) {
+      final res = await http.get(Uri.parse(apiUrl), headers: _headers);
+      if (res.statusCode == 200) {
+        final data = jsonDecode(res.body);
+        return data['description'] ?? data['message'] ?? '';
+      }
+    }
+    return ''; 
+  }
 }
