@@ -20,6 +20,7 @@ import 'screens/course_assignments_screen.dart';
 import 'screens/task_detail_screen.dart';
 import 'models/task.dart';
 import 'screens/course_announcements_screen.dart';
+import 'screens/module_item_detail_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -101,6 +102,17 @@ final _router = GoRouter(
       builder: (context, state) {
         final course = state.extra as Course;
         return CourseAnnouncementsScreen(course: course);
+      },
+    ),
+    GoRoute(
+      path: '/module-item',
+      builder: (context, state) {
+        final extras = state.extra as Map<String, dynamic>;
+        return ModuleItemDetailScreen(
+          course: extras['course'] as Course,
+          items: extras['items'] as List<ModuleItem>,
+          initialIndex: extras['index'] as int,
+        );
       },
     ),
   ],
