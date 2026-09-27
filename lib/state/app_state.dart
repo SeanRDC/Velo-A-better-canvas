@@ -14,6 +14,13 @@ class AppState extends ChangeNotifier {
   ThemeMode _themeMode;
   bool _pushEnabled;
 
+  int unreadInboxCount = 0;
+
+  void updateUnreadInboxCount(int count) {
+    unreadInboxCount = count;
+    notifyListeners();
+  }
+
   AppState(this._prefs)
       : _isOffline = _prefs.getBool('isOffline') ?? false,
         _themeMode = _prefs.getString('theme') == 'dark'
