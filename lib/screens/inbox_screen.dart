@@ -366,14 +366,13 @@ class _InboxScreenState extends State<InboxScreen> {
                     ),
                     const SizedBox(width: 12),
                     
-                    // Thread Details (Restored 3-Line Layout)
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          // Line 1: Sender & Time
                           Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Expanded(
                                 child: Text(
@@ -389,7 +388,7 @@ class _InboxScreenState extends State<InboxScreen> {
                               ),
                               const SizedBox(width: 8),
                               Text(
-                                _formatTime(t['last_message_at'] ?? t['time']),
+                                _formatTime(t['last_message_at']),
                                 style: theme.textTheme.labelSmall?.copyWith(
                                   fontWeight: isUnread ? FontWeight.bold : FontWeight.normal,
                                   color: theme.colorScheme.secondary,
@@ -399,57 +398,36 @@ class _InboxScreenState extends State<InboxScreen> {
                           ),
                           const SizedBox(height: 6),
                           
-                          // Line 2: Course Pill & Subject
-                          Row(
-                            children: [
-                              if (courseCode.isNotEmpty) ...[
-                                Flexible(
-                                  flex: 0,
-                                  child: Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                    decoration: BoxDecoration(
-                                      color: theme.colorScheme.secondary.withValues(alpha: 0.1),
-                                      borderRadius: BorderRadius.circular(4),
-                                    ),
-                                    child: Text(
-                                      courseCode,
-                                      style: theme.textTheme.labelSmall?.copyWith(
-                                        fontSize: 10,
-                                        fontWeight: FontWeight.bold,
-                                        color: theme.colorScheme.secondary,
-                                      ),
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                    ),
-                                  ),
-                                ),
-                                const SizedBox(width: 8),
-                              ],
-                              Expanded(
-                                child: Text(
-                                  t['subject'] ?? '(No Subject)',
-                                  style: theme.textTheme.bodyMedium?.copyWith(
-                                    fontWeight: isUnread ? FontWeight.bold : FontWeight.normal,
-                                    color: theme.colorScheme.onSurface,
-                                  ),
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
+                          if (courseCode.isNotEmpty) ...[
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: theme.colorScheme.secondary.withValues(alpha: 0.1),
+                                borderRadius: BorderRadius.circular(4),
                               ),
-                            ],
-                          ),
-                          const SizedBox(height: 4),
-
-                          // Line 3: Message Glimpse (Snippet)
-                          if (cleanSnippet.isNotEmpty)
-                            Text(
-                              cleanSnippet,
-                              style: theme.textTheme.bodySmall?.copyWith(
-                                color: theme.colorScheme.secondary,
+                              child: Text(
+                                courseCode,
+                                style: theme.textTheme.labelSmall?.copyWith(
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.bold,
+                                  color: theme.colorScheme.secondary,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
                               ),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
                             ),
+                            const SizedBox(height: 6),
+                          ],
+
+                          Text(
+                            t['subject'] ?? '(No Subject)',
+                            style: theme.textTheme.bodyMedium?.copyWith(
+                              fontWeight: isUnread ? FontWeight.bold : FontWeight.normal,
+                              color: theme.colorScheme.onSurface,
+                            ),
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                          ),
                         ],
                       ),
                     ),
