@@ -209,12 +209,53 @@ class CanvasService {
   Future<void> markConversationAsRead(String conversationId) async {
     final prefs = await SharedPreferences.getInstance();
     if (prefs.getBool('isOffline') ?? false) return;
-
+    
     await http.put(
       Uri.parse('$_baseUrl/api/v1/conversations/$conversationId'),
-      headers: _headers,
-      body: {'workflow_state': 'read'},
+      headers: {
+        'Authorization': 'Bearer $_token',
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+      },
+      body: jsonEncode({'conversation': {'workflow_state': 'read'}}),
     );
+  }
+
+  Future<void> archiveConversation(String conversationId) async {
+    final prefs = await SharedPreferences.getInstance();
+    if (prefs.getBool('isOffline') ?? false) {
+      throw Exception('Cannot archive messages while offline.');
+    }
+
+    final response = await http.put(
+      Uri.parse('$_baseUrl/api/v1/conversations/$conversationId'),
+      headers: {
+        'Authorization': 'Bearer $_token',
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+      },
+      body: jsonEncode({'conversation': {'workflow_state': 'archived'}}),
+    );
+    
+    if (response.statusCode != 200) {
+      throw Exception('Failed to archive. Canvas returned: ${response.statusCode}');
+    }
+  }
+
+  Future<void> deleteConversation(String conversationId) async {
+    final prefs = await SharedPreferences.getInstance();
+    if (prefs.getBool('isOffline') ?? false) {
+      throw Exception('Cannot delete messages while offline.');
+    }
+
+    final response = await http.delete(
+      Uri.parse('$_baseUrl/api/v1/conversations/$conversationId'),
+      headers: _headers, // DELETE requests don't require JSON bodies
+    );
+    
+    if (response.statusCode != 200) {
+      throw Exception('Failed to delete. Canvas returned: ${response.statusCode}');
+    }
   }
 
   Future<Map<String, dynamic>> fetchConversationDetail(String conversationId) async {
@@ -259,37 +300,6 @@ class CanvasService {
     );
     if (response.statusCode != 200 && response.statusCode != 201) {
       throw Exception('Failed to send message.');
-    }
-  }
-
-  Future<void> archiveConversation(String conversationId) async {
-    final prefs = await SharedPreferences.getInstance();
-    if (prefs.getBool('isOffline') ?? false) {
-      throw Exception('Cannot archive messages while offline.');
-    }
-
-    final response = await http.put(
-      Uri.parse('$_baseUrl/api/v1/conversations/$conversationId'),
-      headers: _headers,
-      body: {'workflow_state': 'archived'},
-    );
-    if (response.statusCode != 200) {
-      throw Exception('Failed to archive conversation.');
-    }
-  }
-
-  Future<void> deleteConversation(String conversationId) async {
-    final prefs = await SharedPreferences.getInstance();
-    if (prefs.getBool('isOffline') ?? false) {
-      throw Exception('Cannot delete messages while offline.');
-    }
-
-    final response = await http.delete(
-      Uri.parse('$_baseUrl/api/v1/conversations/$conversationId'),
-      headers: _headers,
-    );
-    if (response.statusCode != 200) {
-      throw Exception('Failed to delete conversation.');
     }
   }
 }

@@ -259,10 +259,6 @@ class _InboxScreenState extends State<InboxScreen> {
         final String courseCode = t['context_name'] ?? t['courseCode'] ?? '';
         final bool isAnnouncement = t['kind'] == 'announcement';
 
-        // Clean up Canvas API newlines
-        String rawSnippet = t['snippet'] ?? t['last_message'] ?? '';
-        String cleanSnippet = rawSnippet.replaceAll(RegExp(r'\s+'), ' ').trim();
-
         return Padding(
           padding: const EdgeInsets.only(bottom: 12.0),
           child: Material(
