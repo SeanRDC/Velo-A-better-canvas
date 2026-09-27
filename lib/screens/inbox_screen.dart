@@ -182,9 +182,17 @@ class _InboxScreenState extends State<InboxScreen> {
         final t = _threads[index];
         final bool isUnread = t['workflow_state'] == 'unread' || t['unread'] == true;
         
-        String senderName = t['sender'] ?? 'Unknown Sender';
-        if (t['participants'] != null && (t['participants'] as List).isNotEmpty) {
-          senderName = t['participants'][0]['name'] ?? senderName;
+        final List<dynamic> participants = t['participants'] ?? [];
+        String senderName = 'Unknown Sender';
+        String toText = 'Unknown';
+
+        // Dynamically assign Sender and To based on the active folder
+        if (_activeFolder == 'sent') {
+          senderName = 'Sean Rhani Dela Cruz';
+          toText = participants.isNotEmpty ? participants.map((p) => p['name']).join(', ') : 'Unknown';
+        } else {
+          senderName = participants.isNotEmpty ? participants[0]['name'] ?? 'Unknown Sender' : (t['sender'] ?? 'Unknown Sender');
+          toText = 'Sean Rhani Dela Cruz';
         }
 
         final String courseCode = t['context_name'] ?? t['courseCode'] ?? '';
@@ -211,6 +219,7 @@ class _InboxScreenState extends State<InboxScreen> {
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    // Avatar & Unread Indicator
                     SizedBox(
                       height: 40,
                       width: 40,
@@ -255,15 +264,17 @@ class _InboxScreenState extends State<InboxScreen> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
+                          // 1. Sender Row
                           Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
                               Expanded(
                                 child: Text(
-                                  senderName,
-                                  style: theme.textTheme.bodyMedium?.copyWith(
-                                    fontWeight: isUnread ? FontWeight.bold : FontWeight.w500,
-                                    color: isUnread ? theme.colorScheme.onSurface : theme.colorScheme.secondary,
+                                  senderName.toUpperCase(),
+                                  style: theme.textTheme.labelSmall?.copyWith(
+                                    fontWeight: isUnread ? FontWeight.bold : FontWeight.w600,
+                                    color: theme.colorScheme.secondary,
+                                    letterSpacing: 0.5,
                                   ),
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
@@ -274,12 +285,24 @@ class _InboxScreenState extends State<InboxScreen> {
                                 _formatTime(t['last_message_at'] ?? t['time'] ?? DateTime.now().toIso8601String()),
                                 style: theme.textTheme.labelSmall?.copyWith(
                                   fontWeight: isUnread ? FontWeight.bold : FontWeight.normal,
-                                  color: isUnread ? theme.colorScheme.onSurface : theme.colorScheme.secondary,
+                                  color: theme.colorScheme.secondary,
                                 ),
                               ),
                             ],
                           ),
-                          const SizedBox(height: 4),
+                          const SizedBox(height: 2),
+                          // 2. To: Recipient Row
+                          Text(
+                            'To: $toText',
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              color: theme.colorScheme.secondary,
+                              fontSize: 12,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          const SizedBox(height: 6),
+                          // 3. Course Pill & Subject Row
                           Row(
                             children: [
                               if (courseCode.isNotEmpty) ...[
@@ -287,7 +310,7 @@ class _InboxScreenState extends State<InboxScreen> {
                                   child: Container(
                                     padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                                     decoration: BoxDecoration(
-                                      color: theme.scaffoldBackgroundColor,
+                                      color: theme.colorScheme.secondary.withValues(alpha: 0.1),
                                       borderRadius: BorderRadius.circular(4),
                                     ),
                                     child: Text(
@@ -302,7 +325,7 @@ class _InboxScreenState extends State<InboxScreen> {
                                     ),
                                   ),
                                 ),
-                                const SizedBox(width: 6),
+                                const SizedBox(width: 8),
                               ],
                               Expanded(
                                 child: Text(
@@ -316,15 +339,6 @@ class _InboxScreenState extends State<InboxScreen> {
                                 ),
                               ),
                             ],
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            t['snippet'] ?? t['last_message'] ?? '',
-                            style: theme.textTheme.bodySmall?.copyWith(
-                              color: theme.colorScheme.secondary,
-                            ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
                           ),
                         ],
                       ),
