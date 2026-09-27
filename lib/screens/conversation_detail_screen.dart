@@ -1,4 +1,4 @@
-// Conversation Thread Detail Screen (Canvas Parity)
+/// Conversation Thread Detail Screen (Canvas Parity)
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
@@ -95,8 +95,12 @@ class _ConversationDetailScreenState extends State<ConversationDetailScreen> {
 
   String _formatDate(String? dateStr) {
     if (dateStr == null) return 'Unknown date';
-    final date = DateTime.parse(dateStr).toLocal();
-    return DateFormat('MMM d, yyyy · h:mm a').format(date);
+    try {
+      final date = DateTime.parse(dateStr).toLocal();
+      return DateFormat('MMM d, yyyy · h:mm a').format(date);
+    } catch (e) {
+      return 'Unknown date';
+    }
   }
 
   String _formatFileSize(int bytes) {
@@ -116,7 +120,6 @@ class _ConversationDetailScreenState extends State<ConversationDetailScreen> {
     final theme = Theme.of(context);
     final subject = widget.thread['subject'] ?? 'Message Details';
     
-    // Fallbacks to handle the transition between the mock data payload and the live Canvas detail payload
     final List<dynamic> messages = _fullThread?['messages'] ?? widget.thread['messages'] ?? [];
     final List<dynamic> participants = _fullThread?['participants'] ?? widget.thread['participants'] ?? [];
 
@@ -165,13 +168,28 @@ class _ConversationDetailScreenState extends State<ConversationDetailScreen> {
                     final msg = messages[index];
                     final authorId = msg['author_id'];
                     
-                    // Match author ID to participant list
+                    // 1. Identify Sender
                     final authorData = participants.firstWhere(
                       (p) => p['id'] == authorId, 
                       orElse: () => {'name': 'Unknown Sender'}
                     );
-                    
                     final String authorName = authorData['name'] ?? 'Unknown Sender';
+
+                    // 2. Identify Recipients (everyone in participants who is NOT the author)
+                    final recipientsList = participants
+                        .where((p) => p['id'] != authorId)
+                        .map((p) => p['name'])
+                        .toList();
+                    final String toText = recipientsList.isNotEmpty ? recipientsList.join(', ') : 'Unknown';
+
+                    // 3. Format Course and Subject Context
+                    final String courseCode = widget.thread['context_name'] ?? widget.thread['courseCode'] ?? '';
+                    final String subjectText = widget.thread['subject'] ?? 'No Subject';
+                    final String contextLine = courseCode.isNotEmpty ? '$courseCode  ·  $subjectText' : subjectText;
+
+                    // 4. Accurate Date Fallbacks
+                    final String msgDate = msg['created_at'] ?? widget.thread['last_message_at'] ?? DateTime.now().toIso8601String();
+
                     final String body = msg['body'] ?? '';
                     final List<dynamic> attachments = msg['attachments'] ?? [];
 
@@ -196,6 +214,7 @@ class _ConversationDetailScreenState extends State<ConversationDetailScreen> {
                           Padding(
                             padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
                             child: Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 CircleAvatar(
                                   radius: 20,
@@ -207,19 +226,51 @@ class _ConversationDetailScreenState extends State<ConversationDetailScreen> {
                                   child: Column(
                                     crossAxisAlignment: CrossAxisAlignment.start,
                                     children: [
-                                      Text(
-                                        authorName,
-                                        style: theme.textTheme.titleMedium?.copyWith(
-                                          fontWeight: FontWeight.bold,
-                                          color: theme.colorScheme.onSurface,
-                                        ),
+                                      // Author & Timestamp Row
+                                      Row(
+                                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          Expanded(
+                                            child: Text(
+                                              authorName,
+                                              style: theme.textTheme.titleMedium?.copyWith(
+                                                fontWeight: FontWeight.bold,
+                                                color: theme.colorScheme.onSurface,
+                                              ),
+                                              maxLines: 1,
+                                              overflow: TextOverflow.ellipsis,
+                                            ),
+                                          ),
+                                          const SizedBox(width: 8),
+                                          Text(
+                                            _formatDate(msgDate),
+                                            style: theme.textTheme.labelSmall?.copyWith(
+                                              color: theme.colorScheme.secondary,
+                                            ),
+                                          ),
+                                        ],
                                       ),
                                       const SizedBox(height: 2),
+                                      // To: Line
                                       Text(
-                                        _formatDate(msg['created_at']),
-                                        style: theme.textTheme.labelSmall?.copyWith(
+                                        'To: $toText',
+                                        style: theme.textTheme.bodySmall?.copyWith(
                                           color: theme.colorScheme.secondary,
                                         ),
+                                        maxLines: 2,
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                      const SizedBox(height: 4),
+                                      // Course & Subject Line
+                                      Text(
+                                        contextLine,
+                                        style: theme.textTheme.labelSmall?.copyWith(
+                                          fontWeight: FontWeight.w600,
+                                          color: theme.colorScheme.secondary,
+                                        ),
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
                                       ),
                                     ],
                                   ),
