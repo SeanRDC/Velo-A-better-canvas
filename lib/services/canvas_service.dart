@@ -261,4 +261,35 @@ class CanvasService {
       throw Exception('Failed to send message.');
     }
   }
+
+  Future<void> archiveConversation(String conversationId) async {
+    final prefs = await SharedPreferences.getInstance();
+    if (prefs.getBool('isOffline') ?? false) {
+      throw Exception('Cannot archive messages while offline.');
+    }
+
+    final response = await http.put(
+      Uri.parse('$_baseUrl/api/v1/conversations/$conversationId'),
+      headers: _headers,
+      body: {'workflow_state': 'archived'},
+    );
+    if (response.statusCode != 200) {
+      throw Exception('Failed to archive conversation.');
+    }
+  }
+
+  Future<void> deleteConversation(String conversationId) async {
+    final prefs = await SharedPreferences.getInstance();
+    if (prefs.getBool('isOffline') ?? false) {
+      throw Exception('Cannot delete messages while offline.');
+    }
+
+    final response = await http.delete(
+      Uri.parse('$_baseUrl/api/v1/conversations/$conversationId'),
+      headers: _headers,
+    );
+    if (response.statusCode != 200) {
+      throw Exception('Failed to delete conversation.');
+    }
+  }
 }
