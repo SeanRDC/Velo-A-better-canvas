@@ -32,10 +32,11 @@ class _ComposeMessageScreenState extends State<ComposeMessageScreen> {
 
   Future<void> _pickFile() async {
     try {
-      final result = await FilePicker.platform.pickFiles();
-      if (result != null) {
+      final result = await FilePicker.pickFiles();
+      
+      if (result.isNotEmpty) {
         setState(() {
-          _fileName = result.files.single.name;
+          _fileName = result.first.name;
         });
       }
     } catch (e) {
