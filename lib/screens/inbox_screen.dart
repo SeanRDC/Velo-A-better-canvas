@@ -1,9 +1,9 @@
-// Inbox Screen
+/// Inbox Screen
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:go_router/go_router.dart';
 import '../components/app_shell.dart';
 import '../services/canvas_service.dart';
-import 'package:go_router/go_router.dart';
 
 class InboxScreen extends StatefulWidget {
   const InboxScreen({super.key});
@@ -26,6 +26,11 @@ class _InboxScreenState extends State<InboxScreen> {
     _fetchInbox();
   }
 
+  String _stripHtml(String htmlString) {
+    RegExp exp = RegExp(r'<[^>]*>', multiLine: true, caseSensitive: false);
+    return htmlString.replaceAll(exp, '').replaceAll('&nbsp;', ' ').trim();
+  }
+
   Future<void> _fetchInbox() async {
     setState(() {
       _isLoading = true;
@@ -33,50 +38,100 @@ class _InboxScreenState extends State<InboxScreen> {
     });
 
     try {
-      final data = await _canvasService.fetchConversations(scope: _activeFolder);
-      setState(() {
-        _threads = data;
-        _isLoading = false;
-      });
+      // 1. Fetch standard conversations (Direct Messages)
+      final conversations = await _canvasService.fetchConversations(scope: _activeFolder);
+      List<Map<String, dynamic>> combinedFeed = List.from(conversations);
+
+      // 2. If viewing the Inbox, compile Announcements from all active courses
+      if (_activeFolder == 'inbox') {
+        final courses = await _canvasService.fetchActiveCourses();
+        final announcementLists = await Future.wait(courses.map((course) async {
+          try {
+            final anns = await _canvasService.fetchAnnouncementsForCourse(course.id);
+            return anns.map((a) {
+              return {
+                'id': 'ann_${a['id']}', // distinct ID to avoid mapping collisions
+                'kind': 'announcement',
+                'workflow_state': a['read_state'] ?? 'read',
+                'sender': a['user_name'] ?? 'Instructor',
+                'context_name': course.courseCode,
+                'subject': a['title'] ?? 'Announcement',
+                'last_message': _stripHtml(a['message'] ?? ''),
+                'last_message_at': a['posted_at'] ?? DateTime.now().toIso8601String(),
+              };
+            }).toList();
+          } catch (e) {
+            return <Map<String, dynamic>>[];
+          }
+        }));
+
+        for (var list in announcementLists) {
+          combinedFeed.addAll(list);
+        }
+
+        // Sort combined feed chronologically (newest first)
+        combinedFeed.sort((a, b) {
+          final dA = DateTime.parse(a['last_message_at'] ?? DateTime.now().toIso8601String());
+          final dB = DateTime.parse(b['last_message_at'] ?? DateTime.now().toIso8601String());
+          return dB.compareTo(dA);
+        });
+      }
+
+      if (mounted) {
+        setState(() {
+          _threads = combinedFeed;
+          _isLoading = false;
+        });
+      }
     } catch (e) {
-      setState(() {
-        _errorMessage = e.toString();
-        _isLoading = false;
-      });
+      if (mounted) {
+        setState(() {
+          _errorMessage = e.toString();
+          _isLoading = false;
+        });
+      }
     }
   }
 
   void _markAsReadLocal(int index) {
     final t = _threads[index];
-    if (t['workflow_state'] == 'unread') {
+    if (t['workflow_state'] == 'unread' || t['unread'] == true) {
       setState(() {
         _threads[index]['workflow_state'] = 'read';
+        _threads[index]['unread'] = false;
       });
-      _canvasService.markConversationAsRead(t['id'].toString());
+      // Do not try to mark announcements via the conversation API
+      if (t['kind'] != 'announcement') {
+        _canvasService.markConversationAsRead(t['id'].toString());
+      }
     }
   }
 
   String _formatTime(String? dateStr) {
     if (dateStr == null) return '';
-    final date = DateTime.parse(dateStr).toLocal();
-    final now = DateTime.now();
-    final diff = now.difference(date);
+    try {
+      final date = DateTime.parse(dateStr).toLocal();
+      final now = DateTime.now();
+      final diff = now.difference(date);
 
-    if (diff.inDays == 0 && date.day == now.day) {
-      return DateFormat('h:mm a').format(date);
-    } else if (diff.inDays == 1 || (diff.inDays == 0 && date.day != now.day)) {
-      return 'Yesterday';
-    } else if (diff.inDays < 7) {
-      return DateFormat('E').format(date);
-    } else {
-      return DateFormat('MMM d').format(date);
+      if (diff.inDays == 0 && date.day == now.day) {
+        return DateFormat('h:mm a').format(date);
+      } else if (diff.inDays == 1 || (diff.inDays == 0 && date.day != now.day)) {
+        return 'Yesterday';
+      } else if (diff.inDays < 7) {
+        return DateFormat('E').format(date);
+      } else {
+        return DateFormat('MMM d').format(date);
+      }
+    } catch (e) {
+      return '';
     }
   }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final unreadCount = _threads.where((t) => t['workflow_state'] == 'unread').length;
+    final unreadCount = _threads.where((t) => t['workflow_state'] == 'unread' || t['unread'] == true).length;
 
     return AppShell(
       title: 'Inbox',
@@ -95,7 +150,7 @@ class _InboxScreenState extends State<InboxScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Padding(
-            padding: const EdgeInsets.fromLTRB(24, 16, 24, 8), // Adjusted bottom padding
+            padding: const EdgeInsets.fromLTRB(24, 16, 24, 8),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -119,7 +174,6 @@ class _InboxScreenState extends State<InboxScreen> {
             ),
           ),
           
-          // Add the Folder Chips here
           SingleChildScrollView(
             scrollDirection: Axis.horizontal,
             padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 8.0),
@@ -183,20 +237,21 @@ class _InboxScreenState extends State<InboxScreen> {
         final bool isUnread = t['workflow_state'] == 'unread' || t['unread'] == true;
         
         final List<dynamic> participants = t['participants'] ?? [];
-        String senderName = 'Unknown Sender';
-        String toText = 'Unknown';
+        String senderName = t['sender'] ?? 'Unknown Sender';
 
-        // Dynamically assign Sender and To based on the active folder
+        // Sent Folder: Show "To: Recipients". Inbox: Show Sender.
         if (_activeFolder == 'sent') {
-          senderName = 'Sean Rhani Dela Cruz';
-          toText = participants.isNotEmpty ? participants.map((p) => p['name']).join(', ') : 'Unknown';
-        } else {
-          senderName = participants.isNotEmpty ? participants[0]['name'] ?? 'Unknown Sender' : (t['sender'] ?? 'Unknown Sender');
-          toText = 'Sean Rhani Dela Cruz';
+          senderName = participants.isNotEmpty ? 'To: ${participants.map((p) => p['name']).join(', ')}' : 'To: Unknown';
+        } else if (t['kind'] != 'announcement' && participants.isNotEmpty) {
+          senderName = participants[0]['name'] ?? senderName;
         }
 
         final String courseCode = t['context_name'] ?? t['courseCode'] ?? '';
         final bool isAnnouncement = t['kind'] == 'announcement';
+
+        // Clean up Canvas API newlines
+        String rawSnippet = t['snippet'] ?? t['last_message'] ?? '';
+        String cleanSnippet = rawSnippet.replaceAll(RegExp(r'\s+'), ' ').trim();
 
         return Padding(
           padding: const EdgeInsets.only(bottom: 12.0),
@@ -206,8 +261,14 @@ class _InboxScreenState extends State<InboxScreen> {
             child: InkWell(
               onTap: () async {
                 _markAsReadLocal(index);
-                final result = await context.push('/conversation', extra: t);
-                if (result == true) _fetchInbox();
+                
+                // Route DMs to Conversation Detail, but prompt for Announcements
+                if (isAnnouncement) {
+                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Open the Courses tab to view full announcements.')));
+                } else {
+                  final result = await context.push('/conversation', extra: t);
+                  if (result == true) _fetchInbox();
+                }
               },
               borderRadius: BorderRadius.circular(12),
               child: Container(
@@ -219,7 +280,7 @@ class _InboxScreenState extends State<InboxScreen> {
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Avatar & Unread Indicator
+                    // Avatar & Unread Indicator (Megaphone for Announcements)
                     SizedBox(
                       height: 40,
                       width: 40,
@@ -259,12 +320,12 @@ class _InboxScreenState extends State<InboxScreen> {
                     ),
                     const SizedBox(width: 12),
                     
-                    // Thread Details
+                    // Thread Details (Restored 3-Line Layout)
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          // 1. Sender Row
+                          // Line 1: Sender & Time
                           Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
@@ -290,23 +351,14 @@ class _InboxScreenState extends State<InboxScreen> {
                               ),
                             ],
                           ),
-                          const SizedBox(height: 2),
-                          // 2. To: Recipient Row
-                          Text(
-                            'To: $toText',
-                            style: theme.textTheme.bodySmall?.copyWith(
-                              color: theme.colorScheme.secondary,
-                              fontSize: 12,
-                            ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
                           const SizedBox(height: 6),
-                          // 3. Course Pill & Subject Row
+                          
+                          // Line 2: Course Pill & Subject
                           Row(
                             children: [
                               if (courseCode.isNotEmpty) ...[
                                 Flexible(
+                                  flex: 0,
                                   child: Container(
                                     padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                                     decoration: BoxDecoration(
@@ -340,6 +392,18 @@ class _InboxScreenState extends State<InboxScreen> {
                               ),
                             ],
                           ),
+                          const SizedBox(height: 4),
+
+                          // Line 3: Message Glimpse (Snippet)
+                          if (cleanSnippet.isNotEmpty)
+                            Text(
+                              cleanSnippet,
+                              style: theme.textTheme.bodySmall?.copyWith(
+                                color: theme.colorScheme.secondary,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
                         ],
                       ),
                     ),
