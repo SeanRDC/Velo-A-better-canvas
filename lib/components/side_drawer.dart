@@ -11,8 +11,6 @@ const _currentUser = {
   'program': 'Holy Angel University',
 };
 
-const int _unreadInboxCount = 3;
-
 class SideDrawer extends StatelessWidget {
   const SideDrawer({super.key});
 
@@ -20,6 +18,7 @@ class SideDrawer extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
+    final unreadCount = context.watch<AppState>().unreadInboxCount;
 
     return Drawer(
       backgroundColor: theme.colorScheme.surface,
@@ -90,7 +89,7 @@ class SideDrawer extends StatelessWidget {
                   _DrawerTile(
                     icon: Icons.inbox_outlined,
                     label: 'Inbox',
-                    badge: _unreadInboxCount,
+                    badge: unreadCount,
                     onTap: () {
                       Navigator.pop(context);
                       context.go('/inbox');
