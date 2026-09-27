@@ -32,6 +32,35 @@
 
 ---
 
+## Week 2 (September 23, 2026 to September 27, 2026)
+
+**Done this week**
+- Built out the core UI for all app screens, expanding from the initial main screen and mockups completed in Week 1.
+- Implemented the foundational Canvas LMS REST API integration.
+- Successfully integrated the Gemini generative AI model into the application.
+
+**In progress**
+- Actively refining and developing the Master Dashboard screen.
+- Laying the structural groundwork for the upcoming Planner hub.
+
+**Blocked or stuck on**
+- None at the moment; smooth progress as I am primarily focused on laying out the foundational UI and backend systems.
+
+**Decisions made, and why**
+- **Local-First Caching:** Decided to strictly maintain the local-first caching strategy for Canvas payloads to keep the app lightweight and avoid the overhead of a cloud database.
+- **Design Refinements:** Applied general design tweaks across the newly built screens to ensure strict adherence to the Material 3 minimalist design system.
+
+**Hours spent, roughly:**
+19 hours
+
+**Next week I will:**
+- Finish the Dashboard screen and complete any remaining secondary screens.
+- Deeply integrate the AI into the app's data layer so that chat responses are accurately tailored to the user's specific courses and deadlines.
+- Build the Planner hub and wire up the AI to automatically schedule and plan tasks.
+- Finalize the codebase for deployment and deploy the application to the web.
+
+---
+
 ## Week N (date to date)
 
 **Done this week**
