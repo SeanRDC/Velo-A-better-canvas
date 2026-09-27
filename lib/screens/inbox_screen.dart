@@ -192,6 +192,8 @@ class _InboxScreenState extends State<InboxScreen> {
                 _buildFolderChip('Inbox', 'inbox', theme),
                 const SizedBox(width: 8),
                 _buildFolderChip('Sent', 'sent', theme),
+                const SizedBox(width: 8),
+                _buildFolderChip('Archived', 'archived', theme),
               ],
             ),
           ),
