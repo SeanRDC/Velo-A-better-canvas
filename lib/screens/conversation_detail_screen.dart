@@ -1,8 +1,10 @@
-// Conversation Thread Detail Screen
+// Conversation Thread Detail Screen (Canvas Parity)
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:intl/intl.dart';
+import 'package:flutter_widget_from_html/flutter_widget_from_html.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../components/app_shell.dart';
-import '../components/chat_bubble.dart';
 import '../services/canvas_service.dart';
 
 class ConversationDetailScreen extends StatefulWidget {
@@ -16,7 +18,6 @@ class ConversationDetailScreen extends StatefulWidget {
 class _ConversationDetailScreenState extends State<ConversationDetailScreen> {
   final CanvasService _canvasService = CanvasService();
   final TextEditingController _controller = TextEditingController();
-  final ScrollController _scrollController = ScrollController();
   
   Map<String, dynamic>? _fullThread;
   bool _isLoading = true;
@@ -36,7 +37,6 @@ class _ConversationDetailScreenState extends State<ConversationDetailScreen> {
           _fullThread = data;
           _isLoading = false;
         });
-        _scrollToBottom();
       }
     } catch (e) {
       if (mounted) setState(() => _isLoading = false);
@@ -61,62 +61,257 @@ class _ConversationDetailScreenState extends State<ConversationDetailScreen> {
     }
   }
 
-  void _scrollToBottom() {
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (_scrollController.hasClients) {
-        _scrollController.animateTo(
-          0.0, // Because ListView is reversed
-          duration: const Duration(milliseconds: 300),
-          curve: Curves.easeOut,
-        );
+  Future<void> _handleThreadAction(String action) async {
+    try {
+      if (action == 'archive') {
+        await _canvasService.archiveConversation(widget.thread['id'].toString());
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Conversation archived')));
+          context.pop(true);
+        }
+      } else if (action == 'delete') {
+        await _canvasService.deleteConversation(widget.thread['id'].toString());
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Conversation deleted')));
+          context.pop(true);
+        }
       }
-    });
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
+      }
+    }
+  }
+
+  Future<void> _launchAttachment(String url) async {
+    if (url.isEmpty) return;
+    final uri = Uri.parse(url);
+    if (!await launchUrl(uri, mode: LaunchMode.externalApplication)) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Could not open attachment.')));
+      }
+    }
+  }
+
+  String _formatDate(String? dateStr) {
+    if (dateStr == null) return 'Unknown date';
+    final date = DateTime.parse(dateStr).toLocal();
+    return DateFormat('MMM d, yyyy · h:mm a').format(date);
+  }
+
+  String _formatFileSize(int bytes) {
+    if (bytes < 1024) return '$bytes B';
+    if (bytes < 1024 * 1024) return '${(bytes / 1024).toStringAsFixed(1)} KB';
+    return '${(bytes / (1024 * 1024)).toStringAsFixed(1)} MB';
   }
 
   @override
   void dispose() {
     _controller.dispose();
-    _scrollController.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final subject = widget.thread['subject'] ?? 'Message';
+    final subject = widget.thread['subject'] ?? 'Message Details';
     
-    // Canvas messages array is usually newest-first in the detail payload
+    // Fallbacks to handle the transition between the mock data payload and the live Canvas detail payload
     final List<dynamic> messages = _fullThread?['messages'] ?? widget.thread['messages'] ?? [];
-    
-    // Determine the ID of the person we are talking to, to align bubbles
-    final participants = widget.thread['participants'] as List<dynamic>? ?? [];
-    final primarySenderId = participants.isNotEmpty ? participants[0]['id'] : -1;
+    final List<dynamic> participants = _fullThread?['participants'] ?? widget.thread['participants'] ?? [];
 
     return AppShell(
       title: subject,
       activeTab: 'inbox',
       leading: IconButton(
         icon: const Icon(Icons.chevron_left, size: 28),
-        onPressed: () => context.pop(true), // Return true to signal a refresh
+        onPressed: () => context.pop(true),
       ),
+      actions: [
+        PopupMenuButton<String>(
+          icon: const Icon(Icons.more_vert),
+          onSelected: _handleThreadAction,
+          color: theme.colorScheme.surface,
+          itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
+            const PopupMenuItem<String>(
+              value: 'archive',
+              child: ListTile(
+                leading: Icon(Icons.archive_outlined),
+                title: Text('Archive'),
+                contentPadding: EdgeInsets.zero,
+              ),
+            ),
+            const PopupMenuItem<String>(
+              value: 'delete',
+              child: ListTile(
+                leading: Icon(Icons.delete_outline, color: Colors.red),
+                title: Text('Delete', style: TextStyle(color: Colors.red)),
+                contentPadding: EdgeInsets.zero,
+              ),
+            ),
+          ],
+        ),
+      ],
       child: Column(
         children: [
           Expanded(
             child: _isLoading 
               ? Center(child: CircularProgressIndicator(color: theme.colorScheme.primary))
               : ListView.builder(
-                  controller: _scrollController,
-                  reverse: true, // Start from bottom
-                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  reverse: true,
+                  padding: const EdgeInsets.all(16),
                   itemCount: messages.length,
                   itemBuilder: (context, index) {
                     final msg = messages[index];
-                    // If author is the primary sender, it's incoming (left). Otherwise, it's the user (right).
-                    final bool isUser = msg['author_id'] != primarySenderId;
+                    final authorId = msg['author_id'];
                     
-                    return ChatBubble(
-                      text: msg['body'] ?? '',
-                      isUser: isUser,
+                    // Match author ID to participant list
+                    final authorData = participants.firstWhere(
+                      (p) => p['id'] == authorId, 
+                      orElse: () => {'name': 'Unknown Sender'}
+                    );
+                    
+                    final String authorName = authorData['name'] ?? 'Unknown Sender';
+                    final String body = msg['body'] ?? '';
+                    final List<dynamic> attachments = msg['attachments'] ?? [];
+
+                    return Container(
+                      margin: const EdgeInsets.only(bottom: 24),
+                      decoration: BoxDecoration(
+                        color: theme.colorScheme.surface,
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(color: theme.colorScheme.onSurface.withValues(alpha: 0.05)),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.02),
+                            blurRadius: 10,
+                            offset: const Offset(0, 4),
+                          )
+                        ],
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          // Message Header
+                          Padding(
+                            padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
+                            child: Row(
+                              children: [
+                                CircleAvatar(
+                                  radius: 20,
+                                  backgroundColor: theme.scaffoldBackgroundColor,
+                                  child: Icon(Icons.person, color: theme.colorScheme.secondary, size: 20),
+                                ),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        authorName,
+                                        style: theme.textTheme.titleMedium?.copyWith(
+                                          fontWeight: FontWeight.bold,
+                                          color: theme.colorScheme.onSurface,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 2),
+                                      Text(
+                                        _formatDate(msg['created_at']),
+                                        style: theme.textTheme.labelSmall?.copyWith(
+                                          color: theme.colorScheme.secondary,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          Container(height: 1, color: theme.colorScheme.onSurface.withValues(alpha: 0.05)),
+                          
+                          // Rich HTML Message Body
+                          Padding(
+                            padding: const EdgeInsets.all(16),
+                            child: HtmlWidget(
+                              body,
+                              onTapUrl: (url) async {
+                                await _launchAttachment(url);
+                                return true;
+                              },
+                              textStyle: theme.textTheme.bodyMedium?.copyWith(
+                                height: 1.5,
+                                color: theme.colorScheme.onSurface,
+                              ),
+                            ),
+                          ),
+
+                          // Attachments Array
+                          if (attachments.isNotEmpty) ...[
+                            Container(height: 1, color: theme.colorScheme.onSurface.withValues(alpha: 0.05)),
+                            Padding(
+                              padding: const EdgeInsets.all(16),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'ATTACHMENTS',
+                                    style: theme.textTheme.labelSmall?.copyWith(
+                                      fontWeight: FontWeight.bold,
+                                      color: theme.colorScheme.secondary,
+                                      letterSpacing: 1.0,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 12),
+                                  ...attachments.map((file) {
+                                    final name = file['display_name'] ?? file['filename'] ?? 'Unknown File';
+                                    final size = file['size'] ?? 0;
+                                    final url = file['url'] ?? '';
+                                    
+                                    return Padding(
+                                      padding: const EdgeInsets.only(bottom: 8.0),
+                                      child: InkWell(
+                                        onTap: () => _launchAttachment(url),
+                                        borderRadius: BorderRadius.circular(8),
+                                        child: Container(
+                                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                                          decoration: BoxDecoration(
+                                            color: theme.scaffoldBackgroundColor,
+                                            borderRadius: BorderRadius.circular(8),
+                                          ),
+                                          child: Row(
+                                            children: [
+                                              Icon(Icons.attach_file, size: 18, color: theme.colorScheme.primary),
+                                              const SizedBox(width: 12),
+                                              Expanded(
+                                                child: Column(
+                                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                                  children: [
+                                                    Text(
+                                                      name,
+                                                      style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600),
+                                                      maxLines: 1,
+                                                      overflow: TextOverflow.ellipsis,
+                                                    ),
+                                                    Text(
+                                                      _formatFileSize(size),
+                                                      style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.secondary),
+                                                    ),
+                                                  ],
+                                                ),
+                                              ),
+                                              Icon(Icons.download_outlined, size: 18, color: theme.colorScheme.secondary),
+                                            ],
+                                          ),
+                                        ),
+                                      ),
+                                    );
+                                  }),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
                     );
                   },
                 ),
@@ -138,7 +333,7 @@ class _ConversationDetailScreenState extends State<ConversationDetailScreen> {
                       maxLines: 4,
                       minLines: 1,
                       decoration: InputDecoration(
-                        hintText: 'Type a reply...',
+                        hintText: 'Reply to conversation...',
                         hintStyle: TextStyle(color: theme.colorScheme.secondary),
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(24),
