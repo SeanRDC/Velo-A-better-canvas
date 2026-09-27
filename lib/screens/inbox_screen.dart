@@ -1,9 +1,12 @@
-/// Inbox Screen
+// Inbox Screen
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:go_router/go_router.dart';
 import '../components/app_shell.dart';
 import '../services/canvas_service.dart';
+import 'package:flutter_widget_from_html/flutter_widget_from_html.dart';
+import 'package:provider/provider.dart';
+import '../state/app_state.dart';
 
 class InboxScreen extends StatefulWidget {
   const InboxScreen({super.key});
@@ -50,14 +53,15 @@ class _InboxScreenState extends State<InboxScreen> {
             final anns = await _canvasService.fetchAnnouncementsForCourse(course.id);
             return anns.map((a) {
               return {
-                'id': 'ann_${a['id']}', // distinct ID to avoid mapping collisions
+                'id': 'ann_${a['id']}', 
                 'kind': 'announcement',
                 'workflow_state': a['read_state'] ?? 'read',
                 'sender': a['user_name'] ?? 'Instructor',
                 'context_name': course.courseCode,
                 'subject': a['title'] ?? 'Announcement',
                 'last_message': _stripHtml(a['message'] ?? ''),
-                'last_message_at': a['posted_at'] ?? DateTime.now().toIso8601String(),
+                'full_html': a['message'] ?? '',
+                'last_message_at': a['posted_at'] ?? a['created_at'],
               };
             }).toList();
           } catch (e) {
@@ -78,6 +82,9 @@ class _InboxScreenState extends State<InboxScreen> {
       }
 
       if (mounted) {
+        final unread = combinedFeed.where((t) => t['workflow_state'] == 'unread' || t['unread'] == true).length;
+        context.read<AppState>().updateUnreadInboxCount(unread);
+
         setState(() {
           _threads = combinedFeed;
           _isLoading = false;
@@ -100,7 +107,10 @@ class _InboxScreenState extends State<InboxScreen> {
         _threads[index]['workflow_state'] = 'read';
         _threads[index]['unread'] = false;
       });
-      // Do not try to mark announcements via the conversation API
+      
+      final unread = _threads.where((th) => th['workflow_state'] == 'unread' || th['unread'] == true).length;
+      context.read<AppState>().updateUnreadInboxCount(unread);
+
       if (t['kind'] != 'announcement') {
         _canvasService.markConversationAsRead(t['id'].toString());
       }
@@ -124,7 +134,7 @@ class _InboxScreenState extends State<InboxScreen> {
         return DateFormat('MMM d').format(date);
       }
     } catch (e) {
-      return '';
+      return dateStr;
     }
   }
 
@@ -262,15 +272,51 @@ class _InboxScreenState extends State<InboxScreen> {
               onTap: () async {
                 _markAsReadLocal(index);
                 
-                // Route DMs to Conversation Detail, but prompt for Announcements
                 if (isAnnouncement) {
-                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Open the Courses tab to view full announcements.')));
+                  await Navigator.of(context).push(MaterialPageRoute(
+                    builder: (context) => AppShell(
+                      title: courseCode.isNotEmpty ? courseCode : 'Announcement',
+                      activeTab: 'inbox',
+                      leading: IconButton(
+                        icon: const Icon(Icons.chevron_left, size: 28),
+                        onPressed: () => Navigator.pop(context),
+                      ),
+                      child: ListView(
+                        padding: const EdgeInsets.all(24),
+                        children: [
+                          Text(
+                            t['subject'] ?? 'Announcement',
+                            style: theme.textTheme.headlineSmall?.copyWith(
+                              fontWeight: FontWeight.bold,
+                              color: theme.colorScheme.onSurface,
+                              letterSpacing: -0.5,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            '${t['sender']}  ·  ${_formatTime(t['last_message_at'] ?? t['time'])}',
+                            style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.secondary),
+                          ),
+                          const SizedBox(height: 24),
+                          HtmlWidget(
+                            t['full_html'] ?? t['last_message'] ?? '',
+                            textStyle: theme.textTheme.bodyMedium?.copyWith(
+                              height: 1.5,
+                              color: theme.colorScheme.onSurface,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ));
+                  _fetchInbox(); // Refresh when returning
                 } else {
                   final result = await context.push('/conversation', extra: t);
                   if (result == true) _fetchInbox();
                 }
               },
               borderRadius: BorderRadius.circular(12),
+
               child: Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
@@ -343,7 +389,7 @@ class _InboxScreenState extends State<InboxScreen> {
                               ),
                               const SizedBox(width: 8),
                               Text(
-                                _formatTime(t['last_message_at'] ?? t['time'] ?? DateTime.now().toIso8601String()),
+                                _formatTime(t['last_message_at'] ?? t['time']),
                                 style: theme.textTheme.labelSmall?.copyWith(
                                   fontWeight: isUnread ? FontWeight.bold : FontWeight.normal,
                                   color: theme.colorScheme.secondary,
