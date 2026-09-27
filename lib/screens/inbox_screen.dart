@@ -180,15 +180,15 @@ class _InboxScreenState extends State<InboxScreen> {
       itemCount: _threads.length,
       itemBuilder: (context, index) {
         final t = _threads[index];
-        final bool isUnread = t['workflow_state'] == 'unread';
+        final bool isUnread = t['workflow_state'] == 'unread' || t['unread'] == true;
         
-        // Canvas nests participants; grab the first one if available
-        String senderName = 'Unknown Sender';
+        String senderName = t['sender'] ?? 'Unknown Sender';
         if (t['participants'] != null && (t['participants'] as List).isNotEmpty) {
           senderName = t['participants'][0]['name'] ?? senderName;
         }
 
-        final String courseCode = t['context_name'] ?? '';
+        final String courseCode = t['context_name'] ?? t['courseCode'] ?? '';
+        final bool isAnnouncement = t['kind'] == 'announcement';
 
         return Padding(
           padding: const EdgeInsets.only(bottom: 12.0),
@@ -211,7 +211,6 @@ class _InboxScreenState extends State<InboxScreen> {
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Avatar & Unread Indicator
                     SizedBox(
                       height: 40,
                       width: 40,
@@ -221,10 +220,16 @@ class _InboxScreenState extends State<InboxScreen> {
                             height: 40,
                             width: 40,
                             decoration: BoxDecoration(
-                              color: theme.scaffoldBackgroundColor,
+                              color: isAnnouncement 
+                                  ? theme.colorScheme.primary.withValues(alpha: 0.08) 
+                                  : theme.scaffoldBackgroundColor,
                               shape: BoxShape.circle,
                             ),
-                            child: Icon(Icons.person_outline, size: 20, color: theme.colorScheme.secondary),
+                            child: Icon(
+                              isAnnouncement ? Icons.campaign_outlined : Icons.person_outline, 
+                              size: 18, 
+                              color: isAnnouncement ? theme.colorScheme.onSurface : theme.colorScheme.secondary,
+                            ),
                           ),
                           if (isUnread)
                             Positioned(
@@ -264,8 +269,9 @@ class _InboxScreenState extends State<InboxScreen> {
                                   overflow: TextOverflow.ellipsis,
                                 ),
                               ),
+                              const SizedBox(width: 8),
                               Text(
-                                _formatTime(t['last_message_at']),
+                                _formatTime(t['last_message_at'] ?? t['time'] ?? DateTime.now().toIso8601String()),
                                 style: theme.textTheme.labelSmall?.copyWith(
                                   fontWeight: isUnread ? FontWeight.bold : FontWeight.normal,
                                   color: isUnread ? theme.colorScheme.onSurface : theme.colorScheme.secondary,
@@ -277,18 +283,22 @@ class _InboxScreenState extends State<InboxScreen> {
                           Row(
                             children: [
                               if (courseCode.isNotEmpty) ...[
-                                Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                  decoration: BoxDecoration(
-                                    color: theme.scaffoldBackgroundColor,
-                                    borderRadius: BorderRadius.circular(4),
-                                  ),
-                                  child: Text(
-                                    courseCode,
-                                    style: theme.textTheme.labelSmall?.copyWith(
-                                      fontSize: 10,
-                                      fontWeight: FontWeight.bold,
-                                      color: theme.colorScheme.secondary,
+                                Flexible(
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                    decoration: BoxDecoration(
+                                      color: theme.scaffoldBackgroundColor,
+                                      borderRadius: BorderRadius.circular(4),
+                                    ),
+                                    child: Text(
+                                      courseCode,
+                                      style: theme.textTheme.labelSmall?.copyWith(
+                                        fontSize: 10,
+                                        fontWeight: FontWeight.bold,
+                                        color: theme.colorScheme.secondary,
+                                      ),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
                                     ),
                                   ),
                                 ),
@@ -309,7 +319,7 @@ class _InboxScreenState extends State<InboxScreen> {
                           ),
                           const SizedBox(height: 4),
                           Text(
-                            t['last_message'] ?? '',
+                            t['snippet'] ?? t['last_message'] ?? '',
                             style: theme.textTheme.bodySmall?.copyWith(
                               color: theme.colorScheme.secondary,
                             ),
