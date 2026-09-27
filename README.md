@@ -3,33 +3,35 @@
 > Velo is a distraction-free, local-first mobile client for the Canvas LMS designed to help university students manage heavy project workloads.
 
 **Live demo:** PS: Will be hosting the website elsewhere (to be posted once finished)
-**Demo video:** `docs/demo.mp4` (to be posted once finished)
-**Course:** Applications Development and Emerging Technologies (6ADET), Holy Angel University
-**Author:** Sean Rhani J. Dela Cruz
 
-This repository lives in the author's own GitHub account and is public on
-purpose. There is no `student.json` here and there should not be one: see
-`docs/06-security-and-privacy.md` for what a public repo means for secrets and
-personal data.
+**Demo video:** `docs/demo.mp4` (to be posted once finished)
+
+**Course:** Applications Development and Emerging Technologies (6ADET), Holy Angel University
+
+**Author:** Sean Rhani J. Dela Cruz
 
 ---
 
 ## Screenshots
 
-Put two or three real screenshots at phone size in `docs/assets/`, then replace
-this paragraph with them:
-
-| Login Screen | Connection Error | Dashboard Placeholder |
+| Courses | Dashboard | AI Assistant |
 | --- | --- | --- |
-| ![Login Screen](/docs/assets/OAuth_Screen.png) | ![Error Dialog](/docs/assets/placeholdererror_screen.png) | ![Dashboard](/docs/assets/dashboard_screen.png) |
+| <img src="docs/assets/courses_w2.png" alt="Courses" width="250"> | <img src="docs/assets/dashboard_w2.png" alt="Dashboard" width="250"> | <img src="docs/assets/ai_w2.png" alt="AI Assistant" width="250"> |
+
+| Side Drawer | Inbox | Announcements |
+| --- | --- | --- |
+| <img src="docs/assets/sidedrawer_w2.png" alt="Side Drawer" width="250"> | <img src="docs/assets/inbox_w2.png" alt="Inbox" width="250"> | <img src="docs/assets/announcement_w2.png" alt="Announcements" width="250"> |
+
+| Modules | Grades | Assignments |
+| --- | --- | --- |
+| <img src="docs/assets/modules_w2.png" alt="Modules" width="250"> | <img src="docs/assets/grades_w2.png" alt="Grades" width="250"> | <img src="docs/assets/assignments_w2.png" alt="Assignments" width="250"> |
 
 ## What it does
 
-Three to five bullets. What can a user actually do?
-
 - **Secure Authentication:** Logs users in through the university's Canvas OAuth 2.0 web flow, ensuring passwords are never touched or stored.
-- **Unified Master Feed:** Consolidates active assignments across all enrolled subjects into a single, chronologically sorted mobile feed (currently in development).
+- **Unified Master Feed & Course Hub:** Consolidates active assignments across all enrolled subjects into a single, chronologically sorted mobile feed, and provides detailed views for modules, grades, and announcements.
 - **AI Assistant:** Provides a conversational interface powered by Gemini to query syllabus details, grades, and upcoming deadlines in natural language.
+- **Inbox & Submissions:** Allows users to view threaded conversations, compose messages, and submit file/text assignments directly to Canvas.
 
 ## Built with
 
@@ -38,17 +40,19 @@ Three to five bullets. What can a user actually do?
 | Framework | Flutter (Dart) |
 | State | `provider` |
 | Storage | `shared_preferences` (local-first caching and offline fallback) |
-| Other packages | `go_router` (persistent navigation), `device_preview` (web-based device testing), `google_generative_ai` (AI Assistant integration) |
+| Network & API | `http`, `google_generative_ai` |
+| UI & Routing | `go_router`, `device_preview`, `flutter_widget_from_html` |
+| Utilities | `file_picker`, `intl`, `url_launcher`, `flutter_local_notifications` |
 
 ## Running it yourself
 
 ```bash
 flutter pub get
 cp .env.example .env
-flutter run -d web-server --web-port 8080
+flutter run -d chrome --web-browser-flag "--disable-web-security"
 ```
 
-Then open http://localhost:8080. Requires Flutter 3.44.0 or higher.
+Then open the launched Chrome instance. This command bypasses CORS restrictions during local development while testing with the live Canvas API. Requires Flutter 3.44.0 or higher.
 
 ### Environment variables
 
@@ -58,6 +62,7 @@ result.
 
 | Variable | What it is | Where to get one |
 | --- | --- | --- |
+| `CANVAS_BASE_URL` | Base URL for your Canvas instance | Usually `https://canvas.instructure.com` or your university's specific domain |
 | `CANVAS_API_TOKEN` | Canvas LMS access token | Generated from your university Canvas portal settings |
 | `GEMINI_API_KEY` | Google Gemini AI key | Google AI Studio |
 
@@ -87,13 +92,14 @@ Required section. Two or three honest sentences:
 
 ## Status and what is next
 
-**What works:** The core Flutter architecture is established. The Material 3 design system is fully implemented (supporting Light and Dark modes). The global routing (go_router), persistent navigation (AppShell and BottomNav), and authentication UI (LoginScreen and ErrorDialog) are completely functional.
+**What works:** The core Flutter architecture is established. The Material 3 design system is fully implemented (supporting Light and Dark modes via the Side Drawer). All core UI screens (Courses, Modules, Assignments, Grades, Announcements, Inbox, Dashboard) are built. The Canvas REST API is integrated with local offline caching, and the Gemini AI Assistant is actively hooked up.
 
 **What is half done / Next steps:**
 
-- The Dashboard currently acts as an architectural placeholder.
-- The next step is to build the SideDrawer component to wire up the global theme toggle.
-- TypeScript mock JSON data needs to be translated into a Dart data layer to populate the assignment feed before hooking up live Canvas REST API requests.
+- The Dashboard is currently functional but being actively refined.
+- Deeply integrate the AI into the app's data layer so that chat responses are accurately tailored to the user's specific courses, tasks, and deadlines.
+- Build the Planner hub and wire up the AI to automatically schedule and plan tasks for the user.
+- Finalize the codebase for deployment, as next week will be the deployment week.
 
 ## Credits
 
