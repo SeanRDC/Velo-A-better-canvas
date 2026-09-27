@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import '../components/app_shell.dart';
 import '../models/course.dart';
 import '../services/canvas_service.dart';
+import 'package:file_picker/file_picker.dart';
 
 class ComposeMessageScreen extends StatefulWidget {
   const ComposeMessageScreen({super.key});
@@ -27,6 +28,20 @@ class _ComposeMessageScreenState extends State<ComposeMessageScreen> {
   bool _isLoadingCourses = true;
   bool _isLoadingUsers = false;
   bool _isSending = false;
+  String? _fileName;
+
+  Future<void> _pickFile() async {
+    try {
+      final result = await FilePicker.platform.pickFiles();
+      if (result != null) {
+        setState(() {
+          _fileName = result.files.single.name;
+        });
+      }
+    } catch (e) {
+      // Safely ignore if the user cancels the picker
+    }
+  }
 
   @override
   void initState() {
@@ -92,6 +107,7 @@ class _ComposeMessageScreenState extends State<ComposeMessageScreen> {
       }
     }
   }
+  
 
   @override
   void dispose() {
@@ -176,6 +192,47 @@ class _ComposeMessageScreenState extends State<ComposeMessageScreen> {
                 onChanged: (_) => setState((){}), // Trigger UI update for Send button validation
                 decoration: _inputDeco(theme, 'Compose message...').copyWith(alignLabelWithHint: true),
               ),
+              const SizedBox(height: 16),
+              
+              // Attachment Area
+              if (_fileName != null)
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  decoration: BoxDecoration(
+                    color: theme.colorScheme.primary.withValues(alpha: 0.05),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(Icons.attach_file, size: 20, color: theme.colorScheme.primary),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Text(
+                          _fileName!,
+                          style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.bold),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      InkWell(
+                        onTap: () => setState(() => _fileName = null),
+                        child: Icon(Icons.close, size: 20, color: theme.colorScheme.secondary),
+                      ),
+                    ],
+                  ),
+                )
+              else
+                OutlinedButton.icon(
+                  onPressed: _pickFile,
+                  icon: const Icon(Icons.attach_file),
+                  label: const Text('Attach File'),
+                  style: OutlinedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    side: BorderSide(color: theme.colorScheme.onSurface.withValues(alpha: 0.1)),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    foregroundColor: theme.colorScheme.onSurface,
+                  ),
+                ),
             ],
           ),
     );
