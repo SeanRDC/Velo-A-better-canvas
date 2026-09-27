@@ -19,11 +19,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
   List<String> _courseCodes = [];
   
   String _activeFilter = 'All';
-  String _sortBy = 'soonest'; // 'soonest', 'course', 'points'
+  String _sortBy = 'soonest';
   
   bool _isLoading = true;
   String? _errorMessage;
-  bool _isOffline = false; // Mocking the offline state toggle
 
   final Map<String, String> _sortLabels = {
     'soonest': 'Soonest first',
@@ -166,21 +165,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     return AppShell(
       title: 'My Tasks',
       activeTab: 'tasks',
-      actions: [
-        IconButton(
-          icon: Icon(
-            _isOffline ? Icons.wifi_off : Icons.wifi,
-            color: Theme.of(context).colorScheme.onSurface,
-          ),
-          onPressed: () {
-            setState(() {
-              _isOffline = !_isOffline;
-            });
-            // TODO: Hook into global AppState offline toggle
-          },
-          tooltip: _isOffline ? 'Go online' : 'Simulate offline',
-        )
-      ],
+      // WiFi icon action removed here
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -242,9 +227,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
             ),
           ),
 
-          // Filter Chips
+          // Filter Chips (Scrollable left to right)
           SingleChildScrollView(
             scrollDirection: Axis.horizontal,
+            physics: const BouncingScrollPhysics(), // Ensures smooth horizontal scrolling
             padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 12.0),
             child: Row(
               children: [
@@ -349,21 +335,27 @@ class _DashboardScreenState extends State<DashboardScreen> {
       );
     }
 
-    return ListView.builder(
-      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 4),
-      itemCount: _filteredTasks.length,
-      itemBuilder: (context, index) {
-        final task = _filteredTasks[index];
-        return Padding(
-          padding: const EdgeInsets.only(bottom: 12.0),
-          child: TaskCard(
-            task: task,
-            onTap: () {
-              // TODO: Route to assignment details and submission overlay
-            },
-          ),
-        );
-      },
+    return Align(
+      alignment: Alignment.topCenter,
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 800), // Caps width on tablets/web
+        child: ListView.builder(
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
+          itemCount: _filteredTasks.length,
+          itemBuilder: (context, index) {
+            final task = _filteredTasks[index];
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 12.0),
+              child: TaskCard(
+                task: task,
+                onTap: () {
+                  // TODO: Route to assignment details and submission overlay
+                },
+              ),
+            );
+          },
+        ),
+      ),
     );
   }
 
