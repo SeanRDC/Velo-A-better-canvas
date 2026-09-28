@@ -39,12 +39,18 @@ class _CourseAssignmentsScreenState extends State<CourseAssignmentsScreen> {
 
     try {
       final data = await _canvasService.fetchRawAssignmentPayloads(widget.course.id);
+      
+      if (!mounted) return;
+      
       setState(() {
         _originalAssignments = data;
         _applySort();
         _isLoading = false;
       });
     } catch (e) {
+      // KILL-SWITCH 2
+      if (!mounted) return;
+      
       setState(() {
         _errorMessage = e.toString();
         _isLoading = false;
