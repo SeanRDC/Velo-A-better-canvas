@@ -331,6 +331,31 @@ class CanvasService {
             buffer.writeln('Pending Tasks: None');
           }
         } catch (_) {}
+
+        // Inject pending assignments
+        try {
+          final tasks = await fetchAssignmentsForCourse(course);
+          final pending = tasks.where((t) => !t.isSubmitted).toList();
+          if (pending.isNotEmpty) {
+            buffer.writeln('Pending Tasks:');
+            for (var t in pending) {
+              buffer.writeln('- ${t.title} (Due: ${t.dueDate.toLocal()}, Points: ${t.points})');
+            }
+          } else {
+            buffer.writeln('Pending Tasks: None');
+          }
+        } catch (_) {}
+
+        try {
+          final announcements = await fetchAnnouncementsForCourse(course.id);
+          if (announcements.isNotEmpty) {
+            buffer.writeln('Recent Announcements:');
+            // We use .take(3) to only grab the 3 newest announcements to optimize token usage
+            for (var a in announcements.take(3)) { 
+              buffer.writeln('- ${a['title']} (Posted: ${a['posted_at']})');
+            }
+          }
+        } catch (_) {}
       }
       return buffer.toString();
     } catch (e) {
