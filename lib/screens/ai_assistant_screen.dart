@@ -4,7 +4,7 @@ import 'package:google_generative_ai/google_generative_ai.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import '../components/app_shell.dart';
 import '../components/chat_bubble.dart';
-import 'dart:math' as math;
+// import 'dart:math' as math;
 import '../services/canvas_service.dart';
 
 class ChatMessage {
@@ -73,7 +73,7 @@ class _AiAssistantScreenState extends State<AiAssistantScreen> {
     ];
 
     _model = GenerativeModel(
-      model: 'gemini-3.5-flash', 
+      model: 'gemini-3.5-flash-lite', 
       apiKey: apiKey,
       tools: tools,
       systemInstruction: Content.system(  
