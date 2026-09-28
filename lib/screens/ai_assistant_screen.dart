@@ -26,18 +26,13 @@ class _AiAssistantScreenState extends State<AiAssistantScreen> {
   bool _isLoading = false;
   final bool _isInitializing = false; 
   
-  final List<ChatMessage> _messages = [
-    ChatMessage(
-      text: "Hi! I'm your Canvas Co-pilot. I have securely loaded your grades, assignments, and deadlines. What do you need?",
-      isUser: false,
-    ),
-  ];
+  final List<ChatMessage> _messages = [];
 
   // Groq Context Memory
   final List<Map<String, dynamic>> _apiHistory = [
     {
       "role": "system",
-      "content": "You are Velo, a highly efficient, distraction-free Canvas LMS Co-pilot.\n"
+      "content": "You are Velo Co-pilot, a highly efficient, distraction-free Canvas LMS assistant.\n"
                  "CRITICAL RULES:\n"
                  "1. You DO NOT know the user's deadlines, grades, or announcements by default.\n"
                  "2. If the user asks about their coursework, YOU MUST use the provided tools to fetch the data first.\n"
@@ -73,6 +68,36 @@ class _AiAssistantScreenState extends State<AiAssistantScreen> {
       }
     }
   ];
+
+  @override
+  void initState() {
+    super.initState();
+    _runOpeningAnimation();
+  }
+
+  void _runOpeningAnimation() async {
+    // Brief pause as the screen transitions in
+    await Future.delayed(const Duration(milliseconds: 400));
+    if (!mounted) return;
+
+    setState(() {
+      _messages.add(ChatMessage(text: "Hello there! 👋", isUser: false));
+      _isLoading = true;
+    });
+
+    await Future.delayed(const Duration(milliseconds: 1800));
+    if (!mounted) return;
+
+    setState(() {
+      _isLoading = false;
+      _messages.add(ChatMessage(
+        text: "Hi! I'm Velo Co-pilot. I have securely loaded your grades, assignments, and deadlines. What do you need?",
+        isUser: false,
+      ));
+    });
+    
+    _scrollToBottom();
+  }
 
   @override
   void dispose() {
@@ -230,7 +255,7 @@ class _AiAssistantScreenState extends State<AiAssistantScreen> {
     final theme = Theme.of(context);
 
     return AppShell(
-      title: 'Canvas Co-pilot',
+      title: 'Velo Co-pilot',
       activeTab: 'assistant',
       child: _isInitializing
           ? Center(
