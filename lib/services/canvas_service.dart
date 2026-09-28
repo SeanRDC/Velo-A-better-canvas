@@ -303,63 +303,50 @@ class CanvasService {
     }
   }
 
-  Future<String> buildSecureAiContext() async {
-    try {
-      final courses = await fetchActiveCourses();
-      final buffer = StringBuffer();
-
-      buffer.writeln('CURRENT USER CONTEXT:');
-      buffer.writeln('Current System Time: ${DateTime.now().toIso8601String()}');
-
-      for (var course in courses) {
-        buffer.writeln('\nCourse: ${course.courseCode} - ${course.name}');
-
-        try {
-          final grades = await fetchGradesForCourse(course.id);
-          buffer.writeln('Current Grade: ${grades['current_score']}% (${grades['letter_grade']})');
-        } catch (_) {}
-
-        try {
-          final tasks = await fetchAssignmentsForCourse(course);
-          final pending = tasks.where((t) => !t.isSubmitted).toList();
-          if (pending.isNotEmpty) {
-            buffer.writeln('Pending Tasks:');
-            for (var t in pending) {
-              buffer.writeln('- ${t.title} (Due: ${t.dueDate.toLocal()}, Points: ${t.points})');
-            }
-          } else {
-            buffer.writeln('Pending Tasks: None');
+  Future<String> buildTasksContext() async {
+    final courses = await fetchActiveCourses();
+    final buffer = StringBuffer();
+    for (var course in courses) {
+      try {
+        final tasks = await fetchAssignmentsForCourse(course);
+        final pending = tasks.where((t) => !t.isSubmitted).toList();
+        if (pending.isNotEmpty) {
+          buffer.writeln('${course.courseCode} Pending Tasks:');
+          for (var t in pending) {
+            buffer.writeln('- ${t.title} (Due: ${t.dueDate.toLocal()}, Points: ${t.points})');
           }
-        } catch (_) {}
-
-        // Inject pending assignments
-        try {
-          final tasks = await fetchAssignmentsForCourse(course);
-          final pending = tasks.where((t) => !t.isSubmitted).toList();
-          if (pending.isNotEmpty) {
-            buffer.writeln('Pending Tasks:');
-            for (var t in pending) {
-              buffer.writeln('- ${t.title} (Due: ${t.dueDate.toLocal()}, Points: ${t.points})');
-            }
-          } else {
-            buffer.writeln('Pending Tasks: None');
-          }
-        } catch (_) {}
-
-        try {
-          final announcements = await fetchAnnouncementsForCourse(course.id);
-          if (announcements.isNotEmpty) {
-            buffer.writeln('Recent Announcements:');
-            // We use .take(3) to only grab the 3 newest announcements to optimize token usage
-            for (var a in announcements.take(3)) { 
-              buffer.writeln('- ${a['title']} (Posted: ${a['posted_at']})');
-            }
-          }
-        } catch (_) {}
-      }
-      return buffer.toString();
-    } catch (e) {
-      return 'No active course context available. Base answers strictly on general knowledge.';
+        }
+      } catch (_) {}
     }
+    return buffer.isEmpty ? 'No pending tasks.' : buffer.toString();
+  }
+
+  Future<String> buildGradesContext() async {
+    final courses = await fetchActiveCourses();
+    final buffer = StringBuffer();
+    for (var course in courses) {
+      try {
+        final grades = await fetchGradesForCourse(course.id);
+        buffer.writeln('${course.courseCode}: ${grades['current_score']}% (${grades['letter_grade']})');
+      } catch (_) {}
+    }
+    return buffer.isEmpty ? 'No grades available.' : buffer.toString();
+  }
+
+  Future<String> buildAnnouncementsContext() async {
+    final courses = await fetchActiveCourses();
+    final buffer = StringBuffer();
+    for (var course in courses) {
+      try {
+        final announcements = await fetchAnnouncementsForCourse(course.id);
+        if (announcements.isNotEmpty) {
+          buffer.writeln('${course.courseCode} Announcements:');
+          for (var a in announcements.take(3)) { 
+            buffer.writeln('- ${a['title']} (Posted: ${a['posted_at']})');
+          }
+        }
+      } catch (_) {}
+    }
+    return buffer.isEmpty ? 'No recent announcements.' : buffer.toString();
   }
 }
