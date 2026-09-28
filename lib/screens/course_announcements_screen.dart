@@ -40,11 +40,16 @@ class _CourseAnnouncementsScreenState extends State<CourseAnnouncementsScreen> {
 
     try {
       final data = await _canvasService.fetchAnnouncementsForCourse(widget.course.id);
+      
+      if (!mounted) return;
+      
       setState(() {
         _announcements = data;
         _isLoading = false;
       });
     } catch (e) {
+      if (!mounted) return;
+      
       setState(() {
         _errorMessage = e.toString();
         _isLoading = false;
