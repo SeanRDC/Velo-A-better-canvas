@@ -1,22 +1,19 @@
-// Conversational AI Interface
 import 'package:flutter/material.dart';
-import 'package:google_generative_ai/google_generative_ai.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'dart:convert';
+import 'package:http/http.dart' as http;
 import '../components/app_shell.dart';
 import '../components/chat_bubble.dart';
-// import 'dart:math' as math;
 import '../services/canvas_service.dart';
 
 class ChatMessage {
   final String text;
   final bool isUser;
-
   ChatMessage({required this.text, required this.isUser});
 }
 
 class AiAssistantScreen extends StatefulWidget {
   const AiAssistantScreen({super.key});
-
   @override
   State<AiAssistantScreen> createState() => _AiAssistantScreenState();
 }
@@ -26,11 +23,8 @@ class _AiAssistantScreenState extends State<AiAssistantScreen> {
   final ScrollController _scrollController = ScrollController();
   final CanvasService _canvasService = CanvasService();
   
-  late final GenerativeModel _model;
-  late final ChatSession _chat;
-  
   bool _isLoading = false;
-  bool _isInitializing = true; 
+  final bool _isInitializing = false; 
   
   final List<ChatMessage> _messages = [
     ChatMessage(
@@ -39,59 +33,46 @@ class _AiAssistantScreenState extends State<AiAssistantScreen> {
     ),
   ];
 
-  @override
-  void initState() {
-    super.initState();
-    _initAi();
-  }
-
-  Future<void> _initAi() async {
-    final apiKey = dotenv.env['GEMINI_API_KEY'] ?? '';
-    
-    if (apiKey.isEmpty) {
-      debugPrint('CRITICAL DIAGNOSTIC: API Key is EMPTY. .env failed to load.');
+  // Groq Context Memory
+  final List<Map<String, dynamic>> _apiHistory = [
+    {
+      "role": "system",
+      "content": "You are Velo, a highly efficient, distraction-free Canvas LMS Co-pilot.\n"
+                 "CRITICAL RULES:\n"
+                 "1. You DO NOT know the user's deadlines, grades, or announcements by default.\n"
+                 "2. If the user asks about their coursework, YOU MUST use the provided tools to fetch the data first.\n"
+                 "3. Be incredibly concise. Use bullet points and bold text for easy scanning.\n"
+                 "4. When asked to plan or organize, automatically break down large assignments into logical, step-by-step daily milestones."
     }
-    
-    final tools = [
-      Tool(functionDeclarations: [
-        FunctionDeclaration(
-          'get_pending_tasks',
-          'Fetches the user\'s pending Canvas assignments and deadlines.',
-          Schema(SchemaType.object, properties: {})
-        ),
-        FunctionDeclaration(
-          'get_course_grades',
-          'Fetches the user\'s current grades for all enrolled courses.',
-          Schema(SchemaType.object, properties: {})
-        ),
-        FunctionDeclaration(
-          'get_recent_announcements',
-          'Fetches recent announcements across all courses.',
-          Schema(SchemaType.object, properties: {})
-        ),
-      ])
-    ];
+  ];
 
-    _model = GenerativeModel(
-      model: 'gemini-3.5-flash-lite', 
-      apiKey: apiKey,
-      tools: tools,
-      systemInstruction: Content.system(  
-        '''You are Velo, a distraction-free Canvas LMS Co-pilot. 
-CRITICAL RULES:
-1. You DO NOT know the user's deadlines, grades, or announcements by default.
-2. If the user asks about their coursework, YOU MUST use the provided tools to fetch the data first.
-3. Be incredibly concise. Use bullet points and bold text for easy scanning.
-4. When asked to plan or organize, break down large assignments into step-by-step daily milestones.'''
-      ),
-    );
-    
-    _chat = _model.startChat();
-    
-    if (mounted) {
-      setState(() => _isInitializing = false);
+  // Groq Tool Definitions
+  final List<Map<String, dynamic>> _tools = [
+    {
+      "type": "function",
+      "function": {
+        "name": "get_pending_tasks",
+        "description": "Fetches the user's pending Canvas assignments and deadlines.",
+        "parameters": { "type": "object", "properties": {} }
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "get_course_grades",
+        "description": "Fetches the user's current grades for all enrolled courses.",
+        "parameters": { "type": "object", "properties": {} }
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "get_recent_announcements",
+        "description": "Fetches recent announcements across all courses.",
+        "parameters": { "type": "object", "properties": {} }
+      }
     }
-  }
+  ];
 
   @override
   void dispose() {
@@ -111,79 +92,95 @@ CRITICAL RULES:
 
     _controller.clear();
     _scrollToBottom();
+    
+    _apiHistory.add({"role": "user", "content": text});
 
     try {
-      late GenerateContentResponse response;
-      const int maxRetries = 6; 
-      
-      for (int attempt = 0; attempt < maxRetries; attempt++) {
-        try {
-          response = await _chat.sendMessage(Content.text(text));
-          
-          // --- Handle Tool Calling ---
-          while (response.functionCalls.isNotEmpty) {
-            final call = response.functionCalls.first;
-            Map<String, Object?> resultData = {};
+      final apiKey = dotenv.env['GROQ_API_KEY'] ?? '';
+      if (apiKey.isEmpty) throw Exception("GROQ_API_KEY missing in .env");
+
+      bool toolCallMade = true;
+      String finalResponseText = "I am having trouble processing that right now.";
+
+      // Loop to handle the AI requesting Canvas data
+      while (toolCallMade) {
+        toolCallMade = false;
+
+        final response = await http.post(
+          Uri.parse('https://api.groq.com/openai/v1/chat/completions'),
+          headers: {
+            'Authorization': 'Bearer $apiKey',
+            'Content-Type': 'application/json',
+          },
+          body: jsonEncode({
+            "model": "llama-3.3-70b-versatile",
+            "messages": _apiHistory,
+            "tools": _tools,
+            "tool_choice": "auto"
+          }),
+        );
+
+        if (response.statusCode != 200) {
+          throw Exception('Groq API Error: ${response.statusCode}');
+        }
+
+        final responseData = jsonDecode(response.body);
+        final responseMessage = responseData['choices'][0]['message'];
+        
+        // Save the assistant's request back to history
+        Map<String, dynamic> assistantMessage = {"role": "assistant"};
+        if (responseMessage['content'] != null) {
+          assistantMessage["content"] = responseMessage['content'];
+        }
+        if (responseMessage['tool_calls'] != null) {
+          assistantMessage["tool_calls"] = responseMessage['tool_calls'];
+        }
+        _apiHistory.add(assistantMessage);
+
+        // If the AI decided to invoke a tool, execute the Canvas fetch
+        if (responseMessage['tool_calls'] != null) {
+          toolCallMade = true;
+          final toolCalls = responseMessage['tool_calls'] as List;
+
+          for (var toolCall in toolCalls) {
+            final functionName = toolCall['function']['name'];
+            final toolCallId = toolCall['id'];
             
             if (mounted) {
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
-                  content: Text('Accessing Canvas: ${call.name}...'), 
-                  duration: const Duration(seconds: 2),
+                  content: Text('Accessing Canvas: $functionName...'), 
+                  duration: const Duration(seconds: 1),
                   behavior: SnackBarBehavior.floating,
                 ),
               );
             }
 
-            if (call.name == 'get_pending_tasks') {
-              resultData = {'data': await _canvasService.buildTasksContext()};
-            } else if (call.name == 'get_course_grades') {
-              resultData = {'data': await _canvasService.buildGradesContext()};
-            } else if (call.name == 'get_recent_announcements') {
-              resultData = {'data': await _canvasService.buildAnnouncementsContext()};
+            String toolResult = "No data found.";
+            if (functionName == 'get_pending_tasks') {
+              toolResult = await _canvasService.buildTasksContext();
+            } else if (functionName == 'get_course_grades') {
+              toolResult = await _canvasService.buildGradesContext();
+            } else if (functionName == 'get_recent_announcements') {
+              toolResult = await _canvasService.buildAnnouncementsContext();
             }
-            
-            response = await _chat.sendMessage(Content.functionResponse(call.name, resultData));
-          }
-          
-          break;
-          
-        } catch (e) {
-          final errorStr = e.toString().toLowerCase();
-          final isRetryable = errorStr.contains('429') || 
-                              errorStr.contains('quota') || 
-                              errorStr.contains('exhausted') ||
-                              errorStr.contains('503') ||
-                              errorStr.contains('unavailable') ||
-                              errorStr.contains('high demand');
 
-          if (isRetryable && attempt < maxRetries - 1) {
-            // DEEP THROTTLE: Force a massive 12+ second wait to reset the 5 RPM limit
-            final int waitSeconds = 12 + (attempt * 3);
-            
-            if (mounted) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text('5 RPM limit hit. Pausing for $waitSeconds seconds to clear queue...'),
-                  duration: Duration(seconds: waitSeconds - 1),
-                  behavior: SnackBarBehavior.floating,
-                ),
-              );
-            }
-            
-            debugPrint('Rate limit hit. Deep backoff: Waiting $waitSeconds seconds...');
-            await Future.delayed(Duration(seconds: waitSeconds));
-            continue; // Try again after the cool down
+            // Return the offline cache data back to Groq
+            _apiHistory.add({
+              "role": "tool",
+              "tool_call_id": toolCallId,
+              "name": functionName,
+              "content": toolResult
+            });
           }
-          rethrow; 
+        } else {
+          finalResponseText = responseMessage['content'] ?? "No response.";
         }
       }
 
-      final responseText = response.text ?? 'I am having trouble processing that right now.';
-      
       if (mounted) {
         setState(() {
-          _messages.add(ChatMessage(text: responseText, isUser: false));
+          _messages.add(ChatMessage(text: finalResponseText, isUser: false));
         });
       }
     } catch (e) {
@@ -191,7 +188,7 @@ CRITICAL RULES:
       if (mounted) {
         setState(() {
           _messages.add(ChatMessage(
-            text: 'Rate limits fully exhausted. Please wait 60 seconds before trying again.',
+            text: 'Connection error. Please try again.',
             isUser: false
           ));
         });
