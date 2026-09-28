@@ -4,6 +4,7 @@ import 'course.dart';
 class Task {
   final String id;
   final String title;
+  final String courseId;
   final String courseName;
   final String courseCode;
   final DateTime dueDate;
@@ -14,6 +15,7 @@ class Task {
   Task({
     required this.id,
     required this.title,
+    required this.courseId,
     required this.courseName,
     required this.courseCode,
     required this.dueDate,
@@ -26,10 +28,11 @@ class Task {
     return Task(
       id: json['id'].toString(),
       title: json['name'] ?? 'Untitled Assignment',
+      courseId: course.id, 
       courseName: course.name,
       courseCode: course.courseCode,
-      dueDate: json['due_at'] != null 
-          ? DateTime.parse(json['due_at']).toLocal() 
+      dueDate: json['due_at'] != null
+          ? DateTime.parse(json['due_at']).toLocal()
           : DateTime.now().add(const Duration(days: 365)),
       points: (json['points_possible'] as num?)?.toInt() ?? 0,
       type: 'assignment',

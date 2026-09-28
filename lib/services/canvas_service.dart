@@ -349,4 +349,39 @@ class CanvasService {
     }
     return buffer.isEmpty ? 'No recent announcements.' : buffer.toString();
   }
+
+  Future<String> buildAssignmentDetailsContext(String targetTitle) async {
+    try {
+      final tasks = await fetchAllActiveTasks(); 
+      
+      // Find the closest match to what the AI requested
+      final task = tasks.firstWhere(
+        (t) => t.title.toLowerCase().contains(targetTitle.toLowerCase()),
+        orElse: () => throw Exception('Assignment not found locally'),
+      );
+
+      // Fetch the specific assignment payload from Canvas
+      final response = await http.get(
+        Uri.parse('$_baseUrl/api/v1/courses/${task.courseId}/assignments/${task.id}'),
+        headers: _headers,
+      );
+
+      if (response.statusCode != 200) return "Could not fetch details from Canvas.";
+
+      final data = jsonDecode(response.body);
+      final String rawHtml = data['description'] ?? 'No description or instructions provided by the professor.';
+
+      // Strip HTML tags and entities to save AI tokens
+      final cleanText = rawHtml
+          .replaceAll(RegExp(r'<[^>]*>'), ' ') 
+          .replaceAll(RegExp(r'&[^;]+;'), ' ') 
+          .replaceAll(RegExp(r'\s+'), ' ')     
+          .trim();
+
+      return "Instructions for ${task.title}: $cleanText";
+      
+    } catch (e) {
+      return "Tell the user: I could not find the specific details for '$targetTitle'.";
+    }
+  }
 }

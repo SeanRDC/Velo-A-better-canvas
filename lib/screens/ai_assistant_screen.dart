@@ -34,10 +34,11 @@ class _AiAssistantScreenState extends State<AiAssistantScreen> {
       "role": "system",
       "content": "You are Velo Co-pilot, a highly efficient, distraction-free Canvas LMS assistant.\n"
                  "CRITICAL RULES:\n"
-                 "1. You DO NOT know the user's deadlines, grades, or announcements by default.\n"
+                 "1. You DO NOT know the user's deadlines or grades by default.\n"
                  "2. If the user asks about their coursework, YOU MUST use the provided tools to fetch the data first.\n"
-                 "3. Be incredibly concise. Use bullet points and bold text for easy scanning.\n"
-                 "4. When asked to plan or organize, automatically break down large assignments into logical, step-by-step daily milestones."
+                 "3. If the user asks for instructions, details, or how to complete a specific assignment, use the get_assignment_details tool.\n"
+                 "4. Be incredibly concise. Use bullet points and bold text for easy scanning.\n"
+                 "5. When asked to plan or organize, automatically break down large assignments into logical daily milestones."
     }
   ];
 
@@ -65,6 +66,23 @@ class _AiAssistantScreenState extends State<AiAssistantScreen> {
         "name": "get_recent_announcements",
         "description": "Fetches recent announcements across all courses.",
         "parameters": { "type": "object", "properties": {} }
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "get_assignment_details",
+        "description": "Fetches the full description and instructions for a specific assignment.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "assignment_name": {
+              "type": "string",
+              "description": "The exact name of the assignment to look up."
+            }
+          },
+          "required": ["assignment_name"]
+        }
       }
     }
   ];
@@ -199,6 +217,11 @@ class _AiAssistantScreenState extends State<AiAssistantScreen> {
               toolResult = await _canvasService.buildGradesContext();
             } else if (functionName == 'get_recent_announcements') {
               toolResult = await _canvasService.buildAnnouncementsContext();
+            } else if (functionName == 'get_assignment_details') {
+              // Extract the assignment name the AI wants to look up
+              final args = jsonDecode(toolCall['function']['arguments'] as String);
+              final assignmentName = args['assignment_name'] ?? '';
+              toolResult = await _canvasService.buildAssignmentDetailsContext(assignmentName);
             }
 
             _apiHistory.add({
