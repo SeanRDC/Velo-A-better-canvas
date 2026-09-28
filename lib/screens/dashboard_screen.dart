@@ -397,10 +397,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
           padding: const EdgeInsets.only(bottom: 12.0),
           child: TaskCard(
             task: task,
-            onTap: () {
-              // Route to assignment details
-              // context.push('/task', extra: {'course': ..., 'assignment': ...});
-            },
+            onTap: () => _showTaskDetails(context, task), // Opens the Bottom Sheet
           ),
         ),
       );
@@ -434,6 +431,124 @@ class _DashboardScreenState extends State<DashboardScreen> {
             fontWeight: FontWeight.w600,
             color: isSelected ? theme.colorScheme.onPrimary : theme.colorScheme.secondary,
           ),
+        ),
+      ),
+    );
+  }
+
+  void _showTaskDetails(BuildContext context, Task task) {
+    final theme = Theme.of(context);
+    final dueString = DateFormat('EEEE, MMMM d, y • h:mm a').format(task.dueDate.toLocal());
+    final isOverdue = task.dueDate.isBefore(DateTime.now()) && !task.isSubmitted;
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => Container(
+        decoration: BoxDecoration(
+          color: theme.colorScheme.surface,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+        ),
+
+        padding: const EdgeInsets.all(24).copyWith(bottom: MediaQuery.of(context).padding.bottom + 24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min, // Wraps content tightly
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Drag Handle Pill
+            Center(
+              child: Container(
+                width: 40,
+                height: 4,
+                margin: const EdgeInsets.only(bottom: 24),
+                decoration: BoxDecoration(
+                  color: theme.colorScheme.onSurface.withValues(alpha: 0.2),
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+            ),
+            
+            // Course Code & Points
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  task.courseCode,
+                  style: theme.textTheme.labelMedium?.copyWith(
+                    color: theme.colorScheme.primary,
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: 1.1,
+                  ),
+                ),
+                Text(
+                  '${task.points} Points',
+                  style: theme.textTheme.labelMedium?.copyWith(
+                    fontWeight: FontWeight.bold,
+                    color: theme.colorScheme.onSurface,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            
+            // Assignment Title
+            Text(
+              task.title,
+              style: theme.textTheme.headlineSmall?.copyWith(
+                fontWeight: FontWeight.bold,
+                height: 1.2,
+              ),
+            ),
+            const SizedBox(height: 24),
+            
+            // Due Date
+            Row(
+              children: [
+                Icon(
+                  Icons.calendar_today, 
+                  size: 20, 
+                  color: isOverdue ? theme.colorScheme.error : theme.colorScheme.onSurface,
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    'Due $dueString',
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      color: isOverdue ? theme.colorScheme.error : theme.colorScheme.onSurface,
+                      fontWeight: isOverdue ? FontWeight.bold : FontWeight.normal,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 32),
+            
+            // Action Button
+            SizedBox(
+              width: double.infinity,
+              child: FilledButton.icon(
+                onPressed: () {
+                  Navigator.pop(context); // Close the sheet
+                  
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('Preparing to open ${task.title}...'),
+                      behavior: SnackBarBehavior.floating,
+                    ),
+                  );
+                },
+                icon: const Icon(Icons.open_in_new),
+                label: const Text('Open in Canvas'),
+                style: FilledButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+              ),
+            ),
+          ],
         ),
       ),
     );
