@@ -76,7 +76,7 @@ class _AiAssistantScreenState extends State<AiAssistantScreen> {
       model: 'gemini-3.5-flash', 
       apiKey: apiKey,
       tools: tools,
-      systemInstruction: Content.system(
+      systemInstruction: Content.system(  
         '''You are Velo, a distraction-free Canvas LMS Co-pilot. 
 CRITICAL RULES:
 1. You DO NOT know the user's deadlines, grades, or announcements by default.
@@ -102,26 +102,25 @@ CRITICAL RULES:
 
   void _sendMessage() async {
     final text = _controller.text.trim();
-    
     if (text.isEmpty || _isLoading) return;
 
     setState(() {
       _messages.add(ChatMessage(text: text, isUser: true));
       _isLoading = true;
     });
-    
+
     _controller.clear();
     _scrollToBottom();
 
     try {
       late GenerateContentResponse response;
-      const int maxRetries = 4;
-      final random = math.Random();
+      const int maxRetries = 6; 
       
       for (int attempt = 0; attempt < maxRetries; attempt++) {
         try {
           response = await _chat.sendMessage(Content.text(text));
           
+          // --- Handle Tool Calling ---
           while (response.functionCalls.isNotEmpty) {
             final call = response.functionCalls.first;
             Map<String, Object?> resultData = {};
@@ -130,7 +129,7 @@ CRITICAL RULES:
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
                   content: Text('Accessing Canvas: ${call.name}...'), 
-                  duration: const Duration(seconds: 1),
+                  duration: const Duration(seconds: 2),
                   behavior: SnackBarBehavior.floating,
                 ),
               );
@@ -146,47 +145,64 @@ CRITICAL RULES:
             
             response = await _chat.sendMessage(Content.functionResponse(call.name, resultData));
           }
-
           
           break;
+          
         } catch (e) {
           final errorStr = e.toString().toLowerCase();
-          final isRateLimit = errorStr.contains('429') || 
+          final isRetryable = errorStr.contains('429') || 
                               errorStr.contains('quota') || 
-                              errorStr.contains('exhausted');
-                              
-          if (isRateLimit && attempt < maxRetries - 1) {
-            final int baseDelay = 2000 * (1 << attempt);
+                              errorStr.contains('exhausted') ||
+                              errorStr.contains('503') ||
+                              errorStr.contains('unavailable') ||
+                              errorStr.contains('high demand');
+
+          if (isRetryable && attempt < maxRetries - 1) {
+            // DEEP THROTTLE: Force a massive 12+ second wait to reset the 5 RPM limit
+            final int waitSeconds = 12 + (attempt * 3);
             
-            final int jitteredDelay = random.nextInt(baseDelay + 1);
+            if (mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text('5 RPM limit hit. Pausing for $waitSeconds seconds to clear queue...'),
+                  duration: Duration(seconds: waitSeconds - 1),
+                  behavior: SnackBarBehavior.floating,
+                ),
+              );
+            }
             
-            final int totalDelayMs = 1000 + jitteredDelay; 
-            
-            debugPrint('Rate limit hit. Retrying in ${totalDelayMs}ms (Attempt ${attempt + 1})');
-            await Future.delayed(Duration(milliseconds: totalDelayMs));
-            continue;
+            debugPrint('Rate limit hit. Deep backoff: Waiting $waitSeconds seconds...');
+            await Future.delayed(Duration(seconds: waitSeconds));
+            continue; // Try again after the cool down
           }
-          rethrow;
+          rethrow; 
         }
       }
 
       final responseText = response.text ?? 'I am having trouble processing that right now.';
       
-      setState(() {
-        _messages.add(ChatMessage(text: responseText, isUser: false));
-      });
+      if (mounted) {
+        setState(() {
+          _messages.add(ChatMessage(text: responseText, isUser: false));
+        });
+      }
     } catch (e) {
-      setState(() {
-        _messages.add(ChatMessage(
-          text: 'Connection error or rate limit exhausted. Please try again later.', 
-          isUser: false
-        ));
-      });
+      debugPrint('AI ERROR: $e'); 
+      if (mounted) {
+        setState(() {
+          _messages.add(ChatMessage(
+            text: 'Rate limits fully exhausted. Please wait 60 seconds before trying again.',
+            isUser: false
+          ));
+        });
+      }
     } finally {
-      setState(() {
-        _isLoading = false;
-      });
-      _scrollToBottom();
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+        _scrollToBottom();
+      }
     }
   }
 
