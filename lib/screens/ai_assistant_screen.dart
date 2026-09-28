@@ -102,32 +102,44 @@ class _AiAssistantScreenState extends State<AiAssistantScreen> {
       bool toolCallMade = true;
       String finalResponseText = "I am having trouble processing that right now.";
 
-      // Loop to handle the AI requesting Canvas data
       while (toolCallMade) {
         toolCallMade = false;
+        http.Response? response;
+        
+        const int maxRetries = 3;
+        for (int attempt = 0; attempt < maxRetries; attempt++) {
+          response = await http.post(
+            Uri.parse('https://api.groq.com/openai/v1/chat/completions'),
+            headers: {
+              'Authorization': 'Bearer $apiKey',
+              'Content-Type': 'application/json',
+            },
+            body: jsonEncode({
+              "model": "openai/gpt-oss-120b",
+              "messages": _apiHistory,
+              "tools": _tools,
+              "tool_choice": "auto"
+            }),
+          );
 
-        final response = await http.post(
-          Uri.parse('https://api.groq.com/openai/v1/chat/completions'),
-          headers: {
-            'Authorization': 'Bearer $apiKey',
-            'Content-Type': 'application/json',
-          },
-          body: jsonEncode({
-            "model": "llama-3.3-70b-versatile",
-            "messages": _apiHistory,
-            "tools": _tools,
-            "tool_choice": "auto"
-          }),
-        );
+          if (response.statusCode == 429 || response.statusCode >= 500) {
+            if (attempt < maxRetries - 1) {
+              final waitSeconds = 2 * (attempt + 1);
+              debugPrint('Groq limit/server error (${response.statusCode}). Retrying in ${waitSeconds}s...');
+              await Future.delayed(Duration(seconds: waitSeconds));
+              continue;
+            }
+          }
+          break;
+        }
 
-        if (response.statusCode != 200) {
-          throw Exception('Groq API Error: ${response.statusCode}');
+        if (response == null || response.statusCode != 200) {
+          throw Exception('Groq API Error: ${response?.statusCode ?? 'Unknown'} - ${response?.body ?? ''}');
         }
 
         final responseData = jsonDecode(response.body);
         final responseMessage = responseData['choices'][0]['message'];
         
-        // Save the assistant's request back to history
         Map<String, dynamic> assistantMessage = {"role": "assistant"};
         if (responseMessage['content'] != null) {
           assistantMessage["content"] = responseMessage['content'];
@@ -137,7 +149,6 @@ class _AiAssistantScreenState extends State<AiAssistantScreen> {
         }
         _apiHistory.add(assistantMessage);
 
-        // If the AI decided to invoke a tool, execute the Canvas fetch
         if (responseMessage['tool_calls'] != null) {
           toolCallMade = true;
           final toolCalls = responseMessage['tool_calls'] as List;
@@ -165,7 +176,6 @@ class _AiAssistantScreenState extends State<AiAssistantScreen> {
               toolResult = await _canvasService.buildAnnouncementsContext();
             }
 
-            // Return the offline cache data back to Groq
             _apiHistory.add({
               "role": "tool",
               "tool_call_id": toolCallId,
