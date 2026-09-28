@@ -3,6 +3,7 @@ import '../components/app_shell.dart';
 import '../components/task_card.dart';
 import '../models/task.dart';
 import '../services/canvas_service.dart';
+import 'package:intl/intl.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -337,25 +338,81 @@ class _DashboardScreenState extends State<DashboardScreen> {
       );
     }
 
+    // Build a grouped list dynamically
+    final List<Widget> listItems = [];
+    String? currentGroup;
+
+    for (var task in _filteredTasks) {
+      String taskGroup = '';
+      
+      if (_sortBy == 'soonest') {
+         final now = DateTime.now();
+         final today = DateTime(now.year, now.month, now.day);
+         final tomorrow = today.add(const Duration(days: 1));
+         final taskDate = DateTime(task.dueDate.year, task.dueDate.month, task.dueDate.day);
+         
+         if (taskDate.isBefore(today)) {
+           taskGroup = 'Overdue';
+         } else if (taskDate == today) {
+           taskGroup = 'Today';
+         } else if (taskDate == tomorrow) {
+           taskGroup = 'Tomorrow';
+         } else {
+           taskGroup = DateFormat('EEEE, MMM d').format(taskDate);
+         }
+      } else if (_sortBy == 'course') {
+         taskGroup = task.courseCode;
+      } else if (_sortBy == 'points') {
+         taskGroup = '${task.points} Points';
+      }
+
+      // If the group category changes, insert a Date Divider
+      if (taskGroup != currentGroup) {
+        listItems.add(
+          Padding(
+            padding: const EdgeInsets.only(top: 24, bottom: 12),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  taskGroup.toUpperCase(),
+                  style: theme.textTheme.labelSmall?.copyWith(
+                    fontWeight: FontWeight.bold,
+                    color: taskGroup == 'Overdue' ? theme.colorScheme.error : theme.colorScheme.secondary,
+                    letterSpacing: 1.2,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Container(height: 1, color: theme.colorScheme.onSurface.withValues(alpha: 0.1)),
+              ],
+            ),
+          ),
+        );
+        currentGroup = taskGroup;
+      }
+
+      // Insert the upgraded Task Card
+      listItems.add(
+        Padding(
+          padding: const EdgeInsets.only(bottom: 12.0),
+          child: TaskCard(
+            task: task,
+            onTap: () {
+              // Route to assignment details
+              // context.push('/task', extra: {'course': ..., 'assignment': ...});
+            },
+          ),
+        ),
+      );
+    }
+
     return Align(
       alignment: Alignment.topCenter,
       child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 800), // Caps width on tablets/web
-        child: ListView.builder(
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
-          itemCount: _filteredTasks.length,
-          itemBuilder: (context, index) {
-            final task = _filteredTasks[index];
-            return Padding(
-              padding: const EdgeInsets.only(bottom: 12.0),
-              child: TaskCard(
-                task: task,
-                onTap: () {
-                  // TODO: Route to assignment details and submission overlay
-                },
-              ),
-            );
-          },
+        constraints: const BoxConstraints(maxWidth: 800), // Maintains layout on wide web screens
+        child: ListView(
+          padding: const EdgeInsets.only(left: 24, right: 24, bottom: 32),
+          children: listItems,
         ),
       ),
     );
