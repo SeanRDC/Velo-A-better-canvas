@@ -23,9 +23,13 @@ class TaskCard extends StatelessWidget {
     final statusColor = isOverdue ? theme.colorScheme.error : theme.colorScheme.secondary;
 
     return Container(
+      // This ensures the custom left-strip respects the rounded corners!
+      clipBehavior: Clip.antiAlias, 
       decoration: BoxDecoration(
         color: theme.colorScheme.surface,
         borderRadius: BorderRadius.circular(12),
+        // Replaced the broken non-uniform border with a standard, subtle uniform outline
+        border: Border.all(color: theme.colorScheme.onSurface.withValues(alpha: 0.05)),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.03),
@@ -33,94 +37,102 @@ class TaskCard extends StatelessWidget {
             offset: const Offset(0, 4),
           )
         ],
-        // The Classic Canvas Old Dashboard Left-Strip
-        border: Border(
-          left: BorderSide(
-            color: isOverdue ? theme.colorScheme.error : theme.colorScheme.primary,
-            width: 6,
-          ),
-          top: BorderSide(color: theme.colorScheme.onSurface.withValues(alpha: 0.05)),
-          right: BorderSide(color: theme.colorScheme.onSurface.withValues(alpha: 0.05)),
-          bottom: BorderSide(color: theme.colorScheme.onSurface.withValues(alpha: 0.05)),
-        ),
       ),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(12),
-        child: Padding(
-          padding: const EdgeInsets.all(20.0), // Increased from 16 for better responsiveness
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: theme.colorScheme.secondary.withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(6),
-                    ),
-                    child: Text(
-                      task.courseCode,
-                      style: theme.textTheme.labelSmall?.copyWith(
-                        fontWeight: FontWeight.bold,
-                        color: theme.colorScheme.secondary,
-                      ),
-                    ),
-                  ),
-                  if (isOverdue)
+      child: Material(
+        color: Colors.transparent,
+        child: Stack(
+          children: [
+            // The Classic Canvas Old Dashboard Left-Strip
+            Positioned(
+              left: 0,
+              top: 0,
+              bottom: 0,
+              child: Container(
+                width: 6,
+                color: isOverdue ? theme.colorScheme.error : theme.colorScheme.primary,
+              ),
+            ),
+            
+            // The Card Content
+            InkWell(
+              onTap: onTap,
+              child: Padding(
+                // Increased left padding to 26 to accommodate the 6px strip
+                padding: const EdgeInsets.only(left: 26.0, right: 20.0, top: 20.0, bottom: 20.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
                     Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Icon(Icons.warning_amber_rounded, size: 14, color: theme.colorScheme.error),
-                        const SizedBox(width: 4),
-                        Text(
-                          'Overdue',
-                          style: theme.textTheme.labelSmall?.copyWith(
-                            color: theme.colorScheme.error,
-                            fontWeight: FontWeight.bold,
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: theme.colorScheme.secondary.withValues(alpha: 0.1),
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: Text(
+                            task.courseCode,
+                            style: theme.textTheme.labelSmall?.copyWith(
+                              fontWeight: FontWeight.bold,
+                              color: theme.colorScheme.secondary,
+                            ),
                           ),
                         ),
+                        if (isOverdue)
+                          Row(
+                            children: [
+                              Icon(Icons.warning_amber_rounded, size: 14, color: theme.colorScheme.error),
+                              const SizedBox(width: 4),
+                              Text(
+                                'Overdue',
+                                style: theme.textTheme.labelSmall?.copyWith(
+                                  color: theme.colorScheme.error,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ],
+                          )
+                        else 
+                          Text(
+                            '${task.points} pts',
+                            style: theme.textTheme.labelSmall?.copyWith(
+                              fontWeight: FontWeight.bold,
+                              color: theme.colorScheme.onSurface,
+                            ),
+                          ),
                       ],
-                    )
-                  else 
+                    ),
+                    const SizedBox(height: 12),
                     Text(
-                      '${task.points} pts',
-                      style: theme.textTheme.labelSmall?.copyWith(
+                      task.title,
+                      style: theme.textTheme.titleMedium?.copyWith( 
                         fontWeight: FontWeight.bold,
                         color: theme.colorScheme.onSurface,
+                        height: 1.3,
                       ),
                     ),
-                ],
-              ),
-              const SizedBox(height: 12),
-              Text(
-                task.title,
-                // Upgraded to titleMedium to fix the "small" feeling
-                style: theme.textTheme.titleMedium?.copyWith( 
-                  fontWeight: FontWeight.bold,
-                  color: theme.colorScheme.onSurface,
-                  height: 1.3,
+                    const SizedBox(height: 16),
+                    Row(
+                      children: [
+                        Icon(Icons.calendar_today_outlined, size: 16, color: statusColor),
+                        const SizedBox(width: 8),
+                        Text(
+                          'Due $dueString',
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: statusColor,
+                            fontWeight: isOverdue ? FontWeight.bold : FontWeight.w500,
+                          ),
+                        ),
+                        const Spacer(),
+                        Icon(Icons.chevron_right, size: 20, color: theme.colorScheme.secondary.withValues(alpha: 0.4)),
+                      ],
+                    ),
+                  ],
                 ),
               ),
-              const SizedBox(height: 16),
-              Row(
-                children: [
-                  Icon(Icons.calendar_today_outlined, size: 16, color: statusColor),
-                  const SizedBox(width: 8),
-                  Text(
-                    'Due $dueString',
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: statusColor,
-                      fontWeight: isOverdue ? FontWeight.bold : FontWeight.w500,
-                    ),
-                  ),
-                  const Spacer(),
-                  Icon(Icons.chevron_right, size: 20, color: theme.colorScheme.secondary.withValues(alpha: 0.4)),
-                ],
-              ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );
