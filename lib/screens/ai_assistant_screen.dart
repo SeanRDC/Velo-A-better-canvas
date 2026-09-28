@@ -52,22 +52,37 @@ class _AiAssistantScreenState extends State<AiAssistantScreen> {
       debugPrint('CRITICAL DIAGNOSTIC: API Key is EMPTY. .env failed to load.');
     }
     
-    // Securely compile local cached data into a lightweight prompt
-    final userContext = await _canvasService.buildSecureAiContext();
-    
-    _model = GenerativeModel(
-      model: 'gemini-3.5-flash-lite', 
-      apiKey: apiKey,
-      systemInstruction: Content.system(
-        '''You are Velo, a highly efficient, distraction-free Canvas LMS Co-pilot. Your primary goal is to help the user manage heavy project workloads, track grades, and organize their schedule. 
-        
-CRITICAL RULES:
-1. STRUCTURE: Be incredibly concise. Use bullet points and bold text for easy scanning.
-2. TONE: Cut the fluff. Do not use generic pleasantries or robotic introductions; deliver data and advice instantly.
-3. AUTO-PLANNING: When asked to plan or organize, automatically break down large assignments into logical, step-by-step daily milestones.
-4. CONTEXT: Base all schedule and grade advice strictly on the course and assignment data provided below. Do NOT hallucinate deadlines.
+    final tools = [
+      Tool(functionDeclarations: [
+        FunctionDeclaration(
+          'get_pending_tasks',
+          'Fetches the user\'s pending Canvas assignments and deadlines.',
+          Schema(SchemaType.object, properties: {})
+        ),
+        FunctionDeclaration(
+          'get_course_grades',
+          'Fetches the user\'s current grades for all enrolled courses.',
+          Schema(SchemaType.object, properties: {})
+        ),
+        FunctionDeclaration(
+          'get_recent_announcements',
+          'Fetches recent announcements across all courses.',
+          Schema(SchemaType.object, properties: {})
+        ),
+      ])
+    ];
 
-$userContext'''
+    _model = GenerativeModel(
+      model: 'gemini-3.5-flash', 
+      apiKey: apiKey,
+      tools: tools,
+      systemInstruction: Content.system(
+        '''You are Velo, a distraction-free Canvas LMS Co-pilot. 
+CRITICAL RULES:
+1. You DO NOT know the user's deadlines, grades, or announcements by default.
+2. If the user asks about their coursework, YOU MUST use the provided tools to fetch the data first.
+3. Be incredibly concise. Use bullet points and bold text for easy scanning.
+4. When asked to plan or organize, break down large assignments into step-by-step daily milestones.'''
       ),
     );
     
@@ -106,6 +121,33 @@ $userContext'''
       for (int attempt = 0; attempt < maxRetries; attempt++) {
         try {
           response = await _chat.sendMessage(Content.text(text));
+          
+          while (response.functionCalls.isNotEmpty) {
+            final call = response.functionCalls.first;
+            Map<String, Object?> resultData = {};
+            
+            if (mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text('Accessing Canvas: ${call.name}...'), 
+                  duration: const Duration(seconds: 1),
+                  behavior: SnackBarBehavior.floating,
+                ),
+              );
+            }
+
+            if (call.name == 'get_pending_tasks') {
+              resultData = {'data': await _canvasService.buildTasksContext()};
+            } else if (call.name == 'get_course_grades') {
+              resultData = {'data': await _canvasService.buildGradesContext()};
+            } else if (call.name == 'get_recent_announcements') {
+              resultData = {'data': await _canvasService.buildAnnouncementsContext()};
+            }
+            
+            response = await _chat.sendMessage(Content.functionResponse(call.name, resultData));
+          }
+
+          
           break;
         } catch (e) {
           final errorStr = e.toString().toLowerCase();
