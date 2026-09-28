@@ -57,9 +57,10 @@ class _CourseModulesScreenState extends State<CourseModulesScreen> {
     try {
       final data = await _canvasService.fetchModulesForCourse(widget.course.id);
       
+      if (!mounted) return;
+
       final List<Module> parsedModules = [];
       final List<ModuleItem> flatList = [];
-
       for (int i = 0; i < data.length; i++) {
         final modJson = data[i];
         final List<dynamic>? itemsJson = modJson['items'];
@@ -78,26 +79,26 @@ class _CourseModulesScreenState extends State<CourseModulesScreen> {
             );
             items.add(modItem);
             
-            // SubHeaders are just labels; they aren't clickable pages
             if (type.toLowerCase() != 'subheader') {
               flatList.add(modItem);
             }
           }
         }
-
         parsedModules.add(Module(
           'Module ${i + 1}',
           modJson['name'] ?? 'Unnamed Module',
           items,
         ));
       }
-
+      
       setState(() {
         _modules = parsedModules;
         _allNavigableItems = flatList;
         _isLoading = false;
       });
     } catch (e) {
+      if (!mounted) return;
+      
       setState(() {
         _errorMessage = e.toString();
         _isLoading = false;
