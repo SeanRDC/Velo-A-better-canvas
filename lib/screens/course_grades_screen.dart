@@ -47,6 +47,9 @@ class _CourseGradesScreenState extends State<CourseGradesScreen> {
 
     try {
       final data = await _canvasService.fetchGradesForCourse(widget.course.id);
+      
+      if (!mounted) return;
+      
       final rawItems = data['items'] as List<Map<String, dynamic>>;
       
       setState(() {
@@ -56,6 +59,8 @@ class _CourseGradesScreenState extends State<CourseGradesScreen> {
         _isLoading = false;
       });
     } catch (e) {
+      if (!mounted) return;
+      
       setState(() {
         _errorMessage = e.toString();
         _isLoading = false;
