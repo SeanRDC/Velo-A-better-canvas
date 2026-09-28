@@ -45,16 +45,19 @@ class _DashboardScreenState extends State<DashboardScreen> {
     try {
       final tasks = await _canvasService.fetchAllActiveTasks();
       
+      if (!mounted) return; 
+
       final Set<String> uniqueCodes = {};
       for (var task in tasks) {
         uniqueCodes.add(task.courseCode);
       }
-
       _allTasks = tasks;
       _courseCodes = uniqueCodes.toList()..sort();
       _applyFilterAndSort();
       _isLoading = false;
     } catch (e) {
+      if (!mounted) return; 
+      
       setState(() {
         _errorMessage = e.toString();
         _isLoading = false;
@@ -63,28 +66,27 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   void _applyFilterAndSort() {
-    List<Task> list = _allTasks.where((t) => !t.isSubmitted).toList(); // Ensure active tasks only
-
+    List<Task> list = _allTasks.where((t) => !t.isSubmitted).toList(); 
     if (_activeFilter != 'All') {
       list = list.where((t) => t.courseCode == _activeFilter).toList();
     }
-
     list.sort((a, b) {
       if (_sortBy == 'soonest') {
         return a.dueDate.compareTo(b.dueDate);
       } else if (_sortBy == 'points') {
-
         final double ptsA = (a.points).toDouble();
         final double ptsB = (b.points).toDouble();
-        return ptsB.compareTo(ptsA); // Descending
+        return ptsB.compareTo(ptsA); 
       } else {
         return a.courseCode.compareTo(b.courseCode);
       }
     });
-
-    setState(() {
-      _filteredTasks = list;
-    });
+    
+    if (mounted) {
+      setState(() {
+        _filteredTasks = list;
+      });
+    }
   }
 
   void _setFilter(String filter) {
