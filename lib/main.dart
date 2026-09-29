@@ -25,6 +25,7 @@ import 'screens/account_screen.dart';
 import 'screens/inbox_screen.dart';
 import 'screens/conversation_detail_screen.dart';
 import 'screens/compose_message_screen.dart';
+import 'screens/planner_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -156,6 +157,13 @@ final _router = GoRouter(
       builder: (context, state) {
         final thread = state.extra as Map<String, dynamic>;
         return ConversationDetailScreen(thread: thread);
+      },
+    ),
+    GoRoute(
+      path: '/planner',
+      builder: (context, state) {
+        final taskId = state.extra as String?;
+        return PlannerScreen(initialTaskId: taskId);
       },
     ),
   ],
