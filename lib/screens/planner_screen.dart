@@ -59,7 +59,15 @@ class _PlannerScreenState extends State<PlannerScreen> {
       
       if (!mounted) return;
 
-      final pendingTasks = tasks.where((t) => !t.isSubmitted).toList();
+      final now = DateTime.now();
+      final today = DateTime(now.year, now.month, now.day);
+      
+      final pendingTasks = tasks.where((t) {
+        if (t.isSubmitted) return false;
+        final taskDate = DateTime(t.dueDate.year, t.dueDate.month, t.dueDate.day);
+        if (taskDate.isBefore(today)) return false;
+        return true;
+      }).toList();
       
       // Auto-select the requested task, or the next most urgent task
       Task? targetTask;
@@ -599,7 +607,7 @@ class _PlannerScreenState extends State<PlannerScreen> {
           Text('No plan yet', style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
           const SizedBox(height: 8),
           Text(
-            'Tap Auto-Plan on any task in your Dashboard to break its deadline into daily milestones.',
+            'Tap Auto-Plan on your Dashboard to break a deadline into daily milestones.\n\nNote: Auto-planner only schedules current and upcoming tasks. Overdue tasks are excluded.',
             textAlign: TextAlign.center,
             style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.secondary),
           ),
