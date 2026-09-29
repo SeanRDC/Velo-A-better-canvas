@@ -32,7 +32,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
   final Map<String, String> _sortLabels = {
     'soonest': 'Soonest first',
     'course': 'By course',
-    'points': 'By points',
   };
 
   @override
@@ -92,17 +91,29 @@ class _DashboardScreenState extends State<DashboardScreen> {
       list = list.where((t) => t.courseCode == _activeFilter).toList();
     }
 
-    list.sort((a, b) {
-      if (_sortBy == 'soonest') {
-        return a.dueDate.compareTo(b.dueDate);
-      } else if (_sortBy == 'points') {
-        final double ptsA = (a.points).toDouble();
-        final double ptsB = (b.points).toDouble();
-        return ptsB.compareTo(ptsA); 
-      } else {
-        return a.courseCode.compareTo(b.courseCode);
+    if (_sortBy == 'soonest') {
+      final now = DateTime.now();
+      final today = DateTime(now.year, now.month, now.day);
+      
+      List<Task> upcoming = [];
+      List<Task> overdue = [];
+
+      for (var t in list) {
+        final taskDate = DateTime(t.dueDate.year, t.dueDate.month, t.dueDate.day);
+        if (taskDate.isBefore(today)) {
+          overdue.add(t);
+        } else {
+          upcoming.add(t);
+        }
       }
-    });
+      
+      upcoming.sort((a, b) => a.dueDate.compareTo(b.dueDate));
+      overdue.sort((a, b) => a.dueDate.compareTo(b.dueDate));
+      
+      list = [...upcoming, ...overdue];
+    } else {
+      list.sort((a, b) => a.courseCode.compareTo(b.courseCode));
+    }
     
     if (mounted) {
       setState(() {
@@ -413,8 +424,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
          }
       } else if (_sortBy == 'course') {
          taskGroup = task.courseCode;
-      } else if (_sortBy == 'points') {
-         taskGroup = '${task.points} Points';
       }
 
       // If the group category changes, insert a Date Divider
