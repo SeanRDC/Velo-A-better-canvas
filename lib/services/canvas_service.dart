@@ -423,16 +423,24 @@ class CanvasService {
       for (var item in combined.take(15)) {
         final id = item['id'];
         final subject = item['subject'] ?? 'No Subject';
-        String sender = item['sender'] ?? 'Unknown';
-        if (sender == 'Unknown' && item['participants'] != null && (item['participants'] as List).isNotEmpty) {
-          sender = item['participants'][0]['name'] ?? 'Unknown';
+        
+        final List<dynamic> participants = item['participants'] ?? [];
+        String partyInfo = '';
+        
+        if (folder == 'sent') {
+          partyInfo = participants.isNotEmpty 
+              ? 'To: ${participants.map((p) => p['name']).join(', ')}' 
+              : 'To: Unknown';
+        } else {
+          String sender = item['sender'] ?? (participants.isNotEmpty ? participants[0]['name'] : 'Unknown');
+          partyInfo = 'From: $sender';
         }
 
         String snippet = item['last_message'] ?? '';
         snippet = snippet.replaceAll(RegExp(r'<[^>]*>'), ' ').replaceAll(RegExp(r'\s+'), ' ').trim();
         if (snippet.length > 100) snippet = '${snippet.substring(0, 100)}...';
 
-        buffer.writeln('- [ID: $id] From $sender: "$subject" - $snippet');
+        buffer.writeln('- [ID: $id] $partyInfo: "$subject" - $snippet');
       }
       buffer.writeln('\nTo read the full message thread of a specific item, use the get_thread_details tool using its ID.');
       return buffer.toString();
@@ -448,14 +456,25 @@ class CanvasService {
     try {
       final thread = await fetchConversationDetail(threadId);
       final messages = thread['messages'] as List<dynamic>? ?? [];
+      final participants = thread['participants'] as List<dynamic>? ?? [];
+      
+      final participantNames = participants.map((p) => p['name']).join(', ');
       
       final buffer = StringBuffer();
       buffer.writeln('Full Thread: ${thread['subject'] ?? 'No Subject'}');
+      buffer.writeln('Participants: $participantNames\n');
       
       for (var msg in messages) {
+        final authorId = msg['author_id'];
+        String authorName = 'Unknown';
+        try {
+          // Match the message author ID to the participant list
+          authorName = participants.firstWhere((p) => p['id'] == authorId)['name'] ?? 'Unknown';
+        } catch (_) {}
+        
         String body = msg['body'] ?? '';
         body = body.replaceAll(RegExp(r'<[^>]*>'), ' ').trim();
-        buffer.writeln('- At ${msg['created_at']}: $body');
+        buffer.writeln('- At ${msg['created_at']} by $authorName:\n  $body\n');
       }
       return buffer.toString();
     } catch (e) {
