@@ -109,7 +109,7 @@ class _AiAssistantScreenState extends State<AiAssistantScreen> {
     setState(() {
       _isLoading = false;
       _messages.add(ChatMessage(
-        text: "Hi! I'm Velo Co-pilot. I have securely loaded your grades, assignments, and deadlines. What do you need?",
+        text: "I'm Velo Co-pilot. I have securely loaded your grades, assignments, and deadlines. What do you need?",
         isUser: false,
       ));
     });
