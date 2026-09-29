@@ -24,6 +24,7 @@ class _AiAssistantScreenState extends State<AiAssistantScreen> {
   final CanvasService _canvasService = CanvasService();
   bool _isLoading = false;
   bool _isCooldown = false;
+  bool _isTyping = false;
   final bool _isInitializing = false; 
 
   final List<ChatMessage> _messages = [];
@@ -126,6 +127,14 @@ class _AiAssistantScreenState extends State<AiAssistantScreen> {
   @override
   void initState() {
     super.initState();
+    _controller.addListener(() {
+      final isTypingNow = _controller.text.isNotEmpty;
+      if (_isTyping != isTypingNow) {
+        setState(() {
+          _isTyping = isTypingNow;
+        });
+      }
+    });
     _runOpeningAnimation();
   }
 
@@ -372,6 +381,51 @@ class _AiAssistantScreenState extends State<AiAssistantScreen> {
                       )
                     ),
                   ),
+                  
+                if (!_isTyping && _messages.length == 2 && !_isLoading)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 16.0),
+                    child: SingleChildScrollView(
+                      scrollDirection: Axis.horizontal,
+                      padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                      physics: const BouncingScrollPhysics(),
+                      child: Row(
+                        children: [
+                          "What are my pending tasks?",
+                          "Show my current grades",
+                          "Any new announcements?",
+                          "Check my inbox",
+                        ].map((suggestion) {
+                          return Padding(
+                            padding: const EdgeInsets.only(right: 8.0),
+                            child: InkWell(
+                              onTap: () {
+                                _controller.text = suggestion;
+                                _sendMessage();
+                              },
+                              borderRadius: BorderRadius.circular(20),
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                                decoration: BoxDecoration(
+                                  color: theme.colorScheme.surface,
+                                  border: Border.all(color: theme.colorScheme.onSurface.withValues(alpha: 0.1)),
+                                  borderRadius: BorderRadius.circular(20),
+                                ),
+                                child: Text(
+                                  suggestion,
+                                  style: theme.textTheme.labelSmall?.copyWith(
+                                    fontWeight: FontWeight.w600,
+                                    color: theme.colorScheme.secondary,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          );
+                        }).toList(),
+                      ),
+                    ),
+                  ),
+
                 Container(
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
