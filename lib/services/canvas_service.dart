@@ -198,8 +198,8 @@ class CanvasService {
   }
 
   Future<List<Map<String, dynamic>>> fetchConversations({String scope = 'inbox'}) async {
-    // scope can be 'inbox', 'sent', 'archived', or 'unread'
-    final url = '$_baseUrl/api/v1/conversations?scope=$scope&per_page=50';
+    final String scopeParam = (scope.isEmpty || scope == 'inbox') ? '' : 'scope=$scope&';
+    final url = '$_baseUrl/api/v1/conversations?${scopeParam}per_page=50';
     final body = await _fetchWithCache(url, 'cache_inbox_conversations_$scope');
     
     final List<dynamic> data = jsonDecode(body);
@@ -385,31 +385,81 @@ class CanvasService {
     }
   }
 
-  Future<String> buildInboxContext() async {
+  Future<String> buildInboxContext({String folder = 'inbox'}) async {
     try {
-      final conversations = await fetchConversations(scope: 'inbox');
-      if (conversations.isEmpty) return 'Inbox is empty.';
+      final conversations = await fetchConversations(scope: folder);
+      final List<Map<String, dynamic>> combined = List.from(conversations);
+
+      // Only inject announcements if the AI is specifically looking at the main inbox
+      if (folder == 'inbox') {
+        final courses = await fetchActiveCourses();
+        for (var course in courses) {
+          try {
+            final anns = await fetchAnnouncementsForCourse(course.id);
+            for (var a in anns.take(3)) {
+              combined.add({
+                'id': 'ann_${a['id']}',
+                'sender': a['user_name'] ?? 'Instructor (${course.courseCode})',
+                'subject': '[${course.courseCode} Announcement] ${a['title'] ?? 'No Subject'}',
+                'last_message': a['message'] ?? '',
+                'last_message_at': a['posted_at'] ?? a['created_at'],
+              });
+            }
+          } catch (_) {}
+        }
+      }
+
+      if (combined.isEmpty) return 'The $folder folder is empty.';
+
+      combined.sort((a, b) {
+        final dA = DateTime.tryParse(a['last_message_at'] ?? '') ?? DateTime.fromMillisecondsSinceEpoch(0);
+        final dB = DateTime.tryParse(b['last_message_at'] ?? '') ?? DateTime.fromMillisecondsSinceEpoch(0);
+        return dB.compareTo(dA);
+      });
+
+      final buffer = StringBuffer();
+      buffer.writeln('Recent Messages in $folder:');
+      
+      for (var item in combined.take(15)) {
+        final id = item['id'];
+        final subject = item['subject'] ?? 'No Subject';
+        String sender = item['sender'] ?? 'Unknown';
+        if (sender == 'Unknown' && item['participants'] != null && (item['participants'] as List).isNotEmpty) {
+          sender = item['participants'][0]['name'] ?? 'Unknown';
+        }
+
+        String snippet = item['last_message'] ?? '';
+        snippet = snippet.replaceAll(RegExp(r'<[^>]*>'), ' ').replaceAll(RegExp(r'\s+'), ' ').trim();
+        if (snippet.length > 100) snippet = '${snippet.substring(0, 100)}...';
+
+        buffer.writeln('- [ID: $id] From $sender: "$subject" - $snippet');
+      }
+      buffer.writeln('\nTo read the full message thread of a specific item, use the get_thread_details tool using its ID.');
+      return buffer.toString();
+    } catch (e) {
+      return 'Could not fetch messages for $folder.';
+    }
+  }
+
+  Future<String> buildThreadContext(String threadId) async {
+    if (threadId.startsWith('ann_')) {
+      return 'This ID belongs to an announcement, not a direct message thread. You already have the snippet.';
+    }
+    try {
+      final thread = await fetchConversationDetail(threadId);
+      final messages = thread['messages'] as List<dynamic>? ?? [];
       
       final buffer = StringBuffer();
-      buffer.writeln('Recent Inbox Messages:');
+      buffer.writeln('Full Thread: ${thread['subject'] ?? 'No Subject'}');
       
-      for (var conv in conversations.take(10)) {
-        final subject = conv['subject'] ?? 'No Subject';
-        final state = conv['workflow_state'] ?? 'read';
-        
-        String sender = 'Unknown';
-        if (conv['participants'] != null && (conv['participants'] as List).isNotEmpty) {
-          sender = conv['participants'][0]['name'] ?? 'Unknown';
-        }
-        
-        String snippet = conv['last_message'] ?? '';
-        snippet = snippet.replaceAll(RegExp(r'<[^>]*>'), '').trim();
-        
-        buffer.writeln('- From $sender [State: $state]: "$subject" - $snippet');
+      for (var msg in messages) {
+        String body = msg['body'] ?? '';
+        body = body.replaceAll(RegExp(r'<[^>]*>'), ' ').trim();
+        buffer.writeln('- At ${msg['created_at']}: $body');
       }
       return buffer.toString();
     } catch (e) {
-      return 'Could not fetch inbox messages.';
+      return 'Could not fetch full thread details.';
     }
   }
 }
