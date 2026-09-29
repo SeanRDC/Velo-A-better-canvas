@@ -384,4 +384,32 @@ class CanvasService {
       return "Tell the user: I could not find the specific details for '$targetTitle'.";
     }
   }
+
+  Future<String> buildInboxContext() async {
+    try {
+      final conversations = await fetchConversations(scope: 'inbox');
+      if (conversations.isEmpty) return 'Inbox is empty.';
+      
+      final buffer = StringBuffer();
+      buffer.writeln('Recent Inbox Messages:');
+      
+      for (var conv in conversations.take(10)) {
+        final subject = conv['subject'] ?? 'No Subject';
+        final state = conv['workflow_state'] ?? 'read';
+        
+        String sender = 'Unknown';
+        if (conv['participants'] != null && (conv['participants'] as List).isNotEmpty) {
+          sender = conv['participants'][0]['name'] ?? 'Unknown';
+        }
+        
+        String snippet = conv['last_message'] ?? '';
+        snippet = snippet.replaceAll(RegExp(r'<[^>]*>'), '').trim();
+        
+        buffer.writeln('- From $sender [State: $state]: "$subject" - $snippet');
+      }
+      return buffer.toString();
+    } catch (e) {
+      return 'Could not fetch inbox messages.';
+    }
+  }
 }
