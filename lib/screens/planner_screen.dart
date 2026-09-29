@@ -465,79 +465,93 @@ class _PlannerScreenState extends State<PlannerScreen> {
 
     final doneCount = _milestones.where((m) => m.isDone).length;
 
-    return Padding(
-      padding: const EdgeInsets.all(24),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Primary Highlight Box
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(color: theme.colorScheme.primary, borderRadius: BorderRadius.circular(12)),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(24, 24, 24, 16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Primary Highlight Box
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(color: theme.colorScheme.primary, borderRadius: BorderRadius.circular(12)),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Icon(Icons.auto_awesome, size: 16, color: theme.colorScheme.onPrimary.withValues(alpha: 0.9)),
-                    const SizedBox(width: 6),
+                    Row(
+                      children: [
+                        Icon(Icons.auto_awesome, size: 16, color: theme.colorScheme.onPrimary.withValues(alpha: 0.9)),
+                        const SizedBox(width: 6),
+                        Text(
+                          'AI-PLANNED SCHEDULE',
+                          style: theme.textTheme.labelSmall?.copyWith(
+                            fontWeight: FontWeight.bold,
+                            color: theme.colorScheme.onPrimary.withValues(alpha: 0.9),
+                            letterSpacing: 1.0,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    Text(_selectedTask!.title, style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold, color: theme.colorScheme.onPrimary)),
+                    const SizedBox(height: 4),
                     Text(
-                      'AI-PLANNED SCHEDULE',
-                      style: theme.textTheme.labelSmall?.copyWith(
-                        fontWeight: FontWeight.bold,
-                        color: theme.colorScheme.onPrimary.withValues(alpha: 0.9),
-                        letterSpacing: 1.0,
-                      ),
+                      '${_selectedTask!.courseCode}   Due ${_formatDue(_selectedTask!.dueDate.difference(DateTime.now()).inDays)}   ${_milestones.length} milestones',
+                      style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onPrimary.withValues(alpha: 0.8)),
                     ),
                   ],
                 ),
-                const SizedBox(height: 8),
-                Text(_selectedTask!.title, style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold, color: theme.colorScheme.onPrimary)),
-                const SizedBox(height: 4),
-                Text(
-                  '${_selectedTask!.courseCode}   Due ${_formatDue(_selectedTask!.dueDate.difference(DateTime.now()).inDays)}   ${_milestones.length} milestones',
-                  style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onPrimary.withValues(alpha: 0.8)),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 24),
-          
-          // Header Row
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text('Daily milestones', style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
-              Text('$doneCount/${_milestones.length} done', style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.secondary)),
+              ),
+              const SizedBox(height: 24),
+              
+              // Header Row
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text('Daily milestones', style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
+                  Text('$doneCount/${_milestones.length} done', style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.secondary)),
+                ],
+              ),
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  Icon(Icons.info_outline, size: 12, color: theme.colorScheme.secondary),
+                  const SizedBox(width: 6),
+                  Text('Hold and drag the right handle to reschedule a step', style: theme.textTheme.labelSmall?.copyWith(color: theme.colorScheme.secondary)),
+                ],
+              ),
             ],
           ),
-          const SizedBox(height: 8),
-          Row(
-            children: [
-              Icon(Icons.info_outline, size: 12, color: theme.colorScheme.secondary),
-              const SizedBox(width: 6),
-              Text('Hold and drag the right handle to reschedule a step', style: theme.textTheme.labelSmall?.copyWith(color: theme.colorScheme.secondary)),
-            ],
-          ),
-          const SizedBox(height: 16),
+        ),
 
-          // Draggable Reorderable List
-          ReorderableListView.builder(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            itemCount: _milestones.length,
-            onReorderItem: (oldIndex, newIndex) {
-              setState(() {
-                if (newIndex > oldIndex) newIndex -= 1;
-                final item = _milestones.removeAt(oldIndex);
-                _milestones.insert(newIndex, item);
-              });
-            },
-            itemBuilder: (context, index) {
-              final m = _milestones[index];
-              return Container(
-                key: ValueKey(m.id),
-                margin: const EdgeInsets.only(bottom: 8),
+        ReorderableListView.builder(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          padding: const EdgeInsets.symmetric(horizontal: 24), // Fixes the offset bug
+          proxyDecorator: (Widget child, int index, Animation<double> animation) {
+            return Material(
+              color: Colors.transparent,
+              elevation: 0,
+              child: child,
+            );
+          },
+          itemCount: _milestones.length,
+          onReorderItem: (oldIndex, newIndex) {
+            setState(() {
+              if (newIndex > oldIndex) newIndex -= 1;
+              final item = _milestones.removeAt(oldIndex);
+              _milestones.insert(newIndex, item);
+            });
+          },
+          itemBuilder: (context, index) {
+            final m = _milestones[index];
+            
+            return Padding(
+              key: ValueKey(m.id),
+              padding: const EdgeInsets.only(bottom: 8),
+              child: Container(
                 decoration: BoxDecoration(
                   color: theme.colorScheme.surface,
                   borderRadius: BorderRadius.circular(12),
@@ -582,11 +596,12 @@ class _PlannerScreenState extends State<PlannerScreen> {
                     ],
                   ),
                 ),
-              );
-            },
-          ),
-        ],
-      ),
+              ),
+            );
+          },
+        ),
+        const SizedBox(height: 24),
+      ],
     );
   }
 }
