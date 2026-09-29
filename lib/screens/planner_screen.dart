@@ -3,6 +3,10 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:fl_chart/fl_chart.dart';
+import 'dart:convert';
+import 'package:http/http.dart' as http;
+import 'package:flutter_dotenv/flutter_dotenv.dart';
+
 import '../components/app_shell.dart';
 import '../models/task.dart';
 import '../models/course.dart';
@@ -40,6 +44,7 @@ class _PlannerScreenState extends State<PlannerScreen> {
   List<Milestone> _milestones = [];
   
   bool _isLoading = true;
+  bool _isGeneratingPlan = false; // Tracks the AI generation state
 
   @override
   void initState() {
@@ -68,16 +73,94 @@ class _PlannerScreenState extends State<PlannerScreen> {
         _courses = courses;
         _activeTasks = pendingTasks;
         _selectedTask = targetTask;
-        if (targetTask != null) _buildMockMilestones(targetTask);
         _isLoading = false;
       });
+
+      // Fire off the AI generator if we have a task
+      if (targetTask != null) {
+        _generatePlan(targetTask);
+      }
+
     } catch (e) {
       if (!mounted) return;
       setState(() => _isLoading = false);
     }
   }
 
-  // Temporary local milestone generator until full AI generation is wired
+  Future<void> _generatePlan(Task task) async {
+    setState(() {
+      _isGeneratingPlan = true;
+      _milestones = [];
+    });
+
+    try {
+      final apiKey = dotenv.env['GROQ_API_KEY'] ?? '';
+      if (apiKey.isEmpty) throw Exception("GROQ_API_KEY missing");
+
+      // Calculate days remaining so the AI knows its boundary
+      final diffDays = task.dueDate.difference(DateTime.now()).inDays.clamp(0, 365);
+      
+      final response = await http.post(
+        Uri.parse('https://api.groq.com/openai/v1/chat/completions'),
+        headers: {
+          'Authorization': 'Bearer $apiKey',
+          'Content-Type': 'application/json',
+        },
+        body: jsonEncode({
+          "model": "openai/gpt-oss-120b",
+          "messages": [
+            {
+              "role": "system",
+              "content": "You are a highly efficient study planner. Break the user's assignment down into 3 to 5 logical daily milestones. Return ONLY a valid JSON array of objects. Each object must have 'title' (string) and 'dateOffset' (integer, the number of days from today to do this step, must be between 0 and $diffDays). Do not include markdown formatting, code block ticks, or any extra text outside the JSON."
+            },
+            {
+              "role": "user",
+              "content": "Task: ${task.title}. Total time until due: $diffDays days."
+            }
+          ],
+          "temperature": 0.2 // Low temperature ensures consistent JSON formatting
+        }),
+      );
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        String content = data['choices'][0]['message']['content'] ?? '[]';
+        
+        // Failsafe: Strip markdown ticks just in case the AI includes them anyway
+        content = content.replaceAll(RegExp(r'```(?:json)?\s*'), '').replaceAll(RegExp(r'```\s*'), '').trim();
+        
+        final List<dynamic> parsed = jsonDecode(content);
+        
+        final List<Milestone> newMilestones = [];
+        for (int i = 0; i < parsed.length; i++) {
+          newMilestones.add(Milestone(
+            id: '${task.id}-m$i',
+            title: parsed[i]['title'] ?? 'Milestone ${i + 1}',
+            dateOffset: (parsed[i]['dateOffset'] as num).toInt(),
+          ));
+        }
+
+        if (mounted) {
+          setState(() {
+            _milestones = newMilestones;
+            _isGeneratingPlan = false;
+          });
+        }
+      } else {
+        throw Exception('Groq API Error: ${response.statusCode}');
+      }
+    } catch (e) {
+      debugPrint('Planner AI Error: $e');
+      if (mounted) {
+        setState(() {
+          // Fallback to generic local milestones if the API fails or rate-limits
+          _buildMockMilestones(task); 
+          _isGeneratingPlan = false;
+        });
+      }
+    }
+  }
+
   void _buildMockMilestones(Task task) {
     final diffDays = task.dueDate.difference(DateTime.now()).inDays.clamp(1, 14);
     _milestones = [
@@ -130,7 +213,7 @@ class _PlannerScreenState extends State<PlannerScreen> {
 
                 Expanded(
                   child: _selectedTask == null
-                      // Empty state uses a standard ListView
+                      // Empty state
                       ? ListView(
                           padding: const EdgeInsets.only(bottom: 40),
                           children: [
@@ -139,14 +222,13 @@ class _PlannerScreenState extends State<PlannerScreen> {
                             _buildEmptyState(theme),
                           ],
                         )
-                      // Populated state uses ReorderableListView as the master scroll view
+                      // Populated state with ReorderableListView
                       : ReorderableListView.builder(
                           padding: const EdgeInsets.only(bottom: 40),
-                          buildDefaultDragHandles: false, // Only allows dragging via the explicit icon handle
+                          buildDefaultDragHandles: false,
                           proxyDecorator: (Widget child, int index, Animation<double> animation) {
                             return Material(color: Colors.transparent, elevation: 0, child: child);
                           },
-                          // The chart and calendar are natively injected above the drag items
                           header: Column(
                             mainAxisSize: MainAxisSize.min,
                             crossAxisAlignment: CrossAxisAlignment.start,
@@ -250,7 +332,6 @@ class _PlannerScreenState extends State<PlannerScreen> {
   }
 
   Widget _buildWorkloadChart(ThemeData theme) {
-    // Generate next 7 days of workload points
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
     
@@ -259,7 +340,7 @@ class _PlannerScreenState extends State<PlannerScreen> {
 
     for (int i = 0; i < 7; i++) {
       final targetDate = today.add(Duration(days: i));
-      dayLabels.add(DateFormat('E').format(targetDate)[0]); // S, M, T...
+      dayLabels.add(DateFormat('E').format(targetDate)[0]); 
       
       int dailyPoints = 0;
       for (var t in _activeTasks) {
@@ -349,7 +430,6 @@ class _PlannerScreenState extends State<PlannerScreen> {
   }
 
   Widget _buildWeekAtAGlance(ThemeData theme) {
-    // Calculate workload per course for the next 7 days
     final now = DateTime.now();
     final limit = now.add(const Duration(days: 7));
     
@@ -442,7 +522,7 @@ class _PlannerScreenState extends State<PlannerScreen> {
   Widget _buildMonthGrid(ThemeData theme) {
     final now = DateTime.now();
     final daysInMonth = DateUtils.getDaysInMonth(now.year, now.month);
-    final firstDayOffset = DateTime(now.year, now.month, 1).weekday % 7; // 0=Sun, 1=Mon
+    final firstDayOffset = DateTime(now.year, now.month, 1).weekday % 7; 
 
     final Set<int> milestoneDays = _milestones.map((m) => now.add(Duration(days: m.dateOffset)).day).toSet();
     final int? dueDay = _selectedTask?.dueDate.month == now.month ? _selectedTask!.dueDate.day : null;
@@ -576,22 +656,38 @@ class _PlannerScreenState extends State<PlannerScreen> {
               ],
             ),
           ),
-          const SizedBox(height: 24),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text('Daily milestones', style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
-              Text('$doneCount/${_milestones.length} done', style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.secondary)),
-            ],
-          ),
-          const SizedBox(height: 8),
-          Row(
-            children: [
-              Icon(Icons.info_outline, size: 12, color: theme.colorScheme.secondary),
-              const SizedBox(width: 6),
-              Text('Hold and drag the right handle to reschedule a step', style: theme.textTheme.labelSmall?.copyWith(color: theme.colorScheme.secondary)),
-            ],
-          ),
+          
+          if (_isGeneratingPlan)
+            Padding(
+              padding: const EdgeInsets.only(top: 32),
+              child: Center(
+                child: Column(
+                  children: [
+                    CircularProgressIndicator(color: theme.colorScheme.primary),
+                    const SizedBox(height: 16),
+                    Text('Analyzing task and generating schedule...', style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.secondary)),
+                  ],
+                ),
+              ),
+            )
+          else ...[
+            const SizedBox(height: 24),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text('Daily milestones', style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
+                Text('$doneCount/${_milestones.length} done', style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.secondary)),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                Icon(Icons.info_outline, size: 12, color: theme.colorScheme.secondary),
+                const SizedBox(width: 6),
+                Text('Hold and drag the right handle to reschedule a step', style: theme.textTheme.labelSmall?.copyWith(color: theme.colorScheme.secondary)),
+              ],
+            ),
+          ],
         ],
       ),
     );
