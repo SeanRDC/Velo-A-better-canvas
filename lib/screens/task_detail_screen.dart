@@ -48,6 +48,13 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
     }
   }
 
+  @override
+  void dispose() {
+    _textController.dispose();
+    _urlController.dispose();
+    super.dispose();
+  }
+
   String _formatDate(String? dateStr) {
     if (dateStr == null) return 'No due date';
     final date = DateTime.parse(dateStr).toLocal();
