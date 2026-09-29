@@ -192,7 +192,6 @@ class _PlannerScreenState extends State<PlannerScreen> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-
     return AppShell(
       title: 'Planner',
       activeTab: 'planner',
@@ -200,25 +199,29 @@ class _PlannerScreenState extends State<PlannerScreen> {
           ? Center(child: CircularProgressIndicator(color: theme.colorScheme.primary))
           : Column(
               children: [
-                // View Toggle
+                // View Toggle (Constrained width like the React prototype)
                 Padding(
                   padding: const EdgeInsets.fromLTRB(24, 16, 24, 0),
-                  child: Container(
-                    padding: const EdgeInsets.all(4),
-                    decoration: BoxDecoration(
-                      color: theme.colorScheme.surface,
-                      border: Border.all(color: theme.colorScheme.onSurface.withValues(alpha: 0.1)),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Row(
-                      children: [
-                        _buildToggleTab('week', 'Week', theme),
-                        _buildToggleTab('month', 'Month', theme),
-                      ],
+                  child: Center(
+                    child: ConstrainedBox(
+                      constraints: const BoxConstraints(maxWidth: 320),
+                      child: Container(
+                        padding: const EdgeInsets.all(4),
+                        decoration: BoxDecoration(
+                          color: theme.colorScheme.surface,
+                          border: Border.all(color: theme.colorScheme.onSurface.withValues(alpha: 0.1)),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Row(
+                          children: [
+                            _buildToggleTab('week', 'Week', theme),
+                            _buildToggleTab('month', 'Month', theme),
+                          ],
+                        ),
+                      ),
                     ),
                   ),
                 ),
-
                 Expanded(
                   child: _selectedTask == null
                       // Empty state
@@ -272,7 +275,7 @@ class _PlannerScreenState extends State<PlannerScreen> {
                                       InkWell(
                                         onTap: () => _toggleMilestone(index),
                                         child: Icon(
-                                          m.isDone ? Icons.check_circle : Icons.radio_button_unchecked,
+                                          m.isDone ? Icons.check_circle : Icons.circle_outlined,
                                           color: m.isDone ? theme.colorScheme.primary : theme.colorScheme.onSurface.withValues(alpha: 0.2),
                                           size: 24,
                                         ),
@@ -291,7 +294,7 @@ class _PlannerScreenState extends State<PlannerScreen> {
                                             ),
                                             const SizedBox(height: 4),
                                             Text(
-                                              'Day ${index + 1} • ${_formatDue(m.dateOffset)}',
+                                              'Day ${index + 1}   ${_formatDue(m.dateOffset)}',
                                               style: theme.textTheme.labelSmall?.copyWith(color: theme.colorScheme.secondary),
                                             ),
                                           ],
@@ -299,7 +302,7 @@ class _PlannerScreenState extends State<PlannerScreen> {
                                       ),
                                       ReorderableDragStartListener(
                                         index: index,
-                                        child: Icon(Icons.drag_indicator, color: theme.colorScheme.secondary.withValues(alpha: 0.5)),
+                                        child: Icon(Icons.drag_indicator, color: theme.colorScheme.secondary.withValues(alpha: 0.4)),
                                       ),
                                     ],
                                   ),
@@ -345,7 +348,6 @@ class _PlannerScreenState extends State<PlannerScreen> {
     
     final List<FlSpot> spots = [];
     final List<String> dayLabels = [];
-
     for (int i = 0; i < 7; i++) {
       final targetDate = today.add(Duration(days: i));
       dayLabels.add(DateFormat('E').format(targetDate)[0]); 
@@ -382,7 +384,7 @@ class _PlannerScreenState extends State<PlannerScreen> {
             ),
             const SizedBox(height: 24),
             SizedBox(
-              height: 120,
+              height: 128,
               width: double.infinity,
               child: LineChart(
                 LineChartData(
@@ -398,7 +400,7 @@ class _PlannerScreenState extends State<PlannerScreen> {
                           if (value.toInt() >= 0 && value.toInt() < dayLabels.length) {
                             return Padding(
                               padding: const EdgeInsets.only(top: 8.0),
-                              child: Text(dayLabels[value.toInt()], style: TextStyle(color: theme.colorScheme.secondary, fontSize: 12)),
+                              child: Text(dayLabels[value.toInt()], style: TextStyle(color: theme.colorScheme.secondary, fontSize: 11)),
                             );
                           }
                           return const Text('');
@@ -411,7 +413,7 @@ class _PlannerScreenState extends State<PlannerScreen> {
                     LineChartBarData(
                       spots: spots,
                       isCurved: true,
-                      color: theme.colorScheme.secondary,
+                      color: theme.colorScheme.secondary.withValues(alpha: 0.6), // Soft gray line
                       barWidth: 2,
                       isStrokeCapRound: true,
                       dotData: const FlDotData(show: false),
@@ -419,7 +421,7 @@ class _PlannerScreenState extends State<PlannerScreen> {
                         show: true,
                         gradient: LinearGradient(
                           colors: [
-                            theme.colorScheme.secondary.withValues(alpha: 0.3),
+                            theme.colorScheme.secondary.withValues(alpha: 0.4),
                             theme.colorScheme.secondary.withValues(alpha: 0.0),
                           ],
                           begin: Alignment.topCenter,
@@ -435,6 +437,16 @@ class _PlannerScreenState extends State<PlannerScreen> {
         ),
       ),
     );
+  }
+
+  String _getCourseEmoji(String courseCode) {
+    final l = courseCode.toLowerCase();
+    if (l.contains('net')) return '🌐';
+    if (l.contains('mech')) return '⚙️';
+    if (l.contains('cs')) return '💻';
+    if (l.contains('ee')) return '📡';
+    if (l.contains('adet')) return '📱';
+    return '📘';
   }
 
   Widget _buildWeekAtAGlance(ThemeData theme) {
@@ -483,12 +495,8 @@ class _PlannerScreenState extends State<PlannerScreen> {
               ),
               child: Row(
                 children: [
-                  Container(
-                    height: 36, width: 36,
-                    decoration: BoxDecoration(color: theme.scaffoldBackgroundColor, shape: BoxShape.circle),
-                    child: Icon(Icons.book, size: 16, color: theme.colorScheme.secondary),
-                  ),
-                  const SizedBox(width: 12),
+                  Text(_getCourseEmoji(c.courseCode), style: const TextStyle(fontSize: 22)),
+                  const SizedBox(width: 14),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -531,9 +539,10 @@ class _PlannerScreenState extends State<PlannerScreen> {
     final now = DateTime.now();
     final daysInMonth = DateUtils.getDaysInMonth(now.year, now.month);
     final firstDayOffset = DateTime(now.year, now.month, 1).weekday % 7; 
-
+    
     final Set<int> milestoneDays = _milestones.map((m) => now.add(Duration(days: m.dateOffset)).day).toSet();
     final int? dueDay = _selectedTask?.dueDate.month == now.month ? _selectedTask!.dueDate.day : null;
+    final List<String> weekDays = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(24, 24, 24, 0),
@@ -548,6 +557,16 @@ class _PlannerScreenState extends State<PlannerScreen> {
           children: [
             Text(DateFormat('MMMM yyyy').format(now), style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
             const SizedBox(height: 16),
+            // Weekday Headers
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceAround,
+              children: weekDays.map((d) => Expanded(
+                child: Center(
+                  child: Text(d, style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.secondary, fontSize: 12))
+                )
+              )).toList(),
+            ),
+            const SizedBox(height: 8),
             GridView.builder(
               shrinkWrap: true,
               physics: const NeverScrollableScrollPhysics(),
@@ -577,16 +596,21 @@ class _PlannerScreenState extends State<PlannerScreen> {
                           fontSize: 14,
                           fontWeight: isDue || isToday ? FontWeight.bold : FontWeight.normal,
                           color: isDue 
-                              ? theme.colorScheme.onPrimary 
-                              : isToday 
-                                  ? theme.colorScheme.primary 
-                                  : theme.colorScheme.onSurface,
+                               ? theme.colorScheme.onPrimary 
+                               : isToday 
+                                   ? theme.colorScheme.primary 
+                                   : theme.colorScheme.onSurface,
                         ),
                       ),
                     ),
-                    const SizedBox(height: 4),
-                    if (hasMilestone && !isDue)
-                      Container(height: 4, width: 4, decoration: BoxDecoration(color: theme.colorScheme.secondary, shape: BoxShape.circle)),
+                    const SizedBox(height: 2),
+                    Container(
+                      height: 4, width: 4, 
+                      decoration: BoxDecoration(
+                        color: (hasMilestone && !isDue) ? theme.colorScheme.secondary : Colors.transparent, 
+                        shape: BoxShape.circle
+                      )
+                    ),
                   ],
                 );
               },
