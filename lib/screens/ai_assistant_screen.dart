@@ -22,10 +22,10 @@ class _AiAssistantScreenState extends State<AiAssistantScreen> {
   final TextEditingController _controller = TextEditingController();
   final ScrollController _scrollController = ScrollController();
   final CanvasService _canvasService = CanvasService();
-  
   bool _isLoading = false;
+  bool _isCooldown = false;
   final bool _isInitializing = false; 
-  
+
   final List<ChatMessage> _messages = [];
 
   // Groq Context Memory
@@ -162,8 +162,7 @@ class _AiAssistantScreenState extends State<AiAssistantScreen> {
 
   void _sendMessage() async {
     final text = _controller.text.trim();
-    if (text.isEmpty || _isLoading) return;
-
+    if (text.isEmpty || _isLoading || _isCooldown) return;
     setState(() {
       _messages.add(ChatMessage(text: text, isUser: true));
       _isLoading = true;
@@ -301,8 +300,13 @@ class _AiAssistantScreenState extends State<AiAssistantScreen> {
       if (mounted) {
         setState(() {
           _isLoading = false;
+          _isCooldown = true;
         });
         _scrollToBottom();
+        
+        Future.delayed(const Duration(seconds: 3), () {
+          if (mounted) setState(() => _isCooldown = false);
+        });
       }
     }
   }
@@ -379,45 +383,46 @@ class _AiAssistantScreenState extends State<AiAssistantScreen> {
                   child: SafeArea(
                     child: Row(
                       children: [
-                        Expanded(
-                          child: TextField(
-                            controller: _controller,
-                            onSubmitted: (_) => _sendMessage(),
-                            decoration: InputDecoration(
-                              hintText: 'Ask your Co-pilot...',
-                              hintStyle: TextStyle(color: theme.colorScheme.secondary),
-                              border: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(24),
-                                borderSide: BorderSide(color: theme.colorScheme.onSurface.withValues(alpha: 0.2)),
+                          Expanded(
+                            child: TextField(
+                              controller: _controller,
+                              onSubmitted: (_) => _sendMessage(),
+                              readOnly: _isCooldown, // Briefly lock the keyboard during cooldown
+                              decoration: InputDecoration(
+                                hintText: _isCooldown ? 'Cooling down...' : 'Ask your Co-pilot...',
+                                hintStyle: TextStyle(color: theme.colorScheme.secondary),
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(24),
+                                  borderSide: BorderSide(color: theme.colorScheme.onSurface.withValues(alpha: 0.2)),
+                                ),
+                                enabledBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(24),
+                                  borderSide: BorderSide(color: theme.colorScheme.onSurface.withValues(alpha: 0.2)),
+                                ),
+                                focusedBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(24),
+                                  borderSide: BorderSide(color: theme.colorScheme.primary),
+                                ),
+                                contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
                               ),
-                              enabledBorder: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(24),
-                                borderSide: BorderSide(color: theme.colorScheme.onSurface.withValues(alpha: 0.2)),
-                              ),
-                              focusedBorder: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(24),
-                                borderSide: BorderSide(color: theme.colorScheme.primary),
-                              ),
-                              contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
                             ),
                           ),
-                        ),
-                        const SizedBox(width: 8),
-                        CircleAvatar(
-                          backgroundColor: _isLoading 
-                              ? theme.colorScheme.surface 
-                              : theme.colorScheme.primary,
-                          child: IconButton(
-                            icon: Icon(
-                              Icons.arrow_upward, 
-                              color: _isLoading ? theme.colorScheme.secondary : theme.colorScheme.onPrimary, 
-                              size: 20
+                          const SizedBox(width: 8),
+                          CircleAvatar(
+                            backgroundColor: (_isLoading || _isCooldown)
+                                 ? theme.colorScheme.surface
+                                 : theme.colorScheme.primary,
+                            child: IconButton(
+                              icon: Icon(
+                                _isCooldown ? Icons.hourglass_bottom : Icons.arrow_upward,
+                                 color: (_isLoading || _isCooldown) ? theme.colorScheme.secondary : theme.colorScheme.onPrimary,
+                                 size: 20
+                              ),
+                              onPressed: (_isLoading || _isCooldown) ? null : _sendMessage,
                             ),
-                            onPressed: _isLoading ? null : _sendMessage,
                           ),
-                        ),
-                      ],
-                    ),
+                        ],
+                      ),
                   ),
                 ),
               ],
