@@ -24,8 +24,9 @@ class TaskDetailScreen extends StatefulWidget {
 class _TaskDetailScreenState extends State<TaskDetailScreen> {
   String _selectedTab = 'file';
   String? _fileName;
+  String? _mediaName;
   final TextEditingController _textController = TextEditingController();
-  
+  final TextEditingController _urlController = TextEditingController();
   late bool _submitted;
   bool _isUploading = false;
 
@@ -40,6 +41,10 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
       _selectedTab = 'file';
     } else if (types.contains('online_text_entry')) {
       _selectedTab = 'text';
+    } else if (types.contains('online_url')) {
+      _selectedTab = 'url';
+    } else if (types.contains('media_recording')) {
+      _selectedTab = 'media';
     }
   }
 
@@ -75,6 +80,8 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
     final List<dynamic> types = widget.assignment['submission_types'] ?? [];
     final bool allowsFile = types.contains('online_upload');
     final bool allowsText = types.contains('online_text_entry');
+    final bool allowsUrl = types.contains('online_url');
+    final bool allowsMedia = types.contains('media_recording');
 
     showModalBottomSheet(
       context: context,
@@ -84,8 +91,12 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
       builder: (BuildContext context) {
         return StatefulBuilder(
           builder: (BuildContext context, StateSetter setModalState) {
-            final canSubmit = (_selectedTab == 'file' && _fileName != null) || 
-                              (_selectedTab == 'text' && _textController.text.trim().isNotEmpty);
+            final canSubmit = (_selectedTab == 'file' && _fileName != null) ||
+                              (_selectedTab == 'text' && _textController.text.trim().isNotEmpty) ||
+                              (_selectedTab == 'url' && _urlController.text.trim().isNotEmpty) ||
+                              (_selectedTab == 'media' && _mediaName != null);
+            
+            final int availableTabs = [allowsFile, allowsText, allowsUrl, allowsMedia].where((e) => e).length;
             
             return Padding(
               padding: EdgeInsets.only(
@@ -112,81 +123,56 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
                   ),
                   const SizedBox(height: 16),
                   
-                  // Conditional Tabs based on Canvas payload
-                  if (allowsFile && allowsText)
+                  // Dynamic Tabs based on Canvas payload
+                  if (availableTabs > 1)
                     Container(
                       padding: const EdgeInsets.all(4),
                       margin: const EdgeInsets.only(bottom: 16),
                       decoration: BoxDecoration(color: theme.scaffoldBackgroundColor, borderRadius: BorderRadius.circular(8)),
                       child: Row(
                         children: [
-                          Expanded(
-                            child: GestureDetector(
-                              onTap: () => setModalState(() => _selectedTab = 'file'),
-                              child: Container(
-                                padding: const EdgeInsets.symmetric(vertical: 10),
-                                decoration: BoxDecoration(
-                                  color: _selectedTab == 'file' ? theme.colorScheme.primary : Colors.transparent,
-                                  borderRadius: BorderRadius.circular(6),
-                                ),
-                                alignment: Alignment.center,
-                                child: Text('File upload', style: TextStyle(fontWeight: FontWeight.w600, color: _selectedTab == 'file' ? theme.colorScheme.onPrimary : theme.colorScheme.secondary)),
-                              ),
-                            ),
-                          ),
-                          Expanded(
-                            child: GestureDetector(
-                              onTap: () => setModalState(() => _selectedTab = 'text'),
-                              child: Container(
-                                padding: const EdgeInsets.symmetric(vertical: 10),
-                                decoration: BoxDecoration(
-                                  color: _selectedTab == 'text' ? theme.colorScheme.primary : Colors.transparent,
-                                  borderRadius: BorderRadius.circular(6),
-                                ),
-                                alignment: Alignment.center,
-                                child: Text('Text entry', style: TextStyle(fontWeight: FontWeight.w600, color: _selectedTab == 'text' ? theme.colorScheme.onPrimary : theme.colorScheme.secondary)),
-                              ),
-                            ),
-                          ),
+                          if (allowsFile) _buildModalTab('file', 'File', theme, setModalState),
+                          if (allowsText) _buildModalTab('text', 'Text', theme, setModalState),
+                          if (allowsUrl) _buildModalTab('url', 'URL', theme, setModalState),
+                          if (allowsMedia) _buildModalTab('media', 'Media', theme, setModalState),
                         ],
                       ),
                     ),
-
-                  // File Input
+                  
+                  // Content Inputs
                   if (_selectedTab == 'file' && allowsFile)
-                    _fileName != null 
-                      ? Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-                          decoration: BoxDecoration(color: theme.scaffoldBackgroundColor, borderRadius: BorderRadius.circular(12)),
-                          child: Row(
-                            children: [
-                              Icon(Icons.attach_file, size: 20, color: theme.colorScheme.primary),
-                              const SizedBox(width: 12),
-                              Expanded(child: Text(_fileName!, style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.bold))),
-                              InkWell(
-                                onTap: () => setModalState(() => _fileName = null),
-                                child: Text('Remove', style: theme.textTheme.labelSmall?.copyWith(color: theme.colorScheme.secondary)),
-                              )
-                            ],
-                          ),
-                        )
-                      : InkWell(
-                          onTap: () => setModalState(() => _fileName = 'selected_assignment_file.pdf'),
-                          borderRadius: BorderRadius.circular(12),
-                          child: Container(
-                            width: double.infinity, padding: const EdgeInsets.symmetric(vertical: 32),
+                    _fileName != null
+                        ? Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
                             decoration: BoxDecoration(color: theme.scaffoldBackgroundColor, borderRadius: BorderRadius.circular(12)),
-                            child: Column(
+                            child: Row(
                               children: [
-                                Icon(Icons.cloud_upload_outlined, size: 32, color: theme.colorScheme.secondary),
-                                const SizedBox(height: 8),
-                                Text('Choose a file', style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w500)),
+                                Icon(Icons.attach_file, size: 20, color: theme.colorScheme.primary),
+                                const SizedBox(width: 12),
+                                Expanded(child: Text(_fileName!, style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.bold))),
+                                InkWell(
+                                  onTap: () => setModalState(() => _fileName = null),
+                                  child: Text('Remove', style: theme.textTheme.labelSmall?.copyWith(color: theme.colorScheme.secondary)),
+                                )
                               ],
                             ),
+                          )
+                        : InkWell(
+                            onTap: () => setModalState(() => _fileName = 'selected_assignment_file.pdf'),
+                            borderRadius: BorderRadius.circular(12),
+                            child: Container(
+                              width: double.infinity, padding: const EdgeInsets.symmetric(vertical: 32),
+                              decoration: BoxDecoration(color: theme.scaffoldBackgroundColor, borderRadius: BorderRadius.circular(12)),
+                              child: Column(
+                                children: [
+                                  Icon(Icons.cloud_upload_outlined, size: 32, color: theme.colorScheme.secondary),
+                                  const SizedBox(height: 8),
+                                  Text('Choose a file', style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w500)),
+                                ],
+                              ),
+                            ),
                           ),
-                        ),
-                        
-                  // Text Input
+
                   if (_selectedTab == 'text' && allowsText)
                     TextField(
                       controller: _textController,
@@ -195,6 +181,33 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
                       decoration: InputDecoration(
                         hintText: 'Type your submission here...', filled: true, fillColor: theme.scaffoldBackgroundColor,
                         border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                      ),
+                    ),
+
+                  if (_selectedTab == 'url' && allowsUrl)
+                    TextField(
+                      controller: _urlController,
+                      onChanged: (val) => setModalState(() {}),
+                      decoration: InputDecoration(
+                        hintText: 'https://...', filled: true, fillColor: theme.scaffoldBackgroundColor,
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                      ),
+                    ),
+
+                  if (_selectedTab == 'media' && allowsMedia)
+                    InkWell(
+                      onTap: () => setModalState(() => _mediaName = 'audio_recording.mp3'),
+                      borderRadius: BorderRadius.circular(12),
+                      child: Container(
+                        width: double.infinity, padding: const EdgeInsets.symmetric(vertical: 32),
+                        decoration: BoxDecoration(color: theme.scaffoldBackgroundColor, borderRadius: BorderRadius.circular(12)),
+                        child: Column(
+                          children: [
+                            Icon(Icons.mic_none, size: 32, color: theme.colorScheme.secondary),
+                            const SizedBox(height: 8),
+                            Text(_mediaName ?? 'Tap to record or upload media', style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w500)),
+                          ],
+                        ),
                       ),
                     ),
                     
@@ -231,7 +244,12 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
     final List<dynamic> types = a['submission_types'] ?? [];
     
     // Determine if this assignment can be submitted through the app
-    final bool isSubmittable = !isLocked && (types.contains('online_upload') || types.contains('online_text_entry'));
+    final bool isSubmittable = !isLocked && (
+      types.contains('online_upload') || 
+      types.contains('online_text_entry') ||
+      types.contains('online_url') ||
+      types.contains('media_recording')
+    );
     final String description = a['description'] ?? 'No instructions provided.';
 
     return AppShell(
@@ -393,6 +411,31 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
           ],
         ),
       ],
+    );
+  }
+
+  Widget _buildModalTab(String tabKey, String label, ThemeData theme, StateSetter setModalState) {
+    final isActive = _selectedTab == tabKey;
+    return Expanded(
+      child: GestureDetector(
+        onTap: () => setModalState(() => _selectedTab = tabKey),
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 10),
+          decoration: BoxDecoration(
+            color: isActive ? theme.colorScheme.primary : Colors.transparent,
+            borderRadius: BorderRadius.circular(6),
+          ),
+          alignment: Alignment.center,
+          child: Text(
+            label, 
+            style: TextStyle(
+              fontWeight: FontWeight.w600, 
+              fontSize: 13,
+              color: isActive ? theme.colorScheme.onPrimary : theme.colorScheme.secondary,
+            ),
+          ),
+        ),
+      ),
     );
   }
 }
