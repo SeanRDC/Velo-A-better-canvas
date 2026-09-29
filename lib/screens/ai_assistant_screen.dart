@@ -39,7 +39,7 @@ class _AiAssistantScreenState extends State<AiAssistantScreen> {
                  "3. If the user asks for instructions, details, or how to complete a specific assignment, use the get_assignment_details tool.\n"
                  "4. Be incredibly concise. Use bullet points and bold text for easy scanning.\n"
                  "5. When asked to plan or organize, automatically break down large assignments into logical daily milestones.\n"
-                 "6. If the user asks about messages, emails, or their inbox, use the get_inbox_messages tool."
+                 "6. If the user asks about messages, emails, or their inbox, use the get_messages tool to search folders ('inbox', 'sent', 'archived'). Use get_thread_details to read specific message bodies."
     }
   ];
 
@@ -74,9 +74,34 @@ class _AiAssistantScreenState extends State<AiAssistantScreen> {
     {
       "type": "function",
       "function": {
-        "name": "get_inbox_messages",
-        "description": "Fetches recent messages and conversations from the user's Canvas inbox.",
-        "parameters": { "type": "object", "properties": {} }
+        "name": "get_messages",
+        "description": "Fetches a list of recent messages from the user's Canvas inbox, sent, or archived folders.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "folder": {
+              "type": "string",
+              "description": "The folder to look in. Can be 'inbox', 'sent', or 'archived'."
+            }
+          }
+        }
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "get_thread_details",
+        "description": "Fetches the full back-and-forth conversation history of a specific message thread.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "thread_id": {
+              "type": "string",
+              "description": "The ID of the message thread to read."
+            }
+          },
+          "required": ["thread_id"]
+        }
       }
     },
     {
@@ -228,8 +253,16 @@ class _AiAssistantScreenState extends State<AiAssistantScreen> {
               toolResult = await _canvasService.buildGradesContext();
             } else if (functionName == 'get_recent_announcements') {
               toolResult = await _canvasService.buildAnnouncementsContext();
-            } else if (functionName == 'get_inbox_messages') {
-              toolResult = await _canvasService.buildInboxContext();
+            } else if (functionName == 'get_messages') {
+              final String argsStr = toolCall['function']['arguments']?.toString() ?? '{}';
+              final args = argsStr.isEmpty ? {} : jsonDecode(argsStr);
+              final folder = args['folder'] ?? 'inbox';
+              toolResult = await _canvasService.buildInboxContext(folder: folder);
+            } else if (functionName == 'get_thread_details') {
+              final String argsStr = toolCall['function']['arguments']?.toString() ?? '{}';
+              final args = argsStr.isEmpty ? {} : jsonDecode(argsStr);
+              final threadId = args['thread_id']?.toString() ?? '';
+              toolResult = await _canvasService.buildThreadContext(threadId);
             } else if (functionName == 'get_assignment_details') {
               // Extract the assignment name the AI wants to look up
               final args = jsonDecode(toolCall['function']['arguments'] as String);
