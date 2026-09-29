@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
+import 'package:go_router/go_router.dart';
+import 'package:intl/intl.dart';
 import '../components/app_shell.dart';
 import '../components/task_card.dart';
 import '../models/task.dart';
 import '../services/canvas_service.dart';
-import 'package:intl/intl.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -14,6 +16,7 @@ class DashboardScreen extends StatefulWidget {
 
 class _DashboardScreenState extends State<DashboardScreen> {
   final CanvasService _canvasService = CanvasService();
+  final ScrollController _scrollController = ScrollController();
   
   List<Task> _allTasks = [];
   List<Task> _filteredTasks = [];
@@ -24,6 +27,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   
   bool _isLoading = true;
   String? _errorMessage;
+  bool _isFabVisible = true; // Controls the Auto-Plan bubble visibility
 
   final Map<String, String> _sortLabels = {
     'soonest': 'Soonest first',
@@ -35,6 +39,21 @@ class _DashboardScreenState extends State<DashboardScreen> {
   void initState() {
     super.initState();
     _fetchCanvasData();
+
+    // Native Material scroll behavior: Hide FAB on scroll down, show on scroll up
+    _scrollController.addListener(() {
+      if (_scrollController.position.userScrollDirection == ScrollDirection.reverse) {
+        if (_isFabVisible) setState(() => _isFabVisible = false);
+      } else if (_scrollController.position.userScrollDirection == ScrollDirection.forward) {
+        if (!_isFabVisible) setState(() => _isFabVisible = true);
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
   }
 
   Future<void> _fetchCanvasData() async {
@@ -46,19 +65,19 @@ class _DashboardScreenState extends State<DashboardScreen> {
     try {
       final tasks = await _canvasService.fetchAllActiveTasks();
       
-      if (!mounted) return; 
+      if (!mounted) return;
 
       final Set<String> uniqueCodes = {};
       for (var task in tasks) {
         uniqueCodes.add(task.courseCode);
       }
+
       _allTasks = tasks;
       _courseCodes = uniqueCodes.toList()..sort();
       _applyFilterAndSort();
       _isLoading = false;
     } catch (e) {
-      if (!mounted) return; 
-      
+      if (!mounted) return;
       setState(() {
         _errorMessage = e.toString();
         _isLoading = false;
@@ -67,10 +86,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   void _applyFilterAndSort() {
-    List<Task> list = _allTasks.where((t) => !t.isSubmitted).toList(); 
+    List<Task> list = _allTasks.where((t) => !t.isSubmitted).toList();
+
     if (_activeFilter != 'All') {
       list = list.where((t) => t.courseCode == _activeFilter).toList();
     }
+
     list.sort((a, b) {
       if (_sortBy == 'soonest') {
         return a.dueDate.compareTo(b.dueDate);
@@ -168,89 +189,119 @@ class _DashboardScreenState extends State<DashboardScreen> {
     return AppShell(
       title: 'My Tasks',
       activeTab: 'tasks',
-      // WiFi icon action removed here
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      child: Stack(
         children: [
-          // Summary + sort header
-          Padding(
-            padding: const EdgeInsets.fromLTRB(24, 16, 24, 4),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+          // Main Dashboard Content
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Summary + sort header
+              Padding(
+                padding: const EdgeInsets.fromLTRB(24, 16, 24, 4),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text(
-                      '${_filteredTasks.length} active tasks',
-                      style: theme.textTheme.headlineSmall?.copyWith(
-                        fontWeight: FontWeight.bold,
-                        color: theme.colorScheme.onSurface,
-                        letterSpacing: -0.5,
-                      ),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      overdueCount > 0 
-                          ? '$overdueCount overdue · needs attention' 
-                          : "You're on track",
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        color: overdueCount > 0 ? theme.colorScheme.error : theme.colorScheme.secondary,
-                        fontWeight: overdueCount > 0 ? FontWeight.bold : FontWeight.normal,
-                      ),
-                    ),
-                  ],
-                ),
-                InkWell(
-                  onTap: _showSortSheet,
-                  borderRadius: BorderRadius.circular(8),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                    decoration: BoxDecoration(
-                      color: theme.colorScheme.surface,
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: theme.colorScheme.onSurface.withValues(alpha: 0.1)),
-                    ),
-                    child: Row(
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Icon(Icons.swap_vert, size: 16, color: theme.colorScheme.secondary),
-                        const SizedBox(width: 6),
                         Text(
-                          _sortLabels[_sortBy]!,
-                          style: theme.textTheme.bodySmall?.copyWith(
-                            fontWeight: FontWeight.w600,
+                          '${_filteredTasks.length} active tasks',
+                          style: theme.textTheme.headlineSmall?.copyWith(
+                            fontWeight: FontWeight.bold,
                             color: theme.colorScheme.onSurface,
+                            letterSpacing: -0.5,
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          overdueCount > 0 
+                              ? '$overdueCount overdue • needs attention' 
+                              : "You're on track",
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: overdueCount > 0 ? theme.colorScheme.error : theme.colorScheme.secondary,
+                            fontWeight: overdueCount > 0 ? FontWeight.bold : FontWeight.normal,
                           ),
                         ),
                       ],
                     ),
-                  ),
+                    InkWell(
+                      onTap: _showSortSheet,
+                      borderRadius: BorderRadius.circular(8),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                        decoration: BoxDecoration(
+                          color: theme.colorScheme.surface,
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: theme.colorScheme.onSurface.withValues(alpha: 0.1)),
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(Icons.swap_vert, size: 16, color: theme.colorScheme.secondary),
+                            const SizedBox(width: 6),
+                            Text(
+                              _sortLabels[_sortBy]!,
+                              style: theme.textTheme.bodySmall?.copyWith(
+                                fontWeight: FontWeight.w600,
+                                color: theme.colorScheme.onSurface,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
-              ],
-            ),
+              ),
+
+              // Filter Chips (Scrollable left to right)
+              SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                physics: const BouncingScrollPhysics(),
+                padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 12.0),
+                child: Row(
+                  children: [
+                    _buildFilterChip('All', _activeFilter == 'All', theme),
+                    ..._courseCodes.map((code) {
+                      return Padding(
+                        padding: const EdgeInsets.only(left: 8.0),
+                        child: _buildFilterChip(code, _activeFilter == code, theme),
+                      );
+                    }),
+                  ],
+                ),
+              ),
+              
+              // Main Content Area
+              Expanded(
+                child: _buildContent(theme),
+              ),
+            ],
           ),
 
-          // Filter Chips (Scrollable left to right)
-          SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            physics: const BouncingScrollPhysics(), // Ensures smooth horizontal scrolling
-            padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 12.0),
-            child: Row(
-              children: [
-                _buildFilterChip('All', _activeFilter == 'All', theme),
-                ..._courseCodes.map((code) {
-                  return Padding(
-                    padding: const EdgeInsets.only(left: 8.0),
-                    child: _buildFilterChip(code, _activeFilter == code, theme),
-                  );
-                }),
-              ],
+          // Floating Auto-Plan Button
+          Positioned(
+            bottom: 24,
+            right: 24,
+            child: AnimatedSlide(
+              duration: const Duration(milliseconds: 300),
+              curve: Curves.easeOutCubic,
+              offset: _isFabVisible ? Offset.zero : const Offset(0, 2.5),
+              child: AnimatedOpacity(
+                duration: const Duration(milliseconds: 300),
+                opacity: _isFabVisible ? 1.0 : 0.0,
+                child: FloatingActionButton.extended(
+                  onPressed: () {
+                    // Navigate to the central Planner Hub
+                    context.push('/planner');
+                  },
+                  backgroundColor: theme.colorScheme.primary,
+                  foregroundColor: theme.colorScheme.onPrimary,
+                  elevation: 4,
+                  icon: const Icon(Icons.auto_awesome, size: 20),
+                  label: const Text('Auto-Plan', style: TextStyle(fontWeight: FontWeight.bold, letterSpacing: 0.5)),
+                ),
+              ),
             ),
-          ),
-          
-          // Main Content Area
-          Expanded(
-            child: _buildContent(theme),
           ),
         ],
       ),
@@ -397,7 +448,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
           padding: const EdgeInsets.only(bottom: 12.0),
           child: TaskCard(
             task: task,
-            onTap: () => _showTaskDetails(context, task), // Opens the Bottom Sheet
+            onTap: () => _showTaskDetails(context, task),
           ),
         ),
       );
@@ -406,9 +457,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
     return Align(
       alignment: Alignment.topCenter,
       child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 800), // Maintains layout on wide web screens
+        constraints: const BoxConstraints(maxWidth: 800),
         child: ListView(
-          padding: const EdgeInsets.only(left: 24, right: 24, bottom: 32),
+          controller: _scrollController, // Wires up the FAB hiding logic
+          // Increased bottom padding to 88 so the FAB never blocks the final card
+          padding: const EdgeInsets.only(left: 24, right: 24, bottom: 88),
           children: listItems,
         ),
       ),
@@ -450,13 +503,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
           color: theme.colorScheme.surface,
           borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
         ),
-
         padding: const EdgeInsets.all(24).copyWith(bottom: MediaQuery.of(context).padding.bottom + 24),
         child: Column(
-          mainAxisSize: MainAxisSize.min, // Wraps content tightly
+          mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Drag Handle Pill
             Center(
               child: Container(
                 width: 40,
@@ -468,8 +519,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 ),
               ),
             ),
-            
-            // Course Code & Points
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
@@ -491,8 +540,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
               ],
             ),
             const SizedBox(height: 16),
-            
-            // Assignment Title
             Text(
               task.title,
               style: theme.textTheme.headlineSmall?.copyWith(
@@ -501,8 +548,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
               ),
             ),
             const SizedBox(height: 24),
-            
-            // Due Date
             Row(
               children: [
                 Icon(
@@ -523,14 +568,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
               ],
             ),
             const SizedBox(height: 32),
-            
-            // Action Button
             SizedBox(
               width: double.infinity,
               child: FilledButton.icon(
                 onPressed: () {
-                  Navigator.pop(context); // Close the sheet
-                  
+                  Navigator.pop(context);
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
                       content: Text('Preparing to open ${task.title}...'),
