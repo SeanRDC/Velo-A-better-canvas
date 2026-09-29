@@ -38,9 +38,12 @@ class _AiAssistantScreenState extends State<AiAssistantScreen> {
                  "2. If the user asks about their coursework, YOU MUST use the provided tools to fetch the data first.\n"
                  "3. If the user asks for instructions, details, or how to complete a specific assignment, use the get_assignment_details tool.\n"
                  "4. Be incredibly concise. Use bullet points and bold text for easy scanning.\n"
-                 "5. When asked to plan or organize, automatically break down large assignments into logical daily milestones."
+                 "5. When asked to plan or organize, automatically break down large assignments into logical daily milestones.\n"
+                 "6. If the user asks about messages, emails, or their inbox, use the get_inbox_messages tool."
     }
   ];
+
+  // Groq Tool Definitions
 
   // Groq Tool Definitions
   final List<Map<String, dynamic>> _tools = [
@@ -65,6 +68,14 @@ class _AiAssistantScreenState extends State<AiAssistantScreen> {
       "function": {
         "name": "get_recent_announcements",
         "description": "Fetches recent announcements across all courses.",
+        "parameters": { "type": "object", "properties": {} }
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "get_inbox_messages",
+        "description": "Fetches recent messages and conversations from the user's Canvas inbox.",
         "parameters": { "type": "object", "properties": {} }
       }
     },
@@ -217,6 +228,8 @@ class _AiAssistantScreenState extends State<AiAssistantScreen> {
               toolResult = await _canvasService.buildGradesContext();
             } else if (functionName == 'get_recent_announcements') {
               toolResult = await _canvasService.buildAnnouncementsContext();
+            } else if (functionName == 'get_inbox_messages') {
+              toolResult = await _canvasService.buildInboxContext();
             } else if (functionName == 'get_assignment_details') {
               // Extract the assignment name the AI wants to look up
               final args = jsonDecode(toolCall['function']['arguments'] as String);
