@@ -38,21 +38,19 @@ class CourseDetailScreen extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  course.name,
-                  style: theme.textTheme.headlineSmall?.copyWith(
-                    fontWeight: FontWeight.bold,
-                    color: theme.colorScheme.onSurface,
-                    letterSpacing: -0.5,
-                  ),
+                      course.name,
+                      style: theme.textTheme.headlineSmall?.copyWith(
+                        fontWeight: FontWeight.bold,
+                        color: theme.colorScheme.onSurface,
+                        letterSpacing: -0.5,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    _buildMetaRow(Icons.menu_book, course.instructor, theme),
+                    const SizedBox(height: 6),
+                    _buildMetaRow(Icons.calendar_today, course.term, theme),
+                  ],
                 ),
-                const SizedBox(height: 12),
-                _buildMetaRow(Icons.menu_book, 'Instructor Name', theme),
-                const SizedBox(height: 6),
-                _buildMetaRow(Icons.calendar_today, 'Spring 2026', theme),
-                const SizedBox(height: 6),
-                _buildMetaRow(Icons.location_on_outlined, 'Online', theme),
-              ],
-            ),
           ),
 
           // Navigable Tiles
