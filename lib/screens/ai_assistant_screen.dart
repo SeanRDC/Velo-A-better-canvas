@@ -5,6 +5,7 @@ import 'package:http/http.dart' as http;
 import '../components/app_shell.dart';
 import '../components/chat_bubble.dart';
 import '../services/canvas_service.dart';
+import 'dart:math' as math;
 
 class ChatMessage {
   final String text;
@@ -16,6 +17,88 @@ class AiAssistantScreen extends StatefulWidget {
   const AiAssistantScreen({super.key});
   @override
   State<AiAssistantScreen> createState() => _AiAssistantScreenState();
+}
+
+// Bouncing Dots Typing Indicator Component
+class TypingBubble extends StatefulWidget {
+  const TypingBubble({super.key});
+  @override
+  State<TypingBubble> createState() => _TypingBubbleState();
+}
+
+class _TypingBubbleState extends State<TypingBubble> with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1200),
+    )..repeat();
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12.0),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const SizedBox(width: 16),
+          Container(
+            margin: const EdgeInsets.only(top: 2),
+            height: 28, width: 28,
+            decoration: BoxDecoration(color: theme.colorScheme.primary, shape: BoxShape.circle),
+            child: Icon(Icons.smart_toy_outlined, size: 16, color: theme.colorScheme.onPrimary),
+          ),
+          const SizedBox(width: 8),
+          Container(
+            padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
+            decoration: BoxDecoration(
+              color: theme.colorScheme.surface,
+              borderRadius: const BorderRadius.only(
+                topLeft: Radius.circular(4),
+                topRight: Radius.circular(20),
+                bottomLeft: Radius.circular(20),
+                bottomRight: Radius.circular(20),
+              ),
+              border: Border.all(color: theme.colorScheme.onSurface.withValues(alpha: 0.1)),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: List.generate(3, (index) {
+                return AnimatedBuilder(
+                  animation: _controller,
+                  builder: (context, child) {
+                    final offset = math.sin((_controller.value * 2 * math.pi) - (index * 1.5)) * 3;
+                    return Transform.translate(
+                      offset: Offset(0, offset),
+                      child: Container(
+                        margin: const EdgeInsets.symmetric(horizontal: 2),
+                        height: 6, width: 6,
+                        decoration: BoxDecoration(
+                          color: theme.colorScheme.secondary.withValues(alpha: 0.6),
+                          shape: BoxShape.circle,
+                        ),
+                      ),
+                    );
+                  },
+                );
+              }),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }
 
 class _AiAssistantScreenState extends State<AiAssistantScreen> {
@@ -370,64 +453,10 @@ class _AiAssistantScreenState extends State<AiAssistantScreen> {
                   ),
                 ),
                 if (_isLoading)
-                  Padding(
-                    padding: const EdgeInsets.all(8.0),
-                    child: SizedBox(
-                      height: 20, 
-                      width: 20, 
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2, 
-                        color: theme.colorScheme.primary
-                      )
-                    ),
-                  ),
-                  
-                if (!_isTyping && _messages.length == 2 && !_isLoading)
-                  Padding(
-                    padding: const EdgeInsets.only(bottom: 16.0),
-                    child: SingleChildScrollView(
-                      scrollDirection: Axis.horizontal,
-                      padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                      physics: const BouncingScrollPhysics(),
-                      child: Row(
-                        children: [
-                          "What are my pending tasks?",
-                          "Show my current grades",
-                          "Any new announcements?",
-                          "Check my inbox",
-                        ].map((suggestion) {
-                          return Padding(
-                            padding: const EdgeInsets.only(right: 8.0),
-                            child: InkWell(
-                              onTap: () {
-                                _controller.text = suggestion;
-                                _sendMessage();
-                              },
-                              borderRadius: BorderRadius.circular(20),
-                              child: Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                                decoration: BoxDecoration(
-                                  color: theme.colorScheme.surface,
-                                  border: Border.all(color: theme.colorScheme.onSurface.withValues(alpha: 0.1)),
-                                  borderRadius: BorderRadius.circular(20),
-                                ),
-                                child: Text(
-                                  suggestion,
-                                  style: theme.textTheme.labelSmall?.copyWith(
-                                    fontWeight: FontWeight.w600,
-                                    color: theme.colorScheme.secondary,
-                                  ),
-                                ),
-                              ),
-                            ),
-                          );
-                        }).toList(),
-                      ),
-                    ),
-                  ),
+                  const TypingBubble(),
 
+                // Bottom Input Area (Suggestions + Field)
                 Container(
-                  padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
                     color: theme.colorScheme.surface,
                     border: Border(
@@ -435,48 +464,109 @@ class _AiAssistantScreenState extends State<AiAssistantScreen> {
                     ),
                   ),
                   child: SafeArea(
-                    child: Row(
+                    child: Column(
                       children: [
-                          Expanded(
-                            child: TextField(
-                              controller: _controller,
-                              onSubmitted: (_) => _sendMessage(),
-                              readOnly: _isCooldown, // Briefly lock the keyboard during cooldown
-                              decoration: InputDecoration(
-                                hintText: _isCooldown ? 'Cooling down...' : 'Ask your Co-pilot...',
-                                hintStyle: TextStyle(color: theme.colorScheme.secondary),
-                                border: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(24),
-                                  borderSide: BorderSide(color: theme.colorScheme.onSurface.withValues(alpha: 0.2)),
-                                ),
-                                enabledBorder: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(24),
-                                  borderSide: BorderSide(color: theme.colorScheme.onSurface.withValues(alpha: 0.2)),
-                                ),
-                                focusedBorder: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(24),
-                                  borderSide: BorderSide(color: theme.colorScheme.primary),
-                                ),
-                                contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                        // Compact Suggestion Pills
+                        if (!_isTyping && _messages.length <= 3 && !_isLoading)
+                          Container(
+                            width: double.infinity,
+                            padding: const EdgeInsets.only(top: 12, bottom: 4),
+                            child: SingleChildScrollView(
+                              scrollDirection: Axis.horizontal,
+                              padding: const EdgeInsets.symmetric(horizontal: 24),
+                              physics: const BouncingScrollPhysics(),
+                              child: Row(
+                                children: [
+                                  "What are my pending tasks?",
+                                  "Show my current grades",
+                                  "Any new announcements?",
+                                  "Check my inbox",
+                                ].map((suggestion) {
+                                  return Padding(
+                                    padding: const EdgeInsets.only(right: 8.0),
+                                    child: InkWell(
+                                      onTap: () {
+                                        _controller.text = suggestion;
+                                        _sendMessage();
+                                      },
+                                      borderRadius: BorderRadius.circular(24),
+                                      child: Container(
+                                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                                        decoration: BoxDecoration(
+                                          color: theme.scaffoldBackgroundColor,
+                                          border: Border.all(color: theme.colorScheme.onSurface.withValues(alpha: 0.1)),
+                                          borderRadius: BorderRadius.circular(24),
+                                        ),
+                                        child: Text(
+                                          suggestion,
+                                          style: theme.textTheme.labelSmall?.copyWith(
+                                            color: theme.colorScheme.onSurface.withValues(alpha: 0.8),
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  );
+                                }).toList(),
                               ),
                             ),
                           ),
-                          const SizedBox(width: 8),
-                          CircleAvatar(
-                            backgroundColor: (_isLoading || _isCooldown)
-                                 ? theme.colorScheme.surface
-                                 : theme.colorScheme.primary,
-                            child: IconButton(
-                              icon: Icon(
-                                _isCooldown ? Icons.hourglass_bottom : Icons.arrow_upward,
-                                 color: (_isLoading || _isCooldown) ? theme.colorScheme.secondary : theme.colorScheme.onPrimary,
-                                 size: 20
+
+                        // Input Bar
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                          child: Row(
+                            children: [
+                              Expanded(
+                                child: TextField(
+                                  controller: _controller,
+                                  onSubmitted: (_) => _sendMessage(),
+                                  readOnly: _isCooldown,
+                                  style: theme.textTheme.bodyMedium,
+                                  decoration: InputDecoration(
+                                    hintText: _isCooldown ? 'Cooling down...' : 'Ask about your courses...',
+                                    hintStyle: TextStyle(color: theme.colorScheme.secondary, fontSize: 14),
+                                    filled: true,
+                                    fillColor: theme.scaffoldBackgroundColor,
+                                    border: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(30),
+                                      borderSide: BorderSide(color: theme.colorScheme.onSurface.withValues(alpha: 0.1)),
+                                    ),
+                                    enabledBorder: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(30),
+                                      borderSide: BorderSide(color: theme.colorScheme.onSurface.withValues(alpha: 0.1)),
+                                    ),
+                                    focusedBorder: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(30),
+                                      borderSide: BorderSide(color: theme.colorScheme.primary),
+                                    ),
+                                    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                                  ),
+                                ),
                               ),
-                              onPressed: (_isLoading || _isCooldown) ? null : _sendMessage,
-                            ),
+                              const SizedBox(width: 8),
+                              InkWell(
+                                onTap: (_isLoading || _isCooldown) ? null : _sendMessage,
+                                borderRadius: BorderRadius.circular(30),
+                                child: Container(
+                                  height: 40, width: 40,
+                                  decoration: BoxDecoration(
+                                    color: (_isLoading || _isCooldown)
+                                        ? theme.colorScheme.secondary.withValues(alpha: 0.2)
+                                        : theme.colorScheme.primary,
+                                    shape: BoxShape.circle,
+                                  ),
+                                  child: Icon(
+                                    _isCooldown ? Icons.hourglass_bottom : Icons.arrow_upward,
+                                    color: (_isLoading || _isCooldown) ? theme.colorScheme.secondary : theme.colorScheme.onPrimary,
+                                    size: 20,
+                                  ),
+                                ),
+                              ),
+                            ],
                           ),
-                        ],
-                      ),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               ],
