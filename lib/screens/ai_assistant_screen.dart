@@ -210,15 +210,15 @@ class _AiAssistantScreenState extends State<AiAssistantScreen> {
   @override
   void initState() {
     super.initState();
-    _controller.addListener(() {
-      final isTypingNow = _controller.text.isNotEmpty;
-      if (_isTyping != isTypingNow) {
-        setState(() {
-          _isTyping = isTypingNow;
-        });
-      }
-    });
+    _controller.addListener(_handleTypingChange);
     _runOpeningAnimation();
+  }
+
+  void _handleTypingChange() {
+    final isTypingNow = _controller.text.isNotEmpty;
+    if (_isTyping != isTypingNow && mounted) {
+      setState(() => _isTyping = isTypingNow);
+    }
   }
 
   void _runOpeningAnimation() async {
@@ -247,6 +247,7 @@ class _AiAssistantScreenState extends State<AiAssistantScreen> {
 
   @override
   void dispose() {
+    _controller.removeListener(_handleTypingChange);
     _controller.dispose();
     _scrollController.dispose();
     super.dispose();
