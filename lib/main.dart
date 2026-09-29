@@ -103,19 +103,18 @@ final _router = GoRouter(
         
         if (incomingData is Map<String, dynamic>) {
           safeMap = incomingData;
-        } 
-        else {
+        } else {
           safeMap = {
             'name': incomingData.title,
             'due_at': incomingData.dueDate.toIso8601String(),
             'points_possible': incomingData.points,
             'has_submitted_submissions': incomingData.isSubmitted,
-            'submission_types': ['online_upload', 'online_text_entry'],
-            'locked_for_user': false,
-            'description': '<p><em>Full instructions available by opening this assignment through the Course Hub.</em></p>'
+            'submission_types': incomingData.submissionTypes,
+            'locked_for_user': incomingData.isLocked,
+            'description': incomingData.description,
           };
         }
-
+        
         return TaskDetailScreen(
           course: extras['course'] as Course,
           assignment: safeMap,
