@@ -6,6 +6,7 @@ import '../components/app_shell.dart';
 import '../components/task_card.dart';
 import '../models/task.dart';
 import '../services/canvas_service.dart';
+import '../models/course.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -603,15 +604,20 @@ class _DashboardScreenState extends State<DashboardScreen> {
               child: FilledButton.icon(
                 onPressed: () {
                   Navigator.pop(context);
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text('Preparing to open ${task.title}...'),
-                      behavior: SnackBarBehavior.floating,
-                    ),
+                  
+                  final course = Course(
+                    id: task.courseId,
+                    name: task.courseName,
+                    courseCode: task.courseCode,
                   );
+
+                  context.push('/task', extra: {
+                    'course': course,
+                    'assignment': task, 
+                  });
                 },
-                icon: const Icon(Icons.open_in_new),
-                label: const Text('Open in Canvas'),
+                icon: const Icon(Icons.assignment_outlined),
+                label: const Text('View Assignment'),
                 style: FilledButton.styleFrom(
                   padding: const EdgeInsets.symmetric(vertical: 16),
                   shape: RoundedRectangleBorder(
