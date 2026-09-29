@@ -44,6 +44,12 @@ class _ModuleItemDetailScreenState extends State<ModuleItemDetailScreen> {
     _loadCurrentItem();
   }
 
+  @override
+  void dispose() {
+    _textController.dispose();
+    super.dispose();
+  }
+
   Future<void> _loadCurrentItem() async {
     setState(() => _isLoading = true);
     final item = widget.items[_currentIndex];
