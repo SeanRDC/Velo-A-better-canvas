@@ -11,6 +11,9 @@ class Task {
   final int points;
   final String type;
   final bool isSubmitted;
+  final String description;
+  final bool isLocked;
+  final List<dynamic> submissionTypes;
 
   Task({
     required this.id,
@@ -22,6 +25,9 @@ class Task {
     required this.points,
     required this.type,
     this.isSubmitted = false,
+    this.description = '',
+    this.isLocked = false,
+    this.submissionTypes = const [],
   });
 
   factory Task.fromCanvasJson(Map<String, dynamic> json, Course course) {
@@ -37,6 +43,9 @@ class Task {
       points: (json['points_possible'] as num?)?.toInt() ?? 0,
       type: 'assignment',
       isSubmitted: json['has_submitted_submissions'] as bool? ?? false,
+      description: json['description'] ?? '<p>No description provided.</p>',
+      isLocked: json['locked_for_user'] as bool? ?? false,
+      submissionTypes: json['submission_types'] ?? [],
     );
   }
 }
