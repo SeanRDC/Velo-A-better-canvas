@@ -129,19 +129,95 @@ class _PlannerScreenState extends State<PlannerScreen> {
                 ),
 
                 Expanded(
-                  child: ListView(
-                    padding: const EdgeInsets.only(bottom: 40),
-                    children: [
-                      // Area Chart
-                      _buildWorkloadChart(theme),
-
-                      // Context View
-                      if (_view == 'week') _buildWeekAtAGlance(theme) else _buildMonthGrid(theme),
-
-                      // AI Milestones (Draggable)
-                      _buildAiMilestones(theme),
-                    ],
-                  ),
+                  child: _selectedTask == null
+                      // Empty state uses a standard ListView
+                      ? ListView(
+                          padding: const EdgeInsets.only(bottom: 40),
+                          children: [
+                            _buildWorkloadChart(theme),
+                            if (_view == 'week') _buildWeekAtAGlance(theme) else _buildMonthGrid(theme),
+                            _buildEmptyState(theme),
+                          ],
+                        )
+                      // Populated state uses ReorderableListView as the master scroll view
+                      : ReorderableListView.builder(
+                          padding: const EdgeInsets.only(bottom: 40),
+                          buildDefaultDragHandles: false, // Only allows dragging via the explicit icon handle
+                          proxyDecorator: (Widget child, int index, Animation<double> animation) {
+                            return Material(color: Colors.transparent, elevation: 0, child: child);
+                          },
+                          // The chart and calendar are natively injected above the drag items
+                          header: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              _buildWorkloadChart(theme),
+                              if (_view == 'week') _buildWeekAtAGlance(theme) else _buildMonthGrid(theme),
+                              _buildMilestonesHeader(theme),
+                            ],
+                          ),
+                          itemCount: _milestones.length,
+                          onReorderItem: (oldIndex, newIndex) {
+                            setState(() {
+                              if (newIndex > oldIndex) newIndex -= 1;
+                              final item = _milestones.removeAt(oldIndex);
+                              _milestones.insert(newIndex, item);
+                            });
+                          },
+                          itemBuilder: (context, index) {
+                            final m = _milestones[index];
+                            return Padding(
+                              key: ValueKey(m.id),
+                              padding: const EdgeInsets.fromLTRB(24, 0, 24, 8),
+                              child: Container(
+                                decoration: BoxDecoration(
+                                  color: theme.colorScheme.surface,
+                                  borderRadius: BorderRadius.circular(12),
+                                  boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.02), blurRadius: 8, offset: const Offset(0, 2))],
+                                ),
+                                child: Padding(
+                                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                                  child: Row(
+                                    children: [
+                                      InkWell(
+                                        onTap: () => _toggleMilestone(index),
+                                        child: Icon(
+                                          m.isDone ? Icons.check_circle : Icons.radio_button_unchecked,
+                                          color: m.isDone ? theme.colorScheme.primary : theme.colorScheme.onSurface.withValues(alpha: 0.2),
+                                          size: 24,
+                                        ),
+                                      ),
+                                      const SizedBox(width: 16),
+                                      Expanded(
+                                        child: Column(
+                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          children: [
+                                            Text(
+                                              m.title,
+                                              style: theme.textTheme.bodyMedium?.copyWith(
+                                                color: m.isDone ? theme.colorScheme.secondary : theme.colorScheme.onSurface,
+                                                decoration: m.isDone ? TextDecoration.lineThrough : null,
+                                              ),
+                                            ),
+                                            const SizedBox(height: 4),
+                                            Text(
+                                              'Day ${index + 1} • ${_formatDue(m.dateOffset)}',
+                                              style: theme.textTheme.labelSmall?.copyWith(color: theme.colorScheme.secondary),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                      ReorderableDragStartListener(
+                                        index: index,
+                                        child: Icon(Icons.drag_indicator, color: theme.colorScheme.secondary.withValues(alpha: 0.5)),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            );
+                          },
+                        ),
                 ),
               ],
             ),
@@ -433,175 +509,91 @@ class _PlannerScreenState extends State<PlannerScreen> {
     );
   }
 
-  Widget _buildAiMilestones(ThemeData theme) {
-    if (_selectedTask == null) {
-      return Padding(
-        padding: const EdgeInsets.all(32),
-        child: Column(
-          children: [
-            Icon(Icons.calendar_month_outlined, size: 48, color: theme.colorScheme.secondary),
-            const SizedBox(height: 16),
-            Text('No plan yet', style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
-            const SizedBox(height: 8),
-            Text(
-              'Tap Auto-Plan on any task in your Dashboard to break its deadline into daily milestones.',
-              textAlign: TextAlign.center,
-              style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.secondary),
+  Widget _buildEmptyState(ThemeData theme) {
+    return Padding(
+      padding: const EdgeInsets.all(32),
+      child: Column(
+        children: [
+          Icon(Icons.calendar_month_outlined, size: 48, color: theme.colorScheme.secondary),
+          const SizedBox(height: 16),
+          Text('No plan yet', style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
+          const SizedBox(height: 8),
+          Text(
+            'Tap Auto-Plan on any task in your Dashboard to break its deadline into daily milestones.',
+            textAlign: TextAlign.center,
+            style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.secondary),
+          ),
+          const SizedBox(height: 24),
+          ElevatedButton(
+            onPressed: () => context.go('/dashboard'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: theme.colorScheme.primary,
+              foregroundColor: theme.colorScheme.onPrimary,
+              elevation: 0,
             ),
-            const SizedBox(height: 24),
-            ElevatedButton(
-              onPressed: () => context.go('/dashboard'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: theme.colorScheme.primary,
-                foregroundColor: theme.colorScheme.onPrimary,
-                elevation: 0,
-              ),
-              child: const Text('Go to Dashboard'),
-            ),
-          ],
-        ),
-      );
-    }
+            child: const Text('Go to Dashboard'),
+          ),
+        ],
+      ),
+    );
+  }
 
+  Widget _buildMilestonesHeader(ThemeData theme) {
     final doneCount = _milestones.where((m) => m.isDone).length;
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Padding(
-          padding: const EdgeInsets.fromLTRB(24, 24, 24, 16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Primary Highlight Box
-              Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(color: theme.colorScheme.primary, borderRadius: BorderRadius.circular(12)),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+    
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(24, 24, 24, 16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(color: theme.colorScheme.primary, borderRadius: BorderRadius.circular(12)),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
                   children: [
-                    Row(
-                      children: [
-                        Icon(Icons.auto_awesome, size: 16, color: theme.colorScheme.onPrimary.withValues(alpha: 0.9)),
-                        const SizedBox(width: 6),
-                        Text(
-                          'AI-PLANNED SCHEDULE',
-                          style: theme.textTheme.labelSmall?.copyWith(
-                            fontWeight: FontWeight.bold,
-                            color: theme.colorScheme.onPrimary.withValues(alpha: 0.9),
-                            letterSpacing: 1.0,
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 8),
-                    Text(_selectedTask!.title, style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold, color: theme.colorScheme.onPrimary)),
-                    const SizedBox(height: 4),
+                    Icon(Icons.auto_awesome, size: 16, color: theme.colorScheme.onPrimary.withValues(alpha: 0.9)),
+                    const SizedBox(width: 6),
                     Text(
-                      '${_selectedTask!.courseCode}   Due ${_formatDue(_selectedTask!.dueDate.difference(DateTime.now()).inDays)}   ${_milestones.length} milestones',
-                      style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onPrimary.withValues(alpha: 0.8)),
+                      'AI-PLANNED SCHEDULE',
+                      style: theme.textTheme.labelSmall?.copyWith(
+                        fontWeight: FontWeight.bold,
+                        color: theme.colorScheme.onPrimary.withValues(alpha: 0.9),
+                        letterSpacing: 1.0,
+                      ),
                     ),
                   ],
                 ),
-              ),
-              const SizedBox(height: 24),
-              
-              // Header Row
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text('Daily milestones', style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
-                  Text('$doneCount/${_milestones.length} done', style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.secondary)),
-                ],
-              ),
-              const SizedBox(height: 8),
-              Row(
-                children: [
-                  Icon(Icons.info_outline, size: 12, color: theme.colorScheme.secondary),
-                  const SizedBox(width: 6),
-                  Text('Hold and drag the right handle to reschedule a step', style: theme.textTheme.labelSmall?.copyWith(color: theme.colorScheme.secondary)),
-                ],
-              ),
+                const SizedBox(height: 8),
+                Text(_selectedTask!.title, style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold, color: theme.colorScheme.onPrimary)),
+                const SizedBox(height: 4),
+                Text(
+                  '${_selectedTask!.courseCode} • Due ${_formatDue(_selectedTask!.dueDate.difference(DateTime.now()).inDays)} • ${_milestones.length} milestones',
+                  style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onPrimary.withValues(alpha: 0.8)),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 24),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text('Daily milestones', style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
+              Text('$doneCount/${_milestones.length} done', style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.secondary)),
             ],
           ),
-        ),
-
-        ReorderableListView.builder(
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          padding: const EdgeInsets.symmetric(horizontal: 24), // Fixes the offset bug
-          proxyDecorator: (Widget child, int index, Animation<double> animation) {
-            return Material(
-              color: Colors.transparent,
-              elevation: 0,
-              child: child,
-            );
-          },
-          itemCount: _milestones.length,
-          onReorderItem: (oldIndex, newIndex) {
-            setState(() {
-              if (newIndex > oldIndex) newIndex -= 1;
-              final item = _milestones.removeAt(oldIndex);
-              _milestones.insert(newIndex, item);
-            });
-          },
-          itemBuilder: (context, index) {
-            final m = _milestones[index];
-            
-            return Padding(
-              key: ValueKey(m.id),
-              padding: const EdgeInsets.only(bottom: 8),
-              child: Container(
-                decoration: BoxDecoration(
-                  color: theme.colorScheme.surface,
-                  borderRadius: BorderRadius.circular(12),
-                  boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.02), blurRadius: 8, offset: const Offset(0, 2))],
-                ),
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                  child: Row(
-                    children: [
-                      InkWell(
-                        onTap: () => _toggleMilestone(index),
-                        child: Icon(
-                          m.isDone ? Icons.check_circle : Icons.radio_button_unchecked,
-                          color: m.isDone ? theme.colorScheme.primary : theme.colorScheme.onSurface.withValues(alpha: 0.2),
-                          size: 24,
-                        ),
-                      ),
-                      const SizedBox(width: 16),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              m.title,
-                              style: theme.textTheme.bodyMedium?.copyWith(
-                                color: m.isDone ? theme.colorScheme.secondary : theme.colorScheme.onSurface,
-                                decoration: m.isDone ? TextDecoration.lineThrough : null,
-                              ),
-                            ),
-                            const SizedBox(height: 4),
-                            Text(
-                              'Day ${index + 1}   ${_formatDue(m.dateOffset)}',
-                              style: theme.textTheme.labelSmall?.copyWith(color: theme.colorScheme.secondary),
-                            ),
-                          ],
-                        ),
-                      ),
-                      ReorderableDragStartListener(
-                        index: index,
-                        child: Icon(Icons.drag_indicator, color: theme.colorScheme.secondary.withValues(alpha: 0.5)),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            );
-          },
-        ),
-        const SizedBox(height: 24),
-      ],
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              Icon(Icons.info_outline, size: 12, color: theme.colorScheme.secondary),
+              const SizedBox(width: 6),
+              Text('Hold and drag the right handle to reschedule a step', style: theme.textTheme.labelSmall?.copyWith(color: theme.colorScheme.secondary)),
+            ],
+          ),
+        ],
+      ),
     );
   }
 }
