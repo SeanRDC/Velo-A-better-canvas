@@ -9,18 +9,19 @@ import '../models/task.dart';
 class CanvasService {
   final String _baseUrl = dotenv.env['CANVAS_BASE_URL'] ?? '';
   final String _token = dotenv.env['CANVAS_API_TOKEN'] ?? '';
+  
+  SharedPreferences? _cachedPrefs;
+  Future<SharedPreferences> get _prefs async => _cachedPrefs ??= await SharedPreferences.getInstance();
 
   Map<String, String> get _headers => {
     'Authorization': 'Bearer $_token',
     'Accept': 'application/json',
   };
 
-  /// Core Caching Logic: Routes requests to network or local storage
   Future<String> _fetchWithCache(String url, String cacheKey) async {
-    final prefs = await SharedPreferences.getInstance();
+    final prefs = await _prefs;
     final isOffline = prefs.getBool('isOffline') ?? false;
-
-    // 1. If Offline mode is explicitly enabled, pull from cache
+    
     if (isOffline) {
       final cachedData = prefs.getString(cacheKey);
       if (cachedData != null) {
@@ -29,20 +30,17 @@ class CanvasService {
         throw Exception('You are offline. No saved data available for this screen.');
       }
     }
-
-    // 2. If Online, attempt to hit the Canvas API
+    
     try {
       final response = await http.get(Uri.parse(url), headers: _headers);
-      
+             
       if (response.statusCode == 200) {
-        // Save the successful payload to local storage for future offline use
         await prefs.setString(cacheKey, response.body);
         return response.body;
       } else {
         throw Exception('Failed to load data from Canvas (Status: ${response.statusCode}).');
       }
     } catch (e) {
-      // 3. Fallback: If network drops unexpectedly but Offline toggle wasn't flipped
       final cachedData = prefs.getString(cacheKey);
       if (cachedData != null) {
         return cachedData;
@@ -74,16 +72,21 @@ class CanvasService {
   Future<List<Task>> fetchAllActiveTasks() async {
     final courses = await fetchActiveCourses();
     final List<Task> allTasks = [];
-    
-    for (final course in courses) {
-      try {
-        final tasks = await fetchAssignmentsForCourse(course);
-        allTasks.addAll(tasks);
-      } catch (e) {
-        continue;
-      }
+         
+    final taskLists = await Future.wait(
+      courses.map((course) async {
+        try {
+          return await fetchAssignmentsForCourse(course);
+        } catch (_) {
+          return <Task>[];
+        }
+      }),
+    );
+
+    for (final tasks in taskLists) {
+      allTasks.addAll(tasks);
     }
-    
+         
     allTasks.sort((a, b) => a.dueDate.compareTo(b.dueDate));
     return allTasks;
   }
@@ -306,47 +309,77 @@ class CanvasService {
   Future<String> buildTasksContext() async {
     final courses = await fetchActiveCourses();
     final buffer = StringBuffer();
-    for (var course in courses) {
-      try {
-        final tasks = await fetchAssignmentsForCourse(course);
-        final pending = tasks.where((t) => !t.isSubmitted).toList();
-        if (pending.isNotEmpty) {
-          buffer.writeln('${course.courseCode} Pending Tasks:');
-          for (var t in pending) {
-            buffer.writeln('- ${t.title} (Due: ${t.dueDate.toLocal()}, Points: ${t.points})');
-          }
+
+    final results = await Future.wait(
+      courses.map((course) async {
+        try {
+          final tasks = await fetchAssignmentsForCourse(course);
+          final pending = tasks.where((t) => !t.isSubmitted).toList();
+          return MapEntry(course.courseCode, pending);
+        } catch (_) {
+          return MapEntry(course.courseCode, <Task>[]);
         }
-      } catch (_) {}
+      }),
+    );
+
+    for (final entry in results) {
+      if (entry.value.isNotEmpty) {
+        buffer.writeln('${entry.key} Pending Tasks:');
+        for (var t in entry.value) {
+          buffer.writeln('- ${t.title} (Due: ${t.dueDate.toLocal()}, Points: ${t.points})');
+        }
+      }
     }
+
     return buffer.isEmpty ? 'No pending tasks.' : buffer.toString();
   }
 
   Future<String> buildGradesContext() async {
     final courses = await fetchActiveCourses();
     final buffer = StringBuffer();
-    for (var course in courses) {
-      try {
-        final grades = await fetchGradesForCourse(course.id);
-        buffer.writeln('${course.courseCode}: ${grades['current_score']}% (${grades['letter_grade']})');
-      } catch (_) {}
+
+    final results = await Future.wait(
+      courses.map((course) async {
+        try {
+          final grades = await fetchGradesForCourse(course.id);
+          return '${course.courseCode}: ${grades['current_score']}% (${grades['letter_grade']})';
+        } catch (_) {
+          return null;
+        }
+      }),
+    );
+
+    for (final line in results) {
+      if (line != null) buffer.writeln(line);
     }
+
     return buffer.isEmpty ? 'No grades available.' : buffer.toString();
   }
 
   Future<String> buildAnnouncementsContext() async {
     final courses = await fetchActiveCourses();
     final buffer = StringBuffer();
-    for (var course in courses) {
-      try {
-        final announcements = await fetchAnnouncementsForCourse(course.id);
-        if (announcements.isNotEmpty) {
-          buffer.writeln('${course.courseCode} Announcements:');
-          for (var a in announcements.take(3)) { 
-            buffer.writeln('- ${a['title']} (Posted: ${a['posted_at']})');
-          }
+
+    final results = await Future.wait(
+      courses.map((course) async {
+        try {
+          final announcements = await fetchAnnouncementsForCourse(course.id);
+          return MapEntry(course.courseCode, announcements.take(3).toList());
+        } catch (_) {
+          return MapEntry(course.courseCode, <Map<String, dynamic>>[]);
         }
-      } catch (_) {}
+      }),
+    );
+
+    for (final entry in results) {
+      if (entry.value.isNotEmpty) {
+        buffer.writeln('${entry.key} Announcements:');
+        for (var a in entry.value) {
+          buffer.writeln('- ${a['title']} (Posted: ${a['posted_at']})');
+        }
+      }
     }
+
     return buffer.isEmpty ? 'No recent announcements.' : buffer.toString();
   }
 
