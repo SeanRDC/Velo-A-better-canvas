@@ -85,19 +85,25 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   void _applyFilterAndSort() {
-    List<Task> list = _allTasks.where((t) => !t.isSubmitted).toList();
+    final now = DateTime.now();
+    final maxDate = now.add(const Duration(days: 14));
+
+    List<Task> list = _allTasks.where((t) {
+      if (t.isSubmitted) return false;
+      if (t.dueDate.isAfter(maxDate)) return false; 
+      return true;
+    }).toList();
 
     if (_activeFilter != 'All') {
       list = list.where((t) => t.courseCode == _activeFilter).toList();
     }
 
     if (_sortBy == 'soonest') {
-      final now = DateTime.now();
-      final today = DateTime(now.year, now.month, now.day);
-      
       List<Task> upcoming = [];
       List<Task> overdue = [];
-
+      
+      final today = DateTime(now.year, now.month, now.day);
+      
       for (var t in list) {
         final taskDate = DateTime(t.dueDate.year, t.dueDate.month, t.dueDate.day);
         if (taskDate.isBefore(today)) {
@@ -108,9 +114,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
       }
       
       upcoming.sort((a, b) => a.dueDate.compareTo(b.dueDate));
-      overdue.sort((a, b) => a.dueDate.compareTo(b.dueDate));
+      overdue.sort((a, b) => a.dueDate.compareTo(b.dueDate)); 
       
-      list = [...upcoming, ...overdue];
+      list = [...overdue, ...upcoming];
     } else {
       list.sort((a, b) => a.courseCode.compareTo(b.courseCode));
     }
@@ -321,9 +327,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   Widget _buildContent(ThemeData theme) {
     if (_isLoading) {
-      return Center(
-        child: CircularProgressIndicator(color: theme.colorScheme.primary),
-      );
+      return Center(child: CircularProgressIndicator(color: theme.colorScheme.primary));
     }
 
     if (_errorMessage != null) {
@@ -335,24 +339,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
             children: [
               Icon(Icons.error_outline, size: 48, color: theme.colorScheme.error),
               const SizedBox(height: 16),
-              Text(
-                'Failed to sync with Canvas.',
-                style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
-              ),
+              Text('Failed to sync with Canvas.', style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
               const SizedBox(height: 8),
-              Text(
-                _errorMessage!,
-                textAlign: TextAlign.center,
-                style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.secondary),
-              ),
+              Text(_errorMessage!, textAlign: TextAlign.center, style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.secondary)),
               const SizedBox(height: 24),
               ElevatedButton(
                 onPressed: _fetchCanvasData,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: theme.colorScheme.primary,
-                  foregroundColor: theme.colorScheme.onPrimary,
-                  elevation: 0,
-                ),
+                style: ElevatedButton.styleFrom(backgroundColor: theme.colorScheme.primary, foregroundColor: theme.colorScheme.onPrimary, elevation: 0),
                 child: const Text('Retry Connection'),
               ),
             ],
@@ -369,51 +362,45 @@ class _DashboardScreenState extends State<DashboardScreen> {
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Container(
-                height: 64,
-                width: 64,
+                height: 64, width: 64,
                 decoration: BoxDecoration(
                   color: theme.colorScheme.surface,
                   shape: BoxShape.circle,
-                  boxShadow: [
-                    BoxShadow(
-                      color: theme.colorScheme.shadow.withValues(alpha: 0.05),
-                      blurRadius: 10,
-                      offset: const Offset(0, 4),
-                    )
-                  ],
+                  boxShadow: [BoxShadow(color: theme.colorScheme.shadow.withValues(alpha: 0.05), blurRadius: 10, offset: const Offset(0, 4))],
                 ),
                 child: Icon(Icons.check, size: 32, color: theme.colorScheme.secondary),
               ),
               const SizedBox(height: 16),
-              Text(
-                'Nothing pending here',
-                style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
-              ),
+              Text('Nothing pending here', style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
               const SizedBox(height: 4),
-              Text(
-                'No active tasks match this filter.',
-                style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.secondary),
-              ),
+              Text('No active tasks match this filter.', style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.secondary)),
             ],
           ),
         ),
       );
     }
 
-    // Build a grouped list dynamically
-    final List<Widget> listItems = [];
-    String? currentGroup;
+    final List<Widget> overdueWidgets = [];
+    final List<Widget> upcomingWidgets = [];
+    
+    String? currentOverdueGroup;
+    String? currentUpcomingGroup;
+
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
 
     for (var task in _filteredTasks) {
       String taskGroup = '';
+      bool isOverdueItem = false;
+      
+      final taskDate = DateTime(task.dueDate.year, task.dueDate.month, task.dueDate.day);
+      if (taskDate.isBefore(today)) {
+        isOverdueItem = true;
+      }
       
       if (_sortBy == 'soonest') {
-         final now = DateTime.now();
-         final today = DateTime(now.year, now.month, now.day);
          final tomorrow = today.add(const Duration(days: 1));
-         final taskDate = DateTime(task.dueDate.year, task.dueDate.month, task.dueDate.day);
-         
-         if (taskDate.isBefore(today)) {
+         if (isOverdueItem) {
            taskGroup = 'Overdue';
          } else if (taskDate == today) {
            taskGroup = 'Today';
@@ -422,57 +409,91 @@ class _DashboardScreenState extends State<DashboardScreen> {
          } else {
            taskGroup = DateFormat('EEEE, MMM d').format(taskDate);
          }
-      } else if (_sortBy == 'course') {
+      } else {
          taskGroup = task.courseCode;
       }
 
-      // If the group category changes, insert a Date Divider
-      if (taskGroup != currentGroup) {
-        listItems.add(
-          Padding(
-            padding: const EdgeInsets.only(top: 24, bottom: 12),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  taskGroup.toUpperCase(),
-                  style: theme.textTheme.labelSmall?.copyWith(
-                    fontWeight: FontWeight.bold,
-                    color: taskGroup == 'Overdue' ? theme.colorScheme.error : theme.colorScheme.secondary,
-                    letterSpacing: 1.2,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Container(height: 1, color: theme.colorScheme.onSurface.withValues(alpha: 0.1)),
-              ],
-            ),
-          ),
-        );
-        currentGroup = taskGroup;
+      Widget? header;
+      if (isOverdueItem) {
+        if (taskGroup != currentOverdueGroup) {
+          header = _buildDivider(taskGroup, theme, isOverdue: true);
+          currentOverdueGroup = taskGroup;
+        }
+      } else {
+        if (taskGroup != currentUpcomingGroup) {
+          header = _buildDivider(taskGroup, theme, isOverdue: false);
+          currentUpcomingGroup = taskGroup;
+        }
       }
 
-      // Insert the upgraded Task Card
-      listItems.add(
-        Padding(
-          padding: const EdgeInsets.only(bottom: 12.0),
-          child: TaskCard(
-            task: task,
-            onTap: () => _showTaskDetails(context, task),
-          ),
+      final card = Padding(
+        padding: const EdgeInsets.only(bottom: 12.0),
+        child: TaskCard(
+          task: task,
+          onTap: () => _showTaskDetails(context, task),
         ),
       );
+
+      if (isOverdueItem) {
+        if (header != null) overdueWidgets.add(header);
+        overdueWidgets.add(card);
+      } else {
+        if (header != null) upcomingWidgets.add(header);
+        upcomingWidgets.add(card);
+      }
     }
+
+    final Key centerKey = const ValueKey('upcoming-tasks');
+    final bool useCenter = upcomingWidgets.isNotEmpty && overdueWidgets.isNotEmpty;
 
     return Align(
       alignment: Alignment.topCenter,
       child: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: 800),
-        child: ListView(
-          controller: _scrollController, // Wires up the FAB hiding logic
-          // Increased bottom padding to 88 so the FAB never blocks the final card
-          padding: const EdgeInsets.only(left: 24, right: 24, bottom: 88),
-          children: listItems,
-        ),
+        child: useCenter
+            ? CustomScrollView(
+                controller: _scrollController,
+                center: centerKey, // Forces the viewport to launch exactly here
+                slivers: [
+                  // Loaded above the viewport frame
+                  SliverPadding(
+                    padding: const EdgeInsets.only(left: 24, right: 24),
+                    sliver: SliverList.list(children: overdueWidgets),
+                  ),
+                  // Rendered at the top of the screen on load
+                  SliverPadding(
+                    key: centerKey,
+                    padding: const EdgeInsets.only(left: 24, right: 24, bottom: 88),
+                    sliver: SliverList.list(children: upcomingWidgets),
+                  ),
+                ],
+              )
+            : ListView(
+                controller: _scrollController,
+                padding: const EdgeInsets.only(left: 24, right: 24, bottom: 88),
+                children: overdueWidgets.isNotEmpty ? overdueWidgets : upcomingWidgets,
+              ),
+      ),
+    );
+  }
+
+  Widget _buildDivider(String groupName, ThemeData theme, {required bool isOverdue}) {
+    return Padding(
+      padding: const EdgeInsets.only(top: 24, bottom: 12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            groupName.toUpperCase(),
+            style: theme.textTheme.labelSmall?.copyWith(
+              fontWeight: FontWeight.bold,
+              color: isOverdue ? theme.colorScheme.error : theme.colorScheme.secondary,
+              letterSpacing: 1.2,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Container(height: 1, color: theme.colorScheme.onSurface.withValues(alpha: 0.1)),
+        ],
       ),
     );
   }
