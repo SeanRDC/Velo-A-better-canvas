@@ -14,8 +14,14 @@ const _currentUser = {
 class SideDrawer extends StatelessWidget {
   final String? activeTab;
   final bool isDesktop;
+  final String? desktopTitle;
 
-  const SideDrawer({super.key, this.activeTab, this.isDesktop = false});
+  const SideDrawer({
+    super.key, 
+    this.activeTab, 
+    this.isDesktop = false,
+    this.desktopTitle,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -24,17 +30,32 @@ class SideDrawer extends StatelessWidget {
     final unreadCount = context.watch<AppState>().unreadInboxCount;
 
     return Drawer(
-      elevation: isDesktop ? 0 : 16, // Flat on desktop, elevated on mobile
+      elevation: isDesktop ? 0 : 16,
       backgroundColor: theme.colorScheme.surface,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.zero,
       ),
       child: SafeArea(
         child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // Render Desktop Title at the top of the Sidebar
+            if (isDesktop && desktopTitle != null)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(24, 24, 24, 0),
+                child: Text(
+                  desktopTitle!,
+                  style: theme.textTheme.headlineSmall?.copyWith(
+                    fontWeight: FontWeight.bold,
+                    color: theme.colorScheme.onSurface,
+                    letterSpacing: -0.5,
+                  ),
+                ),
+              ),
+
             // Header: Avatar + Profile
             Padding(
-              padding: const EdgeInsets.fromLTRB(24, 24, 24, 24),
+              padding: EdgeInsets.fromLTRB(24, (isDesktop && desktopTitle != null) ? 16 : 24, 24, 24),
               child: Row(
                 children: [
                   CircleAvatar(
