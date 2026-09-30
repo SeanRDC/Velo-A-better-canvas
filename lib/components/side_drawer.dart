@@ -12,7 +12,10 @@ const _currentUser = {
 };
 
 class SideDrawer extends StatelessWidget {
-  const SideDrawer({super.key});
+  final String? activeTab;
+  final bool isDesktop;
+
+  const SideDrawer({super.key, this.activeTab, this.isDesktop = false});
 
   @override
   Widget build(BuildContext context) {
@@ -21,6 +24,7 @@ class SideDrawer extends StatelessWidget {
     final unreadCount = context.watch<AppState>().unreadInboxCount;
 
     return Drawer(
+      elevation: isDesktop ? 0 : 16, // Flat on desktop, elevated on mobile
       backgroundColor: theme.colorScheme.surface,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.zero,
@@ -28,7 +32,7 @@ class SideDrawer extends StatelessWidget {
       child: SafeArea(
         child: Column(
           children: [
-            // Header — Avatar + Profile
+            // Header: Avatar + Profile
             Padding(
               padding: const EdgeInsets.fromLTRB(24, 24, 24, 24),
               child: Row(
@@ -71,17 +75,56 @@ class SideDrawer extends StatelessWidget {
                 ],
               ),
             ),
-
+            
             // Menu Items
             Expanded(
               child: ListView(
                 padding: const EdgeInsets.symmetric(horizontal: 16),
                 children: [
+                  // Inject Primary Navigation directly into the Drawer on Desktop
+                  if (isDesktop) ...[
+                    _DrawerTile(
+                      icon: Icons.checklist_rtl,
+                      label: 'Dashboard',
+                      isActive: activeTab == 'tasks',
+                      onTap: () {
+                        if (!isDesktop) Navigator.pop(context);
+                        context.go('/dashboard');
+                      },
+                    ),
+                    const SizedBox(height: 4),
+                    _DrawerTile(
+                      icon: Icons.smart_toy_outlined,
+                      label: 'AI Assistant',
+                      isActive: activeTab == 'assistant',
+                      onTap: () {
+                        if (!isDesktop) Navigator.pop(context);
+                        context.go('/assistant');
+                      },
+                    ),
+                    const SizedBox(height: 4),
+                    _DrawerTile(
+                      icon: Icons.menu_book_rounded,
+                      label: 'Courses',
+                      isActive: activeTab == 'courses',
+                      onTap: () {
+                        if (!isDesktop) Navigator.pop(context);
+                        context.go('/courses');
+                      },
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 12.0),
+                      child: Container(height: 1, color: theme.colorScheme.onSurface.withValues(alpha: 0.1)),
+                    ),
+                  ],
+
+                  // Standard Secondary Navigation
                   _DrawerTile(
                     icon: Icons.calendar_today_outlined,
                     label: 'Planner',
+                    isActive: activeTab == 'planner',
                     onTap: () {
-                      Navigator.pop(context);
+                      if (!isDesktop) Navigator.pop(context);
                       context.go('/planner');
                     },
                   ),
@@ -90,8 +133,9 @@ class SideDrawer extends StatelessWidget {
                     icon: Icons.inbox_outlined,
                     label: 'Inbox',
                     badge: unreadCount,
+                    isActive: activeTab == 'inbox',
                     onTap: () {
-                      Navigator.pop(context);
+                      if (!isDesktop) Navigator.pop(context);
                       context.go('/inbox');
                     },
                   ),
@@ -99,8 +143,9 @@ class SideDrawer extends StatelessWidget {
                   _DrawerTile(
                     icon: Icons.settings_outlined,
                     label: 'Account & Settings',
+                    isActive: activeTab == 'account',
                     onTap: () {
-                      Navigator.pop(context);
+                      if (!isDesktop) Navigator.pop(context);
                       context.go('/account');
                     },
                   ),
@@ -220,12 +265,14 @@ class _DrawerTile extends StatelessWidget {
   final IconData icon;
   final String label;
   final int? badge;
+  final bool isActive;
   final VoidCallback onTap;
 
   const _DrawerTile({
     required this.icon,
     required this.label,
     this.badge,
+    this.isActive = false,
     required this.onTap,
   });
 
@@ -236,18 +283,26 @@ class _DrawerTile extends StatelessWidget {
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(8),
-      child: Padding(
+      child: Container(
+        decoration: BoxDecoration(
+          color: isActive ? theme.colorScheme.primary.withValues(alpha: 0.1) : Colors.transparent,
+          borderRadius: BorderRadius.circular(8),
+        ),
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         child: Row(
           children: [
-            Icon(icon, size: 20, color: theme.colorScheme.onSurface),
+            Icon(
+              icon, 
+              size: 20, 
+              color: isActive ? theme.colorScheme.primary : theme.colorScheme.onSurface,
+            ),
             const SizedBox(width: 12),
             Expanded(
               child: Text(
                 label,
                 style: theme.textTheme.bodyMedium?.copyWith(
-                  fontWeight: FontWeight.w500,
-                  color: theme.colorScheme.onSurface,
+                  fontWeight: isActive ? FontWeight.bold : FontWeight.w500,
+                  color: isActive ? theme.colorScheme.primary : theme.colorScheme.onSurface,
                 ),
               ),
             ),
@@ -266,7 +321,7 @@ class _DrawerTile extends StatelessWidget {
                   ),
                 ),
               )
-            else
+            else if (!isActive)
               Icon(Icons.chevron_right, size: 20, color: theme.colorScheme.secondary),
           ],
         ),
