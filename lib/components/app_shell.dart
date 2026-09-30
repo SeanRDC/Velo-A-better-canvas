@@ -31,45 +31,72 @@ class AppShell extends StatelessWidget {
       builder: (context, constraints) {
         final isDesktop = constraints.maxWidth >= 800;
 
-        return Scaffold(
-          backgroundColor: theme.scaffoldBackgroundColor,
-          appBar: AppBar(
-            title: Text(title),
-            leading: isDesktop
-                ? const SizedBox.shrink()
-                : leading ?? Builder(
-                    builder: (context) => IconButton(
-                      icon: const Icon(Icons.menu),
-                      onPressed: () {
-                        Scaffold.of(context).openDrawer();
-                      },
-                    ),
-                  ),
-            actions: actions,
-          ),
-          drawer: isDesktop ? null : SideDrawer(activeTab: activeTab, isDesktop: false),
-          body: Row(
-            children: [
-              if (isDesktop)
+        if (isDesktop) {
+          return Scaffold(
+            backgroundColor: theme.scaffoldBackgroundColor,
+            body: Row(
+              children: [
+                // Permanently pin the drawer to the left side, spanning full height
                 Container(
                   width: 280,
                   decoration: BoxDecoration(
                     border: Border(right: BorderSide(color: theme.colorScheme.onSurface.withValues(alpha: 0.1))),
                   ),
-                  child: SideDrawer(activeTab: activeTab, isDesktop: true),
+                  child: SideDrawer(
+                    activeTab: activeTab, 
+                    isDesktop: true,
+                    desktopTitle: title,
+                  ),
                 ),
-              // Main content area
-              Expanded(
-                child: Column(
-                  children: [
-                    if (isOffline) const OfflineBanner(),
-                    Expanded(child: child),
-                  ],
+                // Main content area with its own scoped AppBar for actions/buttons
+                Expanded(
+                  child: Scaffold(
+                    backgroundColor: theme.scaffoldBackgroundColor,
+                    appBar: (actions != null || leading != null)
+                        ? AppBar(
+                            title: const SizedBox.shrink(), // Title moved to drawer
+                            leading: leading,
+                            actions: actions,
+                            backgroundColor: theme.scaffoldBackgroundColor,
+                            elevation: 0,
+                          )
+                        : null, // Hide AppBar cleanly if completely empty
+                    body: Column(
+                      children: [
+                        if (isOffline) const OfflineBanner(),
+                        Expanded(child: child),
+                      ],
+                    ),
+                  ),
                 ),
+              ],
+            ),
+          );
+        }
+
+        // Mobile Layout (Unchanged)
+        return Scaffold(
+          backgroundColor: theme.scaffoldBackgroundColor,
+          appBar: AppBar(
+            title: Text(title),
+            leading: leading ?? Builder(
+              builder: (context) => IconButton(
+                icon: const Icon(Icons.menu),
+                onPressed: () {
+                  Scaffold.of(context).openDrawer();
+                },
               ),
+            ),
+            actions: actions,
+          ),
+          drawer: SideDrawer(activeTab: activeTab, isDesktop: false),
+          body: Column(
+            children: [
+              if (isOffline) const OfflineBanner(),
+              Expanded(child: child),
             ],
           ),
-          bottomNavigationBar: isDesktop ? null : BottomNav(activeTab: activeTab),
+          bottomNavigationBar: BottomNav(activeTab: activeTab),
         );
       },
     );
