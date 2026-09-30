@@ -462,37 +462,37 @@ class _DashboardScreenState extends State<DashboardScreen> {
     return Align(
       alignment: Alignment.topCenter,
       child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 800),
-        child: RefreshIndicator(
-          onRefresh: _fetchCanvasData,
-          color: theme.colorScheme.primary,
-          backgroundColor: theme.colorScheme.surface,
-          child: useCenter
-              ? CustomScrollView(
-                controller: _scrollController,
-                center: centerKey, // Forces the viewport to launch exactly here
-                slivers: [
-                  // Loaded above the viewport frame
-                  SliverPadding(
-                    padding: const EdgeInsets.only(left: 24, right: 24),
-                    sliver: SliverList.list(children: overdueWidgets),
-                  ),
-                  // Rendered at the top of the screen on load
-                  SliverPadding(
-                    key: centerKey,
-                    padding: const EdgeInsets.only(left: 24, right: 24, bottom: 88),
-                    sliver: SliverList.list(children: upcomingWidgets),
-                  ),
-                ],
-              )
-            : ListView(
-                controller: _scrollController,
-                padding: const EdgeInsets.only(left: 24, right: 24, bottom: 88),
-                children: overdueWidgets.isNotEmpty ? overdueWidgets : upcomingWidgets,
-              ),
+          constraints: const BoxConstraints(maxWidth: 800),
+          child: RefreshIndicator(
+            onRefresh: _fetchCanvasData,
+            color: theme.colorScheme.primary,
+            backgroundColor: theme.colorScheme.surface,
+            child: useCenter
+                ? CustomScrollView(
+                  controller: _scrollController,
+                  center: centerKey, // Forces the viewport to launch exactly here
+                  slivers: [
+                    // Loaded above the viewport frame
+                    SliverPadding(
+                      padding: const EdgeInsets.only(left: 24, right: 24),
+                      sliver: SliverList.list(children: overdueWidgets),
+                    ),
+                    // Rendered at the top of the screen on load
+                    SliverPadding(
+                      key: centerKey,
+                      padding: const EdgeInsets.only(left: 24, right: 24, bottom: 88),
+                      sliver: SliverList.list(children: upcomingWidgets),
+                    ),
+                  ],
+                )
+              : ListView(
+                  controller: _scrollController,
+                  padding: const EdgeInsets.only(left: 24, right: 24, bottom: 88),
+                  children: overdueWidgets.isNotEmpty ? overdueWidgets : upcomingWidgets,
+                ),
+        ),
       ),
-    ),
-  );
+    );
   }
 
   Widget _buildDivider(String groupName, ThemeData theme, {required bool isOverdue}) {
