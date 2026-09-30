@@ -102,6 +102,25 @@ class CanvasService {
     }
   }
 
+  Future<void> updateUserBio(String newBio) async {
+    final prefs = await _prefs;
+    if (prefs.getBool('isOffline') ?? false) {
+      throw Exception('Cannot update profile while offline.');
+    }
+    
+    final response = await http.put(
+      Uri.parse('$_baseUrl/api/v1/users/self/profile'),
+      headers: _headers,
+      body: {'user[bio]': newBio},
+    );
+    
+    if (response.statusCode != 200) {
+      throw Exception('Failed to update Canvas profile');
+    }
+    
+    await prefs.remove('cache_user_profile');
+  }
+
   Future<List<Course>> fetchActiveCourses() async {
     final url = '$_baseUrl/api/v1/courses?enrollment_state=active&include[]=term&include[]=teachers&per_page=50';
     final body = await _fetchWithCache(url, 'cache_active_courses');
