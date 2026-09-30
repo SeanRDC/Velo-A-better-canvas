@@ -440,13 +440,10 @@ class _PlannerScreenState extends State<PlannerScreen> {
   }
 
   String _getCourseEmoji(String courseCode) {
-    final l = courseCode.toLowerCase();
-    if (l.contains('net')) return '🌐';
-    if (l.contains('mech')) return '⚙️';
-    if (l.contains('cs')) return '💻';
-    if (l.contains('ee')) return '📡';
-    if (l.contains('adet')) return '📱';
-    return '📘';
+    final emojis = ['📘', '📊', '🔬', '💻', '🎨', '📝', '🌍', '📐', '⚙️', '💡', '📚', '🚀'];
+    
+    final index = courseCode.hashCode.abs() % emojis.length;
+    return emojis[index];
   }
 
   Widget _buildWeekAtAGlance(ThemeData theme) {
