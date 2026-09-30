@@ -51,6 +51,41 @@ class CanvasService {
     }
   }
 
+  Future<Map<String, String>> fetchUserProfile() async {
+    final url = '$_baseUrl/api/v1/users/self/profile';
+    try {
+      final body = await _fetchWithCache(url, 'cache_user_profile');
+      final data = jsonDecode(body);
+      
+      String name = data['name'] ?? 'Unknown User';
+      String email = data['primary_email'] ?? data['login_id'] ?? 'No email provided';
+      
+      String initials = 'U';
+      final parts = name.split(' ').where((s) => s.isNotEmpty).toList();
+      if (parts.isNotEmpty) {
+        initials = parts.first[0].toUpperCase();
+        if (parts.length > 1) {
+          initials += parts.last[0].toUpperCase();
+        }
+      }
+      
+      return {
+        'name': name,
+        'email': email,
+        'initials': initials,
+        'program': 'Holy Angel University',
+      };
+    } catch (e) {
+      // Offline/Error fallback
+      return {
+        'name': 'Student',
+        'email': 'Loading...',
+        'initials': 'S',
+        'program': 'Holy Angel University',
+      };
+    }
+  }
+
   Future<List<Course>> fetchActiveCourses() async {
     final url = '$_baseUrl/api/v1/courses?enrollment_state=active&include[]=term&include[]=teachers&per_page=50';
     final body = await _fetchWithCache(url, 'cache_active_courses');
