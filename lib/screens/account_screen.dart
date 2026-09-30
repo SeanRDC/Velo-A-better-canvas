@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import '../components/app_shell.dart';
 import '../state/app_state.dart';
 import '../services/canvas_service.dart';
+import 'package:file_picker/file_picker.dart';
 
 class AccountScreen extends StatefulWidget {
   const AccountScreen({super.key});
@@ -20,6 +21,8 @@ class _AccountScreenState extends State<AccountScreen> {
     'initials': '-',
     'program': 'Holy Angel University',
     'email': 'Loading...',
+    'avatar_url': '',
+    'bio': '',
   };
 
   @override
@@ -33,6 +36,126 @@ class _AccountScreenState extends State<AccountScreen> {
       final profile = await _canvasService.fetchUserProfile();
       if (mounted) setState(() => _userProfile = profile);
     } catch (e) {}
+  }
+
+  void _openEditProfileSheet(ThemeData theme) {
+    final bioController = TextEditingController(text: _userProfile['bio']);
+    bool isSaving = false;
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: theme.colorScheme.surface,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      builder: (BuildContext context) {
+        return StatefulBuilder(
+          builder: (context, setModalState) {
+            return Padding(
+              padding: EdgeInsets.only(
+                bottom: MediaQuery.of(context).viewInsets.bottom + 24,
+                left: 24, right: 24, top: 12,
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Center(
+                    child: Container(
+                      height: 4, width: 40,
+                      decoration: BoxDecoration(color: theme.colorScheme.onSurface.withValues(alpha: 0.2), borderRadius: BorderRadius.circular(2)),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text('Edit Profile', style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold)),
+                      IconButton(icon: const Icon(Icons.close), onPressed: () => Navigator.pop(context)),
+                    ],
+                  ),
+                  const SizedBox(height: 24),
+                  
+                  // Profile Picture Upload
+                  Center(
+                    child: InkWell(
+                      onTap: () async {
+                        final result = await FilePicker.pickFiles(type: FileType.image);
+                        if (result.isNotEmpty && mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text('Avatar selected. (Canvas upload requires AWS S3 multipart integration)')),
+                          );
+                        }
+                      },
+                      borderRadius: BorderRadius.circular(12),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+                        decoration: BoxDecoration(
+                          color: theme.scaffoldBackgroundColor,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: theme.colorScheme.onSurface.withValues(alpha: 0.1)),
+                        ),
+                        child: Column(
+                          children: [
+                            Icon(Icons.photo_camera_outlined, size: 32, color: theme.colorScheme.secondary),
+                            const SizedBox(height: 8),
+                            Text('Change Profile Picture', style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600)),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+
+                  // Biography Edit
+                  Text('Biography', style: theme.textTheme.labelSmall?.copyWith(fontWeight: FontWeight.bold, color: theme.colorScheme.secondary)),
+                  const SizedBox(height: 8),
+                  TextField(
+                    controller: bioController,
+                    maxLines: 5,
+                    decoration: InputDecoration(
+                      hintText: 'Tell us about yourself...',
+                      filled: true,
+                      fillColor: theme.scaffoldBackgroundColor,
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+
+                  // Save Button
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton(
+                      onPressed: isSaving ? null : () async {
+                        setModalState(() => isSaving = true);
+                        try {
+                          await _canvasService.updateUserBio(bioController.text.trim());
+                          await _fetchProfile(); // Refresh the local state
+                          if (context.mounted) Navigator.pop(context);
+                        } catch (e) {
+                          if (context.mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
+                            setModalState(() => isSaving = false);
+                          }
+                        }
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: theme.colorScheme.primary,
+                        foregroundColor: theme.colorScheme.onPrimary,
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      ),
+                      child: isSaving
+                          ? SizedBox(height: 20, width: 20, child: CircularProgressIndicator(strokeWidth: 2, color: theme.colorScheme.onPrimary))
+                          : const Text('Save Profile', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                    ),
+                  ),
+                ],
+              ),
+            );
+          }
+        );
+      }
+    );
   }
 
   void _showPrivacySheet(ThemeData theme) {
@@ -107,32 +230,74 @@ class _AccountScreenState extends State<AccountScreen> {
           // Profile Section
           Column(
             children: [
-              Container(
-                height: 80, width: 80,
-                decoration: BoxDecoration(color: theme.colorScheme.primary, shape: BoxShape.circle),
-                alignment: Alignment.center,
-                child: Text(
-                  _userProfile['initials']!,
-                  style: theme.textTheme.headlineMedium?.copyWith(color: theme.colorScheme.onPrimary, fontWeight: FontWeight.bold),
-                ),
+              CircleAvatar(
+                radius: 48,
+                backgroundColor: theme.colorScheme.primary,
+                backgroundImage: _userProfile['avatar_url']!.isNotEmpty 
+                    ? NetworkImage(_userProfile['avatar_url']!) 
+                    : null,
+                child: _userProfile['avatar_url']!.isEmpty
+                    ? Text(
+                        _userProfile['initials']!,
+                        style: theme.textTheme.headlineMedium?.copyWith(color: theme.colorScheme.onPrimary, fontWeight: FontWeight.bold),
+                      )
+                    : null,
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: 16),
               Text(
-                _userProfile['name']!,
-                style: theme.textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold, letterSpacing: -0.5),
+                _userProfile['name']!.toUpperCase(),
+                style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold, letterSpacing: -0.5),
                 textAlign: TextAlign.center,
               ),
-              const SizedBox(height: 2),
+              const SizedBox(height: 4),
               Text(
                 _userProfile['program']!,
-                style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onSurface),
+                style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.secondary),
                 textAlign: TextAlign.center,
               ),
-              const SizedBox(height: 2),
-              Text(
-                _userProfile['email']!,
-                style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.secondary),
-                textAlign: TextAlign.center,
+              const SizedBox(height: 24),
+              
+              // Canvas Parity: Biography Block
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  color: theme.colorScheme.surface,
+                  borderRadius: BorderRadius.circular(16),
+                  boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.02), blurRadius: 8, offset: const Offset(0, 2))],
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text('Biography', style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
+                        TextButton.icon(
+                          onPressed: () => _openEditProfileSheet(theme),
+                          icon: const Icon(Icons.edit, size: 16),
+                          label: const Text('Edit Profile'),
+                          style: TextButton.styleFrom(
+                            foregroundColor: theme.colorScheme.primary,
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                            backgroundColor: theme.scaffoldBackgroundColor,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    Text(
+                      _userProfile['bio']!.isNotEmpty 
+                          ? _userProfile['bio']! 
+                          : 'No biography has been added',
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        color: _userProfile['bio']!.isNotEmpty ? theme.colorScheme.onSurface : theme.colorScheme.secondary,
+                        height: 1.5,
+                        fontStyle: _userProfile['bio']!.isEmpty ? FontStyle.italic : FontStyle.normal,
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ],
           ),
