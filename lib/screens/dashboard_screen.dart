@@ -463,8 +463,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
       alignment: Alignment.topCenter,
       child: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: 800),
-        child: useCenter
-            ? CustomScrollView(
+        child: RefreshIndicator(
+          onRefresh: _fetchCanvasData,
+          color: theme.colorScheme.primary,
+          backgroundColor: theme.colorScheme.surface,
+          child: useCenter
+              ? CustomScrollView(
                 controller: _scrollController,
                 center: centerKey, // Forces the viewport to launch exactly here
                 slivers: [
