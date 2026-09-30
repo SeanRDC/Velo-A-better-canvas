@@ -6,6 +6,7 @@ import 'package:flutter_widget_from_html/flutter_widget_from_html.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../components/app_shell.dart';
 import '../models/course.dart';
+import 'package:file_picker/file_picker.dart';
 
 class TaskDetailScreen extends StatefulWidget {
   final Course course;
@@ -165,20 +166,25 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
                             ),
                           )
                         : InkWell(
-                            onTap: () => setModalState(() => _fileName = 'selected_assignment_file.pdf'),
-                            borderRadius: BorderRadius.circular(12),
-                            child: Container(
-                              width: double.infinity, padding: const EdgeInsets.symmetric(vertical: 32),
-                              decoration: BoxDecoration(color: theme.scaffoldBackgroundColor, borderRadius: BorderRadius.circular(12)),
-                              child: Column(
-                                children: [
-                                  Icon(Icons.cloud_upload_outlined, size: 32, color: theme.colorScheme.secondary),
-                                  const SizedBox(height: 8),
-                                  Text('Choose a file', style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w500)),
-                                ],
+                              onTap: () async {
+                              final result = await FilePicker.pickFiles();
+                              if (result.isNotEmpty) {
+                                setModalState(() => _fileName = result.first.name);
+                              }
+                            },
+                              borderRadius: BorderRadius.circular(12),
+                              child: Container(
+                                width: double.infinity, padding: const EdgeInsets.symmetric(vertical: 32),
+                                decoration: BoxDecoration(color: theme.scaffoldBackgroundColor, borderRadius: BorderRadius.circular(12)),
+                                child: Column(
+                                  children: [
+                                    Icon(Icons.cloud_upload_outlined, size: 32, color: theme.colorScheme.secondary),
+                                    const SizedBox(height: 8),
+                                    Text('Choose a file', style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w500)),
+                                  ],
+                                ),
                               ),
                             ),
-                          ),
 
                   if (_selectedTab == 'text' && allowsText)
                     TextField(
@@ -203,7 +209,12 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
 
                   if (_selectedTab == 'media' && allowsMedia)
                     InkWell(
-                      onTap: () => setModalState(() => _mediaName = 'audio_recording.mp3'),
+                      onTap: () async {
+                        final result = await FilePicker.pickFiles(type: FileType.media);
+                        if (result.isNotEmpty) {
+                          setModalState(() => _mediaName = result.first.name);
+                        }
+                      },
                       borderRadius: BorderRadius.circular(12),
                       child: Container(
                         width: double.infinity, padding: const EdgeInsets.symmetric(vertical: 32),

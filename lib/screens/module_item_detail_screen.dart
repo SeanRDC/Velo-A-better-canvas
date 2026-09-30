@@ -6,7 +6,8 @@ import 'package:flutter_widget_from_html/flutter_widget_from_html.dart';
 import '../components/app_shell.dart';
 import '../models/course.dart';
 import '../services/canvas_service.dart';
-import 'course_modules_screen.dart'; // To access the ModuleItem model
+import 'course_modules_screen.dart';
+import 'package:file_picker/file_picker.dart';
 
 class ModuleItemDetailScreen extends StatefulWidget {
   final Course course;
@@ -35,6 +36,7 @@ class _ModuleItemDetailScreenState extends State<ModuleItemDetailScreen> {
   bool _submitted = false;
   bool _isUploading = false;
   String _selectedTab = 'file';
+  String? _fileName;
   final TextEditingController _textController = TextEditingController();
 
   @override
@@ -98,7 +100,8 @@ class _ModuleItemDetailScreenState extends State<ModuleItemDetailScreen> {
       builder: (BuildContext context) {
         return StatefulBuilder(
           builder: (BuildContext context, StateSetter setModalState) {
-            final canSubmit = _selectedTab == 'file' || _textController.text.trim().isNotEmpty;
+            final canSubmit = (_selectedTab == 'file' && _fileName != null) || 
+                              (_selectedTab == 'text' && _textController.text.trim().isNotEmpty);
             return Padding(
               padding: EdgeInsets.only(
                 bottom: MediaQuery.of(context).viewInsets.bottom + 24,
@@ -161,22 +164,43 @@ class _ModuleItemDetailScreenState extends State<ModuleItemDetailScreen> {
                   ),
                   const SizedBox(height: 16),
                   if (_selectedTab == 'file')
-                    InkWell(
-                      onTap: () {},
-                      borderRadius: BorderRadius.circular(12),
-                      child: Container(
-                        width: double.infinity, padding: const EdgeInsets.symmetric(vertical: 32),
-                        decoration: BoxDecoration(color: theme.scaffoldBackgroundColor, borderRadius: BorderRadius.circular(12)),
-                        child: Column(
-                          children: [
-                            Icon(Icons.cloud_upload_outlined, size: 32, color: theme.colorScheme.secondary),
-                            const SizedBox(height: 8),
-                            Text('Choose a file', style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w500)),
-                            Text('PDF, DOCX, ZIP up to 50 MB', style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.secondary)),
-                          ],
-                        ),
-                      ),
-                    )
+                    _fileName != null
+                        ? Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                            decoration: BoxDecoration(color: theme.scaffoldBackgroundColor, borderRadius: BorderRadius.circular(12)),
+                            child: Row(
+                              children: [
+                                Icon(Icons.attach_file, size: 20, color: theme.colorScheme.primary),
+                                const SizedBox(width: 12),
+                                Expanded(child: Text(_fileName!, style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.bold))),
+                                InkWell(
+                                  onTap: () => setModalState(() => _fileName = null),
+                                  child: Text('Remove', style: theme.textTheme.labelSmall?.copyWith(color: theme.colorScheme.secondary)),
+                                )
+                              ],
+                            ),
+                          )
+                        : InkWell(
+                            onTap: () async {
+                              final result = await FilePicker.pickFiles();
+                              if (result.isNotEmpty) {
+                                setModalState(() => _fileName = result.first.name);
+                              }
+                            },
+                            borderRadius: BorderRadius.circular(12),
+                            child: Container(
+                              width: double.infinity, padding: const EdgeInsets.symmetric(vertical: 32),
+                              decoration: BoxDecoration(color: theme.scaffoldBackgroundColor, borderRadius: BorderRadius.circular(12)),
+                              child: Column(
+                                children: [
+                                  Icon(Icons.cloud_upload_outlined, size: 32, color: theme.colorScheme.secondary),
+                                  const SizedBox(height: 8),
+                                  Text('Choose a file', style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w500)),
+                                  Text('PDF, DOCX, ZIP up to 50 MB', style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.secondary)),
+                                ],
+                              ),
+                            ),
+                          )
                   else
                     TextField(
                       controller: _textController,
