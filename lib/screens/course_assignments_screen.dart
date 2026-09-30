@@ -258,53 +258,58 @@ class _CourseAssignmentsScreenState extends State<CourseAssignmentsScreen> {
       );
     }
 
-    return ListView.builder(
-      padding: const EdgeInsets.only(left: 24, right: 24, bottom: 32),
-      itemCount: _displayAssignments.length,
-      itemBuilder: (context, index) {
-        final a = _displayAssignments[index];
-        return Padding(
-          padding: const EdgeInsets.only(bottom: 12.0),
-          child: InkWell(
-            onTap: () {
-              context.push('/task', extra: {
-                'course': widget.course,
-                'assignment': a,
-              });
-            },
-            borderRadius: BorderRadius.circular(16),
-            child: Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: theme.colorScheme.surface,
-                borderRadius: BorderRadius.circular(16),
-              ),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          a['name'] ?? 'Untitled Assignment',
-                          style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold, color: theme.colorScheme.onSurface),
-                        ),
-                        const SizedBox(height: 6),
-                        Text(
-                          'Due ${_formatDueDate(a['due_at'])} · ${a['points_possible'] ?? 0} pts',
-                          style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.secondary),
-                        ),
-                      ],
+    return RefreshIndicator(
+      onRefresh: _fetchAssignments,
+      color: theme.colorScheme.primary,
+      backgroundColor: theme.colorScheme.surface,
+      child: ListView.builder(
+        padding: const EdgeInsets.only(left: 24, right: 24, bottom: 32),
+        itemCount: _displayAssignments.length,
+        itemBuilder: (context, index) {
+          final a = _displayAssignments[index];
+          return Padding(
+            padding: const EdgeInsets.only(bottom: 12.0),
+            child: InkWell(
+              onTap: () {
+                context.push('/task', extra: {
+                  'course': widget.course,
+                  'assignment': a,
+                });
+              },
+              borderRadius: BorderRadius.circular(16),
+              child: Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: theme.colorScheme.surface,
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            a['name'] ?? 'Untitled Assignment',
+                            style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold, color: theme.colorScheme.onSurface),
+                          ),
+                          const SizedBox(height: 6),
+                          Text(
+                            'Due ${_formatDueDate(a['due_at'])} · ${a['points_possible'] ?? 0} pts',
+                            style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.secondary),
+                          ),
+                        ],
+                      ),
                     ),
-                  ),
-                  const SizedBox(width: 12),
-                  _buildStatusPill(theme, a),
-                ],
+                    const SizedBox(width: 12),
+                    _buildStatusPill(theme, a),
+                  ],
+                ),
               ),
             ),
-          ),
-        );
-      },
+          );
+        },
+      ),
     );
   }
 }
