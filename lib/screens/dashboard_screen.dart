@@ -491,7 +491,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 children: overdueWidgets.isNotEmpty ? overdueWidgets : upcomingWidgets,
               ),
       ),
-    );
+    ),
+  );
   }
 
   Widget _buildDivider(String groupName, ThemeData theme, {required bool isOverdue}) {

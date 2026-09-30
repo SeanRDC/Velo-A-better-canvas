@@ -36,6 +36,7 @@ class CanvasService {
              
       if (response.statusCode == 200) {
         await prefs.setString(cacheKey, response.body);
+        await prefs.setString('last_sync_time', DateTime.now().toIso8601String()); // Add this line
         return response.body;
       } else {
         throw Exception('Failed to load data from Canvas (Status: ${response.statusCode}).');
