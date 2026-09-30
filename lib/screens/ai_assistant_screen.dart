@@ -423,6 +423,21 @@ class _AiAssistantScreenState extends State<AiAssistantScreen> {
     return AppShell(
       title: 'Velo Co-pilot',
       activeTab: 'assistant',
+      actions: [
+        IconButton(
+          icon: const Icon(Icons.cleaning_services_outlined),
+          tooltip: 'Clear Chat',
+          onPressed: () {
+            setState(() {
+              _messages.removeRange(2, _messages.length);
+              _apiHistory.removeRange(1, _apiHistory.length);
+            });
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('AI memory cleared.'), duration: Duration(seconds: 2)),
+            );
+          },
+        ),
+      ],
       child: _isInitializing
           ? Center(
               child: Column(
