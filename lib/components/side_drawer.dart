@@ -2,6 +2,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../state/app_state.dart';
 
 // Local mock data mirroring the TypeScript context
@@ -161,6 +162,22 @@ class SideDrawer extends StatelessWidget {
                     },
                   ),
                   const SizedBox(height: 4),
+                  
+                  // External Link to Campus++
+                  _DrawerTile(
+                    icon: Icons.open_in_new_rounded,
+                    label: 'Open Campus++',
+                    isActive: false, 
+                    onTap: () async {
+                      if (!isDesktop) Navigator.pop(context);
+                      final uri = Uri.parse('https://hau.campus-erp.com/Student/Login.php');
+                      if (await canLaunchUrl(uri)) {
+                        await launchUrl(uri, mode: LaunchMode.externalApplication);
+                      }
+                    },
+                  ),
+                  const SizedBox(height: 4),
+
                   _DrawerTile(
                     icon: Icons.settings_outlined,
                     label: 'Account & Settings',
