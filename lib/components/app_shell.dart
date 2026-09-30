@@ -25,32 +25,53 @@ class AppShell extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    
     final isOffline = context.watch<AppState>().isOffline;
 
-    return Scaffold(
-      backgroundColor: theme.scaffoldBackgroundColor,
-      appBar: AppBar(
-        title: Text(title),
-        leading: leading ?? Builder(
-          builder: (context) => IconButton(
-            icon: const Icon(Icons.menu),
-            onPressed: () {
-              Scaffold.of(context).openDrawer();
-            },
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final isDesktop = constraints.maxWidth >= 800;
+
+        return Scaffold(
+          backgroundColor: theme.scaffoldBackgroundColor,
+          appBar: AppBar(
+            title: Text(title),
+            leading: isDesktop
+                ? const SizedBox.shrink()
+                : leading ?? Builder(
+                    builder: (context) => IconButton(
+                      icon: const Icon(Icons.menu),
+                      onPressed: () {
+                        Scaffold.of(context).openDrawer();
+                      },
+                    ),
+                  ),
+            actions: actions,
           ),
-        ),
-        actions: actions,
-      ),
-      drawer: const SideDrawer(),
-      body: Column(
-        children: [
-          if (isOffline) const OfflineBanner(),
-          
-          Expanded(child: child),
-        ],
-      ),
-      bottomNavigationBar: BottomNav(activeTab: activeTab),
+          drawer: isDesktop ? null : SideDrawer(activeTab: activeTab, isDesktop: false),
+          body: Row(
+            children: [
+              if (isDesktop)
+                Container(
+                  width: 280,
+                  decoration: BoxDecoration(
+                    border: Border(right: BorderSide(color: theme.colorScheme.onSurface.withValues(alpha: 0.1))),
+                  ),
+                  child: SideDrawer(activeTab: activeTab, isDesktop: true),
+                ),
+              // Main content area
+              Expanded(
+                child: Column(
+                  children: [
+                    if (isOffline) const OfflineBanner(),
+                    Expanded(child: child),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          bottomNavigationBar: isDesktop ? null : BottomNav(activeTab: activeTab),
+        );
+      },
     );
   }
 }
