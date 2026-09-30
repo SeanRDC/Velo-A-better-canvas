@@ -297,117 +297,122 @@ Future<void> _launchLink(String url) async {
       );
     }
 
-    return ListView.builder(
-      padding: const EdgeInsets.symmetric(horizontal: 24),
-      itemCount: _announcements.length,
-      itemBuilder: (context, index) {
-        final ann = _announcements[index];
-        final cleanBody = _stripHtml(ann['message'] ?? '');
-        final hasAttachments = (ann['attachments'] as List<dynamic>? ?? []).isNotEmpty;
-        
-        // Canvas parity fields
-        final bool isUnread = ann['read_state'] == 'unread';
-        final int replyCount = ann['discussion_subentry_count'] ?? 0;
+    return RefreshIndicator(
+      onRefresh: _fetchAnnouncements,
+      color: theme.colorScheme.primary,
+      backgroundColor: theme.colorScheme.surface,
+      child: ListView.builder(
+        padding: const EdgeInsets.symmetric(horizontal: 24),
+        itemCount: _announcements.length,
+        itemBuilder: (context, index) {
+          final ann = _announcements[index];
+          final cleanBody = _stripHtml(ann['message'] ?? '');
+          final hasAttachments = (ann['attachments'] as List<dynamic>? ?? []).isNotEmpty;
+          
+          // Canvas parity fields
+          final bool isUnread = ann['read_state'] == 'unread';
+          final int replyCount = ann['discussion_subentry_count'] ?? 0;
 
-        return Padding(
-          padding: const EdgeInsets.only(bottom: 16.0),
-          child: Material(
-            color: theme.scaffoldBackgroundColor,
-            child: InkWell(
-              onTap: () {
-                setState(() {
-                  _selectedIndex = index;
-                  // Optimistically mark as read locally so the indicator clears
-                  _announcements[index]['read_state'] = 'read';
-                });
-              },
-              borderRadius: BorderRadius.circular(12),
-              child: Padding(
-                padding: const EdgeInsets.symmetric(vertical: 8.0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.baseline,
-                      textBaseline: TextBaseline.alphabetic,
-                      children: [
-                        if (isUnread) ...[
-                          Container(
-                            width: 8,
-                            height: 8,
-                            margin: const EdgeInsets.only(right: 8),
-                            decoration: BoxDecoration(
-                              color: theme.colorScheme.primary,
-                              shape: BoxShape.circle,
+          return Padding(
+            padding: const EdgeInsets.only(bottom: 16.0),
+            child: Material(
+              color: theme.scaffoldBackgroundColor,
+              child: InkWell(
+                onTap: () {
+                  setState(() {
+                    _selectedIndex = index;
+                    // Optimistically mark as read locally so the indicator clears
+                    _announcements[index]['read_state'] = 'read';
+                  });
+                },
+                borderRadius: BorderRadius.circular(12),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 8.0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.baseline,
+                        textBaseline: TextBaseline.alphabetic,
+                        children: [
+                          if (isUnread) ...[
+                            Container(
+                              width: 8,
+                              height: 8,
+                              margin: const EdgeInsets.only(right: 8),
+                              decoration: BoxDecoration(
+                                color: theme.colorScheme.primary,
+                                shape: BoxShape.circle,
+                              ),
+                            ),
+                          ],
+                          Expanded(
+                            child: Row(
+                              children: [
+                                Flexible(
+                                  child: Text(
+                                    ann['title'] ?? 'Untitled',
+                                    style: theme.textTheme.bodyLarge?.copyWith(
+                                      fontWeight: isUnread ? FontWeight.bold : FontWeight.w600,
+                                      color: isUnread ? theme.colorScheme.onSurface : theme.colorScheme.onSurface.withValues(alpha: 0.8),
+                                    ),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                                if (hasAttachments) ...[
+                                  const SizedBox(width: 8),
+                                  Icon(Icons.attach_file, size: 14, color: theme.colorScheme.secondary),
+                                ],
+                              ],
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Text(
+                            _formatDate(ann['posted_at']),
+                            style: theme.textTheme.labelSmall?.copyWith(
+                              color: isUnread ? theme.colorScheme.onSurface : theme.colorScheme.secondary,
+                              fontWeight: isUnread ? FontWeight.bold : FontWeight.normal,
                             ),
                           ),
                         ],
-                        Expanded(
-                          child: Row(
-                            children: [
-                              Flexible(
-                                child: Text(
-                                  ann['title'] ?? 'Untitled',
-                                  style: theme.textTheme.bodyLarge?.copyWith(
-                                    fontWeight: isUnread ? FontWeight.bold : FontWeight.w600,
-                                    color: isUnread ? theme.colorScheme.onSurface : theme.colorScheme.onSurface.withValues(alpha: 0.8),
-                                  ),
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                              ),
-                              if (hasAttachments) ...[
-                                const SizedBox(width: 8),
-                                Icon(Icons.attach_file, size: 14, color: theme.colorScheme.secondary),
-                              ],
-                            ],
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Text(
-                          _formatDate(ann['posted_at']),
-                          style: theme.textTheme.labelSmall?.copyWith(
-                            color: isUnread ? theme.colorScheme.onSurface : theme.colorScheme.secondary,
-                            fontWeight: isUnread ? FontWeight.bold : FontWeight.normal,
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 4),
-                    Row(
-                      children: [
-                        Text(
-                          ann['user_name'] ?? 'Instructor',
-                          style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.secondary),
-                        ),
-                        if (replyCount > 0) ...[
-                          const SizedBox(width: 8),
-                          Icon(Icons.chat_bubble_outline, size: 12, color: theme.colorScheme.secondary),
-                          const SizedBox(width: 4),
+                      ),
+                      const SizedBox(height: 4),
+                      Row(
+                        children: [
                           Text(
-                            '$replyCount',
+                            ann['user_name'] ?? 'Instructor',
                             style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.secondary),
                           ),
-                        ]
-                      ],
-                    ),
-                    const SizedBox(height: 6),
-                    Text(
-                      cleanBody,
-                      style: theme.textTheme.bodyMedium?.copyWith(
-                        color: theme.colorScheme.secondary,
-                        height: 1.4,
+                          if (replyCount > 0) ...[
+                            const SizedBox(width: 8),
+                            Icon(Icons.chat_bubble_outline, size: 12, color: theme.colorScheme.secondary),
+                            const SizedBox(width: 4),
+                            Text(
+                              '$replyCount',
+                              style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.secondary),
+                            ),
+                          ]
+                        ],
                       ),
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ],
+                      const SizedBox(height: 6),
+                      Text(
+                        cleanBody,
+                        style: theme.textTheme.bodyMedium?.copyWith(
+                          color: theme.colorScheme.secondary,
+                          height: 1.4,
+                        ),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ),
-          ),
-        );
-      },
+          );
+        },
+      ),
     );
   }
 }
