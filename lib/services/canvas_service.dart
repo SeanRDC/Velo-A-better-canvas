@@ -59,6 +59,8 @@ class CanvasService {
       
       String name = data['name'] ?? 'Unknown User';
       String email = data['primary_email'] ?? data['login_id'] ?? 'No email provided';
+      String avatarUrl = data['avatar_url'] ?? '';
+      String bio = data['bio'] ?? '';
       
       String initials = 'U';
       final parts = name.split(' ').where((s) => s.isNotEmpty).toList();
@@ -73,7 +75,9 @@ class CanvasService {
         'name': name,
         'email': email,
         'initials': initials,
-        'program': 'Holy Angel University',
+        'program': programName,
+        'avatar_url': avatarUrl,
+        'bio': bio,
       };
     } catch (e) {
       // Offline/Error fallback
@@ -81,9 +85,30 @@ class CanvasService {
         'name': 'Student',
         'email': 'Loading...',
         'initials': 'S',
-        'program': 'Holy Angel University',
+        'program': 'Canvas Student',
+        'avatar_url': '',
+        'bio': '',
       };
     }
+  }
+
+  Future<void> updateUserBio(String newBio) async {
+    final prefs = await _prefs;
+    if (prefs.getBool('isOffline') ?? false) {
+      throw Exception('Cannot update profile while offline.');
+    }
+    
+    final response = await http.put(
+      Uri.parse('$_baseUrl/api/v1/users/self/profile'),
+      headers: _headers,
+      body: {'user[bio]': newBio},
+    );
+    
+    if (response.statusCode != 200) {
+      throw Exception('Failed to update Canvas profile');
+    }
+    
+    await prefs.remove('cache_user_profile');
   }
 
   Future<List<Course>> fetchActiveCourses() async {
