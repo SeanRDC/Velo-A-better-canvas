@@ -5,11 +5,13 @@ import 'package:flutter_markdown/flutter_markdown.dart';
 class ChatBubble extends StatefulWidget {
   final String text;
   final bool isUser;
+  final void Function(String)? onLinkTap;
 
   const ChatBubble({
     super.key,
     required this.text,
     required this.isUser,
+    this.onLinkTap,
   });
 
   @override
@@ -96,6 +98,11 @@ class _ChatBubbleState extends State<ChatBubble> with SingleTickerProviderStateM
                           ),
                   ),
                   child: MarkdownBody(
+                    onTapLink: (text, href, title) {
+                      if (href != null && widget.onLinkTap != null) {
+                        widget.onLinkTap!(href);
+                      }
+                    },
                     data: widget.text,
                     selectable: true,
                     styleSheet: MarkdownStyleSheet(
