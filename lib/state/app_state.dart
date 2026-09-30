@@ -33,6 +33,7 @@ class AppState extends ChangeNotifier {
   bool get isOffline => _isOffline;
   ThemeMode get themeMode => _themeMode;
   bool get pushEnabled => _pushEnabled;
+  String? get lastSyncTime => _prefs.getString('last_sync_time');
 
   Future<void> _initNotifications() async {
     // Skip native initialization if running in a web browser
