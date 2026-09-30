@@ -4,15 +4,9 @@ import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../state/app_state.dart';
+import '../services/canvas_service.dart';
 
-// Local mock data mirroring the TypeScript context
-const _currentUser = {
-  'name': 'Sean Rhani Jarin Dela Cruz',
-  'initials': 'SD',
-  'program': 'Holy Angel University',
-};
-
-class SideDrawer extends StatelessWidget {
+class SideDrawer extends StatefulWidget {
   final String? activeTab;
   final bool isDesktop;
   final String? desktopTitle;
@@ -25,27 +19,50 @@ class SideDrawer extends StatelessWidget {
   });
 
   @override
+  State<SideDrawer> createState() => _SideDrawerState();
+}
+
+class _SideDrawerState extends State<SideDrawer> {
+  final CanvasService _canvasService = CanvasService();
+  Map<String, String> _userProfile = {
+    'name': 'Loading...',
+    'initials': '-',
+    'program': 'Holy Angel University',
+  };
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchProfile();
+  }
+
+  Future<void> _fetchProfile() async {
+    try {
+      final profile = await _canvasService.fetchUserProfile();
+      if (mounted) setState(() => _userProfile = profile);
+    } catch (e) {// empt
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
     final unreadCount = context.watch<AppState>().unreadInboxCount;
 
     return Drawer(
-      elevation: isDesktop ? 0 : 16,
+      elevation: widget.isDesktop ? 0 : 16,
       backgroundColor: theme.colorScheme.surface,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.zero,
-      ),
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.zero),
       child: SafeArea(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Render Desktop Title at the top of the Sidebar
-            if (isDesktop && desktopTitle != null)
+            if (widget.isDesktop && widget.desktopTitle != null)
               Padding(
                 padding: const EdgeInsets.fromLTRB(24, 24, 24, 0),
                 child: Text(
-                  desktopTitle!,
+                  widget.desktopTitle!,
                   style: theme.textTheme.headlineSmall?.copyWith(
                     fontWeight: FontWeight.bold,
                     color: theme.colorScheme.onSurface,
@@ -56,7 +73,7 @@ class SideDrawer extends StatelessWidget {
 
             // Header: Avatar + Profile
             Padding(
-              padding: EdgeInsets.fromLTRB(24, (isDesktop && desktopTitle != null) ? 16 : 24, 24, 24),
+              padding: EdgeInsets.fromLTRB(24, (widget.isDesktop && widget.desktopTitle != null) ? 16 : 24, 24, 24),
               child: Row(
                 children: [
                   CircleAvatar(
@@ -64,7 +81,7 @@ class SideDrawer extends StatelessWidget {
                     backgroundColor: theme.colorScheme.primary,
                     foregroundColor: theme.colorScheme.onPrimary,
                     child: Text(
-                      _currentUser['initials']!,
+                      _userProfile['initials']!,
                       style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
                     ),
                   ),
@@ -74,7 +91,7 @@ class SideDrawer extends StatelessWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          _currentUser['name']!,
+                          _userProfile['name']!,
                           style: theme.textTheme.titleMedium?.copyWith(
                             fontWeight: FontWeight.bold,
                             color: theme.colorScheme.onSurface,
@@ -84,10 +101,8 @@ class SideDrawer extends StatelessWidget {
                           overflow: TextOverflow.ellipsis,
                         ),
                         Text(
-                          _currentUser['program']!,
-                          style: theme.textTheme.bodySmall?.copyWith(
-                            color: theme.colorScheme.secondary,
-                          ),
+                          _userProfile['program']!,
+                          style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.secondary),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                         ),
@@ -103,14 +118,13 @@ class SideDrawer extends StatelessWidget {
               child: ListView(
                 padding: const EdgeInsets.symmetric(horizontal: 16),
                 children: [
-                  // Inject Primary Navigation directly into the Drawer on Desktop
-                  if (isDesktop) ...[
+                  if (widget.isDesktop) ...[
                     _DrawerTile(
                       icon: Icons.checklist_rtl,
                       label: 'Dashboard',
-                      isActive: activeTab == 'tasks',
+                      isActive: widget.activeTab == 'tasks',
                       onTap: () {
-                        if (!isDesktop) Navigator.pop(context);
+                        if (!widget.isDesktop) Navigator.pop(context);
                         context.go('/dashboard');
                       },
                     ),
@@ -118,9 +132,9 @@ class SideDrawer extends StatelessWidget {
                     _DrawerTile(
                       icon: Icons.smart_toy_outlined,
                       label: 'AI Assistant',
-                      isActive: activeTab == 'assistant',
+                      isActive: widget.activeTab == 'assistant',
                       onTap: () {
-                        if (!isDesktop) Navigator.pop(context);
+                        if (!widget.isDesktop) Navigator.pop(context);
                         context.go('/assistant');
                       },
                     ),
@@ -128,9 +142,9 @@ class SideDrawer extends StatelessWidget {
                     _DrawerTile(
                       icon: Icons.menu_book_rounded,
                       label: 'Courses',
-                      isActive: activeTab == 'courses',
+                      isActive: widget.activeTab == 'courses',
                       onTap: () {
-                        if (!isDesktop) Navigator.pop(context);
+                        if (!widget.isDesktop) Navigator.pop(context);
                         context.go('/courses');
                       },
                     ),
@@ -140,13 +154,12 @@ class SideDrawer extends StatelessWidget {
                     ),
                   ],
 
-                  // Standard Secondary Navigation
                   _DrawerTile(
                     icon: Icons.calendar_today_outlined,
                     label: 'Planner',
-                    isActive: activeTab == 'planner',
+                    isActive: widget.activeTab == 'planner',
                     onTap: () {
-                      if (!isDesktop) Navigator.pop(context);
+                      if (!widget.isDesktop) Navigator.pop(context);
                       context.go('/planner');
                     },
                   ),
@@ -155,35 +168,32 @@ class SideDrawer extends StatelessWidget {
                     icon: Icons.inbox_outlined,
                     label: 'Inbox',
                     badge: unreadCount,
-                    isActive: activeTab == 'inbox',
+                    isActive: widget.activeTab == 'inbox',
                     onTap: () {
-                      if (!isDesktop) Navigator.pop(context);
+                      if (!widget.isDesktop) Navigator.pop(context);
                       context.go('/inbox');
                     },
                   ),
                   const SizedBox(height: 4),
-                  
-                  // External Link to Campus++
                   _DrawerTile(
                     icon: Icons.open_in_new_rounded,
                     label: 'Open Campus++',
                     isActive: false, 
                     onTap: () async {
-                      if (!isDesktop) Navigator.pop(context);
-                      final uri = Uri.parse('https://hau.campus-erp.com/Student/Login.php');
+                      if (!widget.isDesktop) Navigator.pop(context);
+                      final uri = Uri.parse('https://your-campus-plus-plus-link.com');
                       if (await canLaunchUrl(uri)) {
                         await launchUrl(uri, mode: LaunchMode.externalApplication);
                       }
                     },
                   ),
                   const SizedBox(height: 4),
-
                   _DrawerTile(
                     icon: Icons.settings_outlined,
                     label: 'Account & Settings',
-                    isActive: activeTab == 'account',
+                    isActive: widget.activeTab == 'account',
                     onTap: () {
-                      if (!isDesktop) Navigator.pop(context);
+                      if (!widget.isDesktop) Navigator.pop(context);
                       context.go('/account');
                     },
                   ),
