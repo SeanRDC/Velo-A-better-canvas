@@ -386,18 +386,18 @@ class CanvasService {
         try {
           final tasks = await fetchAssignmentsForCourse(course);
           final pending = tasks.where((t) => !t.isSubmitted).toList();
-          return MapEntry(course.courseCode, pending);
+          return MapEntry(course, pending);
         } catch (_) {
-          return MapEntry(course.courseCode, <Task>[]);
+          return MapEntry(course, <Task>[]);
         }
       }),
     );
 
     for (final entry in results) {
       if (entry.value.isNotEmpty) {
-        buffer.writeln('${entry.key} Pending Tasks:');
+        buffer.writeln('${entry.key.courseCode} Pending Tasks:');
         for (var t in entry.value) {
-          buffer.writeln('- ${t.title} (Due: ${t.dueDate.toLocal()}, Points: ${t.points})');
+          buffer.writeln('- ${t.title} (Due: ${t.dueDate.toLocal()}, Points: ${t.points}) [Link: velo://task?courseId=${entry.key.id}&taskId=${t.id}]');
         }
       }
     }
@@ -435,18 +435,18 @@ class CanvasService {
       courses.map((course) async {
         try {
           final announcements = await fetchAnnouncementsForCourse(course.id);
-          return MapEntry(course.courseCode, announcements.take(3).toList());
+          return MapEntry(course, announcements.take(3).toList());
         } catch (_) {
-          return MapEntry(course.courseCode, <Map<String, dynamic>>[]);
+          return MapEntry(course, <Map<String, dynamic>>[]);
         }
       }),
     );
 
     for (final entry in results) {
       if (entry.value.isNotEmpty) {
-        buffer.writeln('${entry.key} Announcements:');
+        buffer.writeln('${entry.key.courseCode} Announcements:');
         for (var a in entry.value) {
-          buffer.writeln('- ${a['title']} (Posted: ${a['posted_at']})');
+          buffer.writeln('- ${a['title']} (Posted: ${a['posted_at']}) [Link: velo://announcements?courseId=${entry.key.id}]');
         }
       }
     }
@@ -544,7 +544,7 @@ class CanvasService {
         snippet = snippet.replaceAll(RegExp(r'<[^>]*>'), ' ').replaceAll(RegExp(r'\s+'), ' ').trim();
         if (snippet.length > 100) snippet = '${snippet.substring(0, 100)}...';
 
-        buffer.writeln('- [ID: $id] $partyInfo: "$subject" - $snippet');
+        buffer.writeln('- [ID: $id] $partyInfo: "$subject" - $snippet [Link: velo://conversation?threadId=$id]');
       }
       buffer.writeln('\nTo read the full message thread of a specific item, use the get_thread_details tool using its ID.');
       return buffer.toString();
