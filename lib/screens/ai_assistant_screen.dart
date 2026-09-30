@@ -6,6 +6,8 @@ import '../components/app_shell.dart';
 import '../components/chat_bubble.dart';
 import '../services/canvas_service.dart';
 import 'dart:math' as math;
+import 'package:go_router/go_router.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class ChatMessage {
   final String text;
@@ -113,6 +115,7 @@ class _AiAssistantScreenState extends State<AiAssistantScreen> {
   final List<ChatMessage> _messages = [];
 
   // Groq Context Memory
+  // Groq Context Memory
   final List<Map<String, dynamic>> _apiHistory = [
     {
       "role": "system",
@@ -123,7 +126,8 @@ class _AiAssistantScreenState extends State<AiAssistantScreen> {
                  "3. When asked to plan or organize, automatically break down large assignments into logical daily milestones.\n"
                  "4. If the user asks for instructions on an assignment, use the get_assignment_details tool.\n"
                  "5. If the user asks about messages, use get_messages. To read a specific message, use get_thread_details.\n"
-                 "6. CRITICAL: NEVER show raw message IDs, thread IDs, or internal database identifiers to the user. Present messages naturally and conversationally, displaying only the sender, recipient, subject, and the actual message body."
+                 "6. NEVER show raw message IDs, thread IDs, or internal database identifiers to the user in plain text.\n"
+                 "7. CRITICAL: When listing tasks, announcements, or messages, ALWAYS embed a markdown link using the EXACT `velo://` URL provided in the tool data. Format it like this: `[Item Name](velo://...)`."
     }
   ];
 
@@ -416,6 +420,47 @@ class _AiAssistantScreenState extends State<AiAssistantScreen> {
     });
   }
 
+  void _handleDeepLink(String url) async {
+    // If it is a standard web link (e.g., from an assignment description), launch the browser
+    if (!url.startsWith('velo://')) {
+      final uri = Uri.parse(url);
+      if (await canLaunchUrl(uri)) await launchUrl(uri);
+      return;
+    }
+
+    // Intercept internal routing links and fetch objects securely from cache
+    try {
+      final uri = Uri.parse(url);
+      if (url.startsWith('velo://task')) {
+        final courseId = uri.queryParameters['courseId'];
+        final taskId = uri.queryParameters['taskId'];
+        final courses = await _canvasService.fetchActiveCourses();
+        final course = courses.firstWhere((c) => c.id == courseId);
+        final tasks = await _canvasService.fetchAssignmentsForCourse(course);
+        final task = tasks.firstWhere((t) => t.id == taskId);
+        
+        if (mounted) context.push('/task', extra: {'course': course, 'assignment': task});
+      
+      } else if (url.startsWith('velo://announcements')) {
+        final courseId = uri.queryParameters['courseId'];
+        final courses = await _canvasService.fetchActiveCourses();
+        final course = courses.firstWhere((c) => c.id == courseId);
+        
+        if (mounted) context.push('/course-announcements', extra: course);
+      
+      } else if (url.startsWith('velo://conversation')) {
+        final threadId = uri.queryParameters['threadId'];
+        if (mounted) context.push('/conversation', extra: {'id': threadId});
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Could not load the requested item.')),
+        );
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -464,6 +509,7 @@ class _AiAssistantScreenState extends State<AiAssistantScreen> {
                       return ChatBubble(
                         text: msg.text,
                         isUser: msg.isUser,
+                        onLinkTap: _handleDeepLink,
                       );
                     },
                   ),
