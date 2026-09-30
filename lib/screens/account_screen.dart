@@ -4,22 +4,36 @@ import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import '../components/app_shell.dart';
 import '../state/app_state.dart';
-
-const _currentUser = {
-  'name': 'Sean Rhani Jarin Dela Cruz',
-  'initials': 'SD',
-  'program': 'Holy Angel University',
-  'email': 'sean.delacruz@student.hau.edu.ph',
-};
+import '../services/canvas_service.dart';
 
 class AccountScreen extends StatefulWidget {
   const AccountScreen({super.key});
-
   @override
   State<AccountScreen> createState() => _AccountScreenState();
 }
 
 class _AccountScreenState extends State<AccountScreen> {
+  final CanvasService _canvasService = CanvasService();
+  
+  Map<String, String> _userProfile = {
+    'name': 'Loading...',
+    'initials': '-',
+    'program': 'Holy Angel University',
+    'email': 'Loading...',
+  };
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchProfile();
+  }
+
+  Future<void> _fetchProfile() async {
+    try {
+      final profile = await _canvasService.fetchUserProfile();
+      if (mounted) setState(() => _userProfile = profile);
+    } catch (e) {}
+  }
 
   void _showPrivacySheet(ThemeData theme) {
     showModalBottomSheet(
@@ -98,25 +112,25 @@ class _AccountScreenState extends State<AccountScreen> {
                 decoration: BoxDecoration(color: theme.colorScheme.primary, shape: BoxShape.circle),
                 alignment: Alignment.center,
                 child: Text(
-                  _currentUser['initials']!,
+                  _userProfile['initials']!,
                   style: theme.textTheme.headlineMedium?.copyWith(color: theme.colorScheme.onPrimary, fontWeight: FontWeight.bold),
                 ),
               ),
               const SizedBox(height: 12),
               Text(
-                _currentUser['name']!,
+                _userProfile['name']!,
                 style: theme.textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold, letterSpacing: -0.5),
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 2),
               Text(
-                _currentUser['program']!,
+                _userProfile['program']!,
                 style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onSurface),
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 2),
               Text(
-                _currentUser['email']!,
+                _userProfile['email']!,
                 style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.secondary),
                 textAlign: TextAlign.center,
               ),
@@ -247,7 +261,7 @@ class _AccountScreenState extends State<AccountScreen> {
                 _buildLinkRow(
                   theme: theme, icon: Icons.link_outlined,
                   label: 'Connected Canvas account',
-                  value: _currentUser['name'],
+                  value: _userProfile['name'],
                   borderTop: true,
                   onTap: () {},
                 ),
