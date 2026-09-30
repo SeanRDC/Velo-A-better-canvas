@@ -93,102 +93,108 @@ class _CoursesScreenState extends State<CoursesScreen> {
                 ),
                 
                 // Course list
+                // Course list
                 Expanded(
-                  child: ListView.builder(
-                    padding: const EdgeInsets.fromLTRB(24, 12, 24, 24),
-                    itemCount: _courses.length,
-                    itemBuilder: (context, index) {
-                      final course = _courses[index];
-                      final activeTasks = _activeTaskCounts[course.id] ?? 0;
-                      
-                      return Padding(
-                        padding: const EdgeInsets.only(bottom: 12),
-                        child: InkWell(
-                          onTap: () => context.push('/course', extra: course),
-                          borderRadius: BorderRadius.circular(12),
-                          child: Container(
-                            padding: const EdgeInsets.all(16),
-                            decoration: BoxDecoration(
-                              color: theme.colorScheme.surface,
-                              borderRadius: BorderRadius.circular(12),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.black.withValues(alpha: 0.05),
-                                  blurRadius: 10,
-                                  offset: const Offset(0, 4),
-                                )
-                              ]
-                            ),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Row(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                  children: [
-                                    Expanded(
-                                      child: Column(
-                                        crossAxisAlignment: CrossAxisAlignment.start,
-                                        children: [
-                                          Container(
-                                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                                            decoration: BoxDecoration(
-                                              color: theme.colorScheme.secondary.withValues(alpha: 0.15),
-                                              borderRadius: BorderRadius.circular(4),
+                  child: RefreshIndicator(
+                    onRefresh: _fetchData,
+                    color: theme.colorScheme.primary,
+                    backgroundColor: theme.colorScheme.surface,
+                    child: ListView.builder(
+                      padding: const EdgeInsets.fromLTRB(24, 12, 24, 24),
+                      itemCount: _courses.length,
+                      itemBuilder: (context, index) {
+                        final course = _courses[index];
+                        final activeTasks = _activeTaskCounts[course.id] ?? 0;
+                        
+                        return Padding(
+                          padding: const EdgeInsets.only(bottom: 12),
+                          child: InkWell(
+                            onTap: () => context.push('/course', extra: course),
+                            borderRadius: BorderRadius.circular(12),
+                            child: Container(
+                              padding: const EdgeInsets.all(16),
+                              decoration: BoxDecoration(
+                                color: theme.colorScheme.surface,
+                                borderRadius: BorderRadius.circular(12),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.black.withValues(alpha: 0.05),
+                                    blurRadius: 10,
+                                    offset: const Offset(0, 4),
+                                  )
+                                ]
+                              ),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                    children: [
+                                      Expanded(
+                                        child: Column(
+                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          children: [
+                                            Container(
+                                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                              decoration: BoxDecoration(
+                                                color: theme.colorScheme.secondary.withValues(alpha: 0.15),
+                                                borderRadius: BorderRadius.circular(4),
+                                              ),
+                                              child: Text(
+                                                course.courseCode,
+                                                style: theme.textTheme.labelSmall?.copyWith(
+                                                  fontWeight: FontWeight.w600,
+                                                  color: theme.colorScheme.secondary,
+                                                ),
+                                              ),
                                             ),
-                                            child: Text(
-                                              course.courseCode,
-                                              style: theme.textTheme.labelSmall?.copyWith(
+                                            const SizedBox(height: 6),
+                                            Text(
+                                              course.name,
+                                              style: theme.textTheme.bodyLarge?.copyWith(
                                                 fontWeight: FontWeight.w600,
+                                                color: theme.colorScheme.onSurface,
+                                                height: 1.2,
+                                              ),
+                                            ),
+                                            const SizedBox(height: 4),
+                                            Text(
+                                              '${course.instructor} · ${course.term}',
+                                              style: theme.textTheme.bodySmall?.copyWith(
                                                 color: theme.colorScheme.secondary,
                                               ),
                                             ),
-                                          ),
-                                          const SizedBox(height: 6),
-                                          Text(
-                                            course.name,
-                                            style: theme.textTheme.bodyLarge?.copyWith(
-                                              fontWeight: FontWeight.w600,
-                                              color: theme.colorScheme.onSurface,
-                                              height: 1.2,
-                                            ),
-                                          ),
-                                          const SizedBox(height: 4),
-                                          Text(
-                                            '${course.instructor} · ${course.term}',
-                                            style: theme.textTheme.bodySmall?.copyWith(
-                                              color: theme.colorScheme.secondary,
-                                            ),
-                                          ),
-                                        ],
+                                          ],
+                                        ),
                                       ),
-                                    ),
-                                    Icon(Icons.chevron_right, size: 24, color: theme.colorScheme.secondary),
-                                  ],
-                                ),
-                                const SizedBox(height: 12),
-                                Container(height: 1, color: theme.colorScheme.onSurface.withValues(alpha: 0.1)),
-                                const SizedBox(height: 12),
-                                Row(
-                                  children: [
-                                    Icon(Icons.menu_book, size: 14, color: theme.colorScheme.secondary),
-                                    const SizedBox(width: 6),
-                                    Text(
-                                      activeTasks > 0 
-                                        ? '$activeTasks active task${activeTasks == 1 ? '' : 's'}' 
-                                        : 'No active tasks',
-                                      style: theme.textTheme.bodySmall?.copyWith(
-                                        color: theme.colorScheme.secondary,
+                                      Icon(Icons.chevron_right, size: 24, color: theme.colorScheme.secondary),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 12),
+                                  Container(height: 1, color: theme.colorScheme.onSurface.withValues(alpha: 0.1)),
+                                  const SizedBox(height: 12),
+                                  Row(
+                                    children: [
+                                      Icon(Icons.menu_book, size: 14, color: theme.colorScheme.secondary),
+                                      const SizedBox(width: 6),
+                                      Text(
+                                        activeTasks > 0 
+                                          ? '$activeTasks active task${activeTasks == 1 ? '' : 's'}' 
+                                          : 'No active tasks',
+                                        style: theme.textTheme.bodySmall?.copyWith(
+                                          color: theme.colorScheme.secondary,
+                                        ),
                                       ),
-                                    ),
-                                  ],
-                                ),
-                              ],
+                                    ],
+                                  ),
+                                ],
+                              ),
                             ),
                           ),
-                        ),
-                      );
-                    },
+                        );
+                      },
+                    ),
                   ),
                 ),
               ],
