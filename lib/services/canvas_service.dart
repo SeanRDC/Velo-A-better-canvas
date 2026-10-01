@@ -8,15 +8,18 @@ import '../models/task.dart';
 
 class CanvasService {
   final String _baseUrl = dotenv.env['CANVAS_BASE_URL'] ?? '';
-  final String _token = dotenv.env['CANVAS_API_TOKEN'] ?? '';
-  
+  final String _token = dotenv.env['CANVAS_API_TOKEN'] ?? '';final String _defaultToken = dotenv.env['CANVAS_API_TOKEN'] ?? '';
   SharedPreferences? _cachedPrefs;
   Future<SharedPreferences> get _prefs async => _cachedPrefs ??= await SharedPreferences.getInstance();
 
-  Map<String, String> get _headers => {
-    'Authorization': 'Bearer $_token',
-    'Accept': 'application/json',
-  };
+  Future<Map<String, String>> _getHeaders() async {
+    final prefs = await _prefs;
+    final token = prefs.getString('canvas_api_token') ?? _defaultToken;
+    return {
+      'Authorization': 'Bearer $token',
+      'Accept': 'application/json',
+    };
+  }
 
   Future<String> _fetchWithCache(String url, String cacheKey) async {
     final prefs = await _prefs;
@@ -32,7 +35,7 @@ class CanvasService {
     }
     
     try {
-      final response = await http.get(Uri.parse(url), headers: _headers);
+      final response = await http.get(Uri.parse(url), headers: await _getHeaders());
              
       if (response.statusCode == 200) {
         await prefs.setString(cacheKey, response.body);
@@ -48,6 +51,33 @@ class CanvasService {
       } else {
         throw Exception('Network error. No connection and no saved data available.');
       }
+    }
+  }
+
+  Future<bool> verifyAndSaveToken(String rawToken) async {
+    final token = rawToken.trim();
+    if (token.isEmpty) return false;
+
+    try {
+      final url = '$_baseUrl/api/v1/users/self/profile';
+      final response = await http.get(
+        Uri.parse(url),
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Accept': 'application/json',
+        },
+      );
+
+      if (response.statusCode == 200) {
+        final prefs = await _prefs;
+        await prefs.setString('canvas_api_token', token);
+        await prefs.remove('cache_user_profile');
+        await prefs.remove('cache_active_courses');
+        return true;
+      }
+      return false;
+    } catch (_) {
+      return false;
     }
   }
 
@@ -110,7 +140,7 @@ class CanvasService {
     
     final response = await http.put(
       Uri.parse('$_baseUrl/api/v1/users/self/profile'),
-      headers: _headers,
+      headers: await _getHeaders(),
       body: {'user[bio]': newBio},
     );
     
@@ -286,11 +316,7 @@ class CanvasService {
     
     await http.put(
       Uri.parse('$_baseUrl/api/v1/conversations/$conversationId'),
-      headers: {
-        'Authorization': 'Bearer $_token',
-        'Content-Type': 'application/json',
-        'Accept': 'application/json',
-      },
+      headers: await _getHeaders(),
       body: jsonEncode({'conversation': {'workflow_state': 'read'}}),
     );
   }
@@ -303,11 +329,7 @@ class CanvasService {
 
     final response = await http.put(
       Uri.parse('$_baseUrl/api/v1/conversations/$conversationId'),
-      headers: {
-        'Authorization': 'Bearer $_token',
-        'Content-Type': 'application/json',
-        'Accept': 'application/json',
-      },
+      headers: await _getHeaders(),
       body: jsonEncode({'conversation': {'workflow_state': 'archived'}}),
     );
     
@@ -324,7 +346,7 @@ class CanvasService {
 
     final response = await http.delete(
       Uri.parse('$_baseUrl/api/v1/conversations/$conversationId'),
-      headers: _headers, // DELETE requests don't require JSON bodies
+      headers: await _getHeaders(), // DELETE requests don't require JSON bodies
     );
     
     if (response.statusCode != 200) {
@@ -341,7 +363,7 @@ class CanvasService {
   Future<void> replyToConversation(String conversationId, String messageBody) async {
     final response = await http.post(
       Uri.parse('$_baseUrl/api/v1/conversations/$conversationId/add_message'),
-      headers: _headers,
+      headers: await _getHeaders(),
       body: {'body': messageBody},
     );
     if (response.statusCode != 200 && response.statusCode != 201) {
@@ -359,11 +381,7 @@ class CanvasService {
   Future<void> createConversation(String courseId, String recipientId, String subject, String messageBody) async {
     final response = await http.post(
       Uri.parse('$_baseUrl/api/v1/conversations'),
-      headers: {
-        'Authorization': 'Bearer $_token',
-        'Content-Type': 'application/json',
-        'Accept': 'application/json',
-      },
+      headers: await _getHeaders(),
       body: jsonEncode({
         'recipients': [recipientId],
         'subject': subject,
@@ -467,7 +485,7 @@ class CanvasService {
       // Fetch the specific assignment payload from Canvas
       final response = await http.get(
         Uri.parse('$_baseUrl/api/v1/courses/${task.courseId}/assignments/${task.id}'),
-        headers: _headers,
+        headers: await _getHeaders(),
       );
 
       if (response.statusCode != 200) return "Could not fetch details from Canvas.";
