@@ -28,6 +28,8 @@ class _SideDrawerState extends State<SideDrawer> {
     'name': 'Loading...',
     'initials': '-',
     'program': 'Holy Angel University',
+    'email': 'Loading...',
+    'avatar_url': '',
   };
 
   @override
@@ -79,11 +81,15 @@ class _SideDrawerState extends State<SideDrawer> {
                   CircleAvatar(
                     radius: 24,
                     backgroundColor: theme.colorScheme.primary,
-                    foregroundColor: theme.colorScheme.onPrimary,
-                    child: Text(
-                      _userProfile['initials']!,
-                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-                    ),
+                    backgroundImage: _userProfile['avatar_url']!.isNotEmpty 
+                        ? NetworkImage(_userProfile['avatar_url']!) 
+                        : null,
+                    child: _userProfile['avatar_url']!.isEmpty
+                        ? Text(
+                            _userProfile['initials']!,
+                            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: theme.colorScheme.onPrimary),
+                          )
+                        : null,
                   ),
                   const SizedBox(width: 12),
                   Expanded(
@@ -101,7 +107,7 @@ class _SideDrawerState extends State<SideDrawer> {
                           overflow: TextOverflow.ellipsis,
                         ),
                         Text(
-                          _userProfile['program']!,
+                          _userProfile['email']!,
                           style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.secondary),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
