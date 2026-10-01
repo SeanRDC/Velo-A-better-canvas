@@ -3,17 +3,19 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:timezone/timezone.dart' as tz;
+import '../models/task.dart';
 
 final ValueNotifier<ThemeMode> appThemeMode = ValueNotifier(ThemeMode.light);
 
 class AppState extends ChangeNotifier {
   final SharedPreferences _prefs;
   final FlutterLocalNotificationsPlugin _notificationsPlugin = FlutterLocalNotificationsPlugin();
-
+  
   bool _isOffline;
   ThemeMode _themeMode;
   bool _pushEnabled;
-
+  List<String> _reminderOffsets;
   int unreadInboxCount = 0;
 
   void updateUnreadInboxCount(int count) {
@@ -23,16 +25,16 @@ class AppState extends ChangeNotifier {
 
   AppState(this._prefs)
       : _isOffline = _prefs.getBool('isOffline') ?? false,
-        _themeMode = _prefs.getString('theme') == 'dark'
-            ? ThemeMode.dark
-            : ThemeMode.light,
-        _pushEnabled = _prefs.getBool('pushEnabled') ?? false {
+        _themeMode = _prefs.getString('theme') == 'dark' ? ThemeMode.dark : ThemeMode.light,
+        _pushEnabled = _prefs.getBool('pushEnabled') ?? false,
+        _reminderOffsets = _prefs.getStringList('reminderOffsets') ?? ['3d', '1d'] {
     _initNotifications();
   }
 
   bool get isOffline => _isOffline;
   ThemeMode get themeMode => _themeMode;
   bool get pushEnabled => _pushEnabled;
+  List<String> get reminderOffsets => _reminderOffsets;
   String? get lastSyncTime => _prefs.getString('last_sync_time');
 
   Future<void> _initNotifications() async {
@@ -83,5 +85,52 @@ class AppState extends ChangeNotifier {
     _pushEnabled = !_pushEnabled;
     _prefs.setBool('pushEnabled', _pushEnabled);
     notifyListeners();
+  }
+
+  void toggleReminderOffset(String offset) {
+    if (_reminderOffsets.contains(offset)) {
+      _reminderOffsets.remove(offset);
+    } else {
+      _reminderOffsets.add(offset);
+    }
+    _prefs.setStringList('reminderOffsets', _reminderOffsets);
+    notifyListeners();
+  }
+
+  Future<void> scheduleDeadlines(List<Task> tasks) async {
+    if (!_pushEnabled || kIsWeb) return;
+    
+    await _notificationsPlugin.cancelAll();
+
+    for (var task in tasks) {
+      if (task.isSubmitted) continue;
+      if (task.dueDate.isBefore(DateTime.now())) continue;
+
+      for (var offset in _reminderOffsets) {
+        DateTime scheduleTime;
+        String timeLabel;
+        
+        if (offset == '1w') { scheduleTime = task.dueDate.subtract(const Duration(days: 7)); timeLabel = 'in 1 week'; }
+        else if (offset == '3d') { scheduleTime = task.dueDate.subtract(const Duration(days: 3)); timeLabel = 'in 3 days'; }
+        else if (offset == '1d') { scheduleTime = task.dueDate.subtract(const Duration(days: 1)); timeLabel = 'tomorrow'; }
+        else if (offset == '2h') { scheduleTime = task.dueDate.subtract(const Duration(hours: 2)); timeLabel = 'in 2 hours'; }
+        else continue;
+
+        if (scheduleTime.isAfter(DateTime.now())) {
+          _notificationsPlugin.zonedSchedule(
+            (task.id.hashCode ^ offset.hashCode).abs(),
+            'Heads Up: ${task.courseCode}',
+            '${task.title} is due $timeLabel.',
+            tz.TZDateTime.from(scheduleTime, tz.local),
+            const NotificationDetails(
+              android: AndroidNotificationDetails('velo_reminders', 'Deadlines', channelDescription: 'Task reminders', importance: Importance.high),
+              iOS: DarwinNotificationDetails(),
+            ),
+            androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
+            uiLocalNotificationDateInterpretation: UILocalNotificationDateInterpretation.absoluteTime,
+          );
+        }
+      }
+    }
   }
 }
