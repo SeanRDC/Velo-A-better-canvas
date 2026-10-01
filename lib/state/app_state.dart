@@ -15,7 +15,7 @@ class AppState extends ChangeNotifier {
   bool _isOffline;
   ThemeMode _themeMode;
   bool _pushEnabled;
-  List<String> _reminderOffsets;
+  final List<String> _reminderOffsets;
   int unreadInboxCount = 0;
 
   void updateUnreadInboxCount(int count) {
@@ -114,20 +114,24 @@ class AppState extends ChangeNotifier {
         else if (offset == '3d') { scheduleTime = task.dueDate.subtract(const Duration(days: 3)); timeLabel = 'in 3 days'; }
         else if (offset == '1d') { scheduleTime = task.dueDate.subtract(const Duration(days: 1)); timeLabel = 'tomorrow'; }
         else if (offset == '2h') { scheduleTime = task.dueDate.subtract(const Duration(hours: 2)); timeLabel = 'in 2 hours'; }
-        else continue;
+        else { continue; }
 
         if (scheduleTime.isAfter(DateTime.now())) {
           _notificationsPlugin.zonedSchedule(
-            (task.id.hashCode ^ offset.hashCode).abs(),
-            'Heads Up: ${task.courseCode}',
-            '${task.title} is due $timeLabel.',
-            tz.TZDateTime.from(scheduleTime, tz.local),
-            const NotificationDetails(
-              android: AndroidNotificationDetails('velo_reminders', 'Deadlines', channelDescription: 'Task reminders', importance: Importance.high),
+            id: (task.id.hashCode ^ offset.hashCode).abs(),
+            title: 'Heads Up: ${task.courseCode}',
+            body: '${task.title} is due $timeLabel.',
+            scheduledDate: tz.TZDateTime.from(scheduleTime, tz.local),
+            notificationDetails: const NotificationDetails(
+              android: AndroidNotificationDetails(
+                'velo_reminders', 
+                'Deadlines', 
+                channelDescription: 'Task reminders', 
+                importance: Importance.high,
+              ),
               iOS: DarwinNotificationDetails(),
             ),
             androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
-            uiLocalNotificationDateInterpretation: UILocalNotificationDateInterpretation.absoluteTime,
           );
         }
       }
