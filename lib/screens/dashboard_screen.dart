@@ -7,6 +7,8 @@ import '../components/task_card.dart';
 import '../models/task.dart';
 import '../services/canvas_service.dart';
 import '../models/course.dart';
+import 'package:provider/provider.dart';
+import '../state/app_state.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -76,6 +78,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
       _courseCodes = uniqueCodes.toList()..sort();
       _applyFilterAndSort();
       _isLoading = false;
+      if (mounted) {
+        context.read<AppState>().scheduleDeadlines(_allTasks);
+      }
+
     } catch (e) {
       if (!mounted) return;
       setState(() {
