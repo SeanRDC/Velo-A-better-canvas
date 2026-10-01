@@ -8,7 +8,7 @@ import '../models/task.dart';
 
 class CanvasService {
   final String _baseUrl = dotenv.env['CANVAS_BASE_URL'] ?? '';
-  final String _token = dotenv.env['CANVAS_API_TOKEN'] ?? '';final String _defaultToken = dotenv.env['CANVAS_API_TOKEN'] ?? '';
+  final String _defaultToken = dotenv.env['CANVAS_API_TOKEN'] ?? '';
   SharedPreferences? _cachedPrefs;
   Future<SharedPreferences> get _prefs async => _cachedPrefs ??= await SharedPreferences.getInstance();
 

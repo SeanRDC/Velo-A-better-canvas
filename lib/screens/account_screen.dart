@@ -476,9 +476,12 @@ class _AccountScreenState extends State<AccountScreen> {
           SizedBox(
             width: double.infinity,
             child: OutlinedButton.icon(
-              onPressed: () {
-                // In a production app, you would clear shared_preferences here
-                context.go('/');
+              onPressed: () async {
+                final prefs = await SharedPreferences.getInstance();
+                await prefs.remove('canvas_api_token');
+                await prefs.remove('cache_user_profile');
+                await prefs.remove('cache_active_courses');
+                if (context.mounted) context.go('/');
               },
               icon: Icon(Icons.logout, size: 18, color: theme.colorScheme.onSurface),
               label: Text('Log Out', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: theme.colorScheme.onSurface)),
