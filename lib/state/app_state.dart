@@ -15,6 +15,7 @@ class AppState extends ChangeNotifier {
   bool _isOffline;
   ThemeMode _themeMode;
   bool _pushEnabled;
+  bool _headsUpEnabled;
   final List<String> _reminderOffsets;
   int unreadInboxCount = 0;
 
@@ -27,6 +28,7 @@ class AppState extends ChangeNotifier {
       : _isOffline = _prefs.getBool('isOffline') ?? false,
         _themeMode = _prefs.getString('theme') == 'dark' ? ThemeMode.dark : ThemeMode.light,
         _pushEnabled = _prefs.getBool('pushEnabled') ?? false,
+        _headsUpEnabled = _prefs.getBool('headsUpEnabled') ?? false,
         _reminderOffsets = _prefs.getStringList('reminderOffsets') ?? ['3d', '1d'] {
     _initNotifications();
   }
@@ -34,6 +36,7 @@ class AppState extends ChangeNotifier {
   bool get isOffline => _isOffline;
   ThemeMode get themeMode => _themeMode;
   bool get pushEnabled => _pushEnabled;
+  bool get headsUpEnabled => _headsUpEnabled;
   List<String> get reminderOffsets => _reminderOffsets;
   String? get lastSyncTime => _prefs.getString('last_sync_time');
 
@@ -87,6 +90,25 @@ class AppState extends ChangeNotifier {
     notifyListeners();
   }
 
+  Future<void> toggleHeadsUpNotifications() async {
+    if (!_headsUpEnabled && !kIsWeb) {
+      final androidPlugin = _notificationsPlugin.resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>();
+      if (androidPlugin != null) await androidPlugin.requestNotificationsPermission();
+
+      final iosPlugin = _notificationsPlugin.resolvePlatformSpecificImplementation<IOSFlutterLocalNotificationsPlugin>();
+      if (iosPlugin != null) await iosPlugin.requestPermissions(alert: true, badge: true, sound: true);
+    }
+
+    _headsUpEnabled = !_headsUpEnabled;
+    _prefs.setBool('headsUpEnabled', _headsUpEnabled);
+    
+    if (!_headsUpEnabled) {
+      await _notificationsPlugin.cancelAll();
+    }
+    
+    notifyListeners();
+  }
+
   void toggleReminderOffset(String offset) {
     if (_reminderOffsets.contains(offset)) {
       _reminderOffsets.remove(offset);
@@ -98,7 +120,7 @@ class AppState extends ChangeNotifier {
   }
 
   Future<void> scheduleDeadlines(List<Task> tasks) async {
-    if (!_pushEnabled || kIsWeb) return;
+    if (!_headsUpEnabled || kIsWeb) return;
     
     await _notificationsPlugin.cancelAll();
 
