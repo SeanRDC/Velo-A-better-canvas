@@ -387,14 +387,21 @@ class _AccountScreenState extends State<AccountScreen> {
             child: Column(
               children: [
                 _buildToggleRow(
-                  theme: theme, icon: Icons.notifications_active_outlined,
-                  label: 'Heads-up notifications', sub: 'Smart deadline alerts',
+                  theme: theme, icon: Icons.notifications_none_outlined,
+                  label: 'Push notifications', sub: 'General Canvas updates',
                   value: appState.pushEnabled,
                   onToggle: appState.togglePushNotifications,
                 ),
+                _buildToggleRow(
+                  theme: theme, icon: Icons.access_alarm_outlined,
+                  label: 'Heads-up notifications', sub: 'Smart deadline alerts',
+                  value: appState.headsUpEnabled,
+                  onToggle: appState.toggleHeadsUpNotifications,
+                  borderTop: true,
+                ),
                 
                 // Expandable Settings Area
-                if (appState.pushEnabled)
+                if (appState.headsUpEnabled)
                   Container(
                     width: double.infinity,
                     padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
@@ -425,7 +432,7 @@ class _AccountScreenState extends State<AccountScreen> {
                   label: 'Offline mode', sub: 'Read from local cache',
                   value: appState.isOffline,
                   onToggle: appState.toggleOffline,
-                  borderTop: !appState.pushEnabled,
+                  borderTop: true,
                 ),
               ],
             ),
