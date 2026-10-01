@@ -6,6 +6,7 @@ import '../components/app_shell.dart';
 import '../state/app_state.dart';
 import '../services/canvas_service.dart';
 import 'package:file_picker/file_picker.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class AccountScreen extends StatefulWidget {
   const AccountScreen({super.key});
