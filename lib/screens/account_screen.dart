@@ -216,6 +216,63 @@ class _AccountScreenState extends State<AccountScreen> {
     );
   }
 
+  void _showCanvasAccountSheet(ThemeData theme) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: theme.colorScheme.surface,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      builder: (context) {
+        return Padding(
+          padding: EdgeInsets.only(
+            bottom: MediaQuery.of(context).padding.bottom > 0 ? MediaQuery.of(context).padding.bottom : 24,
+            left: 24, right: 24, top: 12,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(
+                child: Container(
+                  height: 4, width: 40,
+                  decoration: BoxDecoration(color: theme.colorScheme.onSurface.withValues(alpha: 0.2), borderRadius: BorderRadius.circular(2)),
+                ),
+              ),
+              const SizedBox(height: 16),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text('Canvas Connection', style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold)),
+                  IconButton(icon: const Icon(Icons.close), onPressed: () => Navigator.pop(context)),
+                ],
+              ),
+              const SizedBox(height: 16),
+              Text(
+                'Account Details',
+                style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                'Email: ${_userProfile['email']}',
+                style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.secondary, height: 1.5),
+              ),
+              const SizedBox(height: 16),
+              Text(
+                'Security Notice',
+                style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                'Velo authenticates using a secure Canvas API access token. Your university password is never requested, accessed, or stored on this device.',
+                style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.secondary, height: 1.5),
+              ),
+              const SizedBox(height: 16),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -466,7 +523,7 @@ class _AccountScreenState extends State<AccountScreen> {
                   label: 'Connected Canvas account',
                   value: _userProfile['name'],
                   borderTop: true,
-                  onTap: () {},
+                  onTap: () => _showCanvasAccountSheet(theme),
                 ),
               ],
             ),
