@@ -26,12 +26,12 @@ import 'screens/inbox_screen.dart';
 import 'screens/conversation_detail_screen.dart';
 import 'screens/compose_message_screen.dart';
 import 'screens/planner_screen.dart';
+import 'package:timezone/data/latest_all.dart' as tz;
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-
   await dotenv.load(fileName: ".env");
-  
+  tz.initializeTimeZones();
   final prefs = await SharedPreferences.getInstance();
   
   runApp(
