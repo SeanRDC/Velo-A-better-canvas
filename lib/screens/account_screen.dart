@@ -387,21 +387,51 @@ class _AccountScreenState extends State<AccountScreen> {
             child: Column(
               children: [
                 _buildToggleRow(
-                  theme: theme, icon: Icons.notifications_none_outlined,
-                  label: 'Push notifications', sub: 'Deadlines and announcements',
+                  theme: theme, icon: Icons.notifications_active_outlined,
+                  label: 'Heads-up notifications', sub: 'Smart deadline alerts',
                   value: appState.pushEnabled,
                   onToggle: appState.togglePushNotifications,
                 ),
+                
+                // Expandable Settings Area
+                if (appState.pushEnabled)
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                    decoration: BoxDecoration(
+                      border: Border(bottom: BorderSide(color: theme.colorScheme.onSurface.withValues(alpha: 0.05))),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('Remind me before deadlines:', style: theme.textTheme.labelSmall?.copyWith(fontWeight: FontWeight.bold, color: theme.colorScheme.secondary)),
+                        const SizedBox(height: 12),
+                        Wrap(
+                          spacing: 8,
+                          runSpacing: 8,
+                          children: [
+                            _buildTimingChip(theme, appState, '1w', '1 Week'),
+                            _buildTimingChip(theme, appState, '3d', '3 Days'),
+                            _buildTimingChip(theme, appState, '1d', '1 Day'),
+                            _buildTimingChip(theme, appState, '2h', '2 Hours'),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+
                 _buildToggleRow(
                   theme: theme, icon: Icons.wifi_off_outlined,
                   label: 'Offline mode', sub: 'Read from local cache',
                   value: appState.isOffline,
                   onToggle: appState.toggleOffline,
-                  borderTop: true,
+                  borderTop: !appState.pushEnabled,
                 ),
               ],
             ),
           ),
+
+          
 
           // Account
           const SizedBox(height: 24),
@@ -558,6 +588,23 @@ class _AccountScreenState extends State<AccountScreen> {
             ],
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildTimingChip(ThemeData theme, AppState appState, String offset, String label) {
+    final isSelected = appState.reminderOffsets.contains(offset);
+    return FilterChip(
+      label: Text(label, style: TextStyle(fontSize: 12, fontWeight: isSelected ? FontWeight.bold : FontWeight.w500)),
+      selected: isSelected,
+      onSelected: (_) => appState.toggleReminderOffset(offset),
+      selectedColor: theme.colorScheme.primary.withValues(alpha: 0.1),
+      checkmarkColor: theme.colorScheme.primary,
+      backgroundColor: theme.scaffoldBackgroundColor,
+      labelStyle: TextStyle(color: isSelected ? theme.colorScheme.primary : theme.colorScheme.secondary),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(20), 
+        side: BorderSide(color: isSelected ? theme.colorScheme.primary : theme.colorScheme.onSurface.withValues(alpha: 0.1))
       ),
     );
   }
