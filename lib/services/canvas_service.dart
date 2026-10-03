@@ -108,7 +108,7 @@ class CanvasService {
         }
       } catch (_) {}
 
-      String avatarUrl = data['avatar_url'] ?? '';
+      String avatarUrl = (data['avatar_url'] ?? '').replaceAll('https://hau.instructure.com', '');
       String bio = data['bio'] ?? '';
       
       return {
