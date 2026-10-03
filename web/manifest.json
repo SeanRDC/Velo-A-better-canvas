@@ -1,7 +1,8 @@
 {
+    "id": "/",
     "name": "Velo - Canvas Co-pilot",
     "short_name": "Velo",
-    "start_url": ".",
+    "start_url": "/",
     "display": "standalone",
     "background_color": "#FFFFFF",
     "theme_color": "#000000",
