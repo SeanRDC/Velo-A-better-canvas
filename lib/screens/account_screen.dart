@@ -314,6 +314,12 @@ class _AccountScreenState extends State<AccountScreen> {
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 24),
+              Text(
+                _userProfile['email']!,
+                style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onSurface),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 24),
               
               // Canvas Parity: Biography Block
               Container(
