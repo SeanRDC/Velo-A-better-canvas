@@ -5,6 +5,10 @@
       "destination": "https://hau.instructure.com/api/$1"
     },
     {
+      "source": "/images/(.*)",
+      "destination": "https://hau.instructure.com/images/$1"
+    },
+    {
       "source": "/(.*)",
       "destination": "/index.html"
     }
