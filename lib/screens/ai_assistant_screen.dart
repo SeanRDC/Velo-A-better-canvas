@@ -40,6 +40,7 @@ class _TypingBubbleState extends State<TypingBubble> with SingleTickerProviderSt
     )..repeat();
   }
 
+
   @override
   void dispose() {
     _controller.dispose();
@@ -112,11 +113,10 @@ class _AiAssistantScreenState extends State<AiAssistantScreen> {
   bool _isTyping = false;
   final bool _isInitializing = false; 
 
-  final List<ChatMessage> _messages = [];
 
-  // Groq Context Memory
-  // Groq Context Memory
-  final List<Map<String, dynamic>> _apiHistory = [
+  static bool _hasWelcomed = false;
+  static final List<ChatMessage> _messages = [];
+  static final List<Map<String, dynamic>> _apiHistory = [
     {
       "role": "system",
       "content": "You are Velo Co-pilot, a highly efficient, distraction-free Canvas LMS assistant.\n"
@@ -215,7 +215,12 @@ class _AiAssistantScreenState extends State<AiAssistantScreen> {
   void initState() {
     super.initState();
     _controller.addListener(_handleTypingChange);
-    _runOpeningAnimation();
+    if (!_hasWelcomed) {
+      _runOpeningAnimation();
+      _hasWelcomed = true;
+    } else {
+      _scrollToBottom();
+    }
   }
 
   void _handleTypingChange() {
@@ -226,7 +231,6 @@ class _AiAssistantScreenState extends State<AiAssistantScreen> {
   }
 
   void _runOpeningAnimation() async {
-    // Brief pause as the screen transitions in
     await Future.delayed(const Duration(milliseconds: 400));
     if (!mounted) return;
 
