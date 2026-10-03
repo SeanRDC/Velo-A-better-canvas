@@ -33,12 +33,14 @@ void main() async {
   await dotenv.load(fileName: ".env");
   tz.initializeTimeZones();
   final prefs = await SharedPreferences.getInstance();
+
+  const String mobileFrameSetting = "disable";
   
   runApp(
     ChangeNotifierProvider(
       create: (_) => AppState(prefs),
       child: DevicePreview(
-        enabled: true,
+        enabled: mobileFrameSetting == "enable",
         builder: (context) => const VeloApp(),
       ),
     ),
