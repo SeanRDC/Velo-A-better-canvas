@@ -81,7 +81,12 @@ class CanvasService {
     }
   }
 
+  static Map<String, String>? _memProfile;
+
   Future<Map<String, String>> fetchUserProfile() async {
+
+    if (_memProfile != null) return _memProfile!;
+
     final url = '$_baseUrl/api/v1/users/self/profile';
     try {
       final body = await _fetchWithCache(url, 'cache_user_profile');
@@ -111,7 +116,7 @@ class CanvasService {
       String avatarUrl = (data['avatar_url'] ?? '').replaceAll('https://hau.instructure.com', '');
       String bio = data['bio'] ?? '';
       
-      return {
+      _memProfile = {
         'name': name,
         'email': email,
         'initials': initials,
@@ -119,6 +124,7 @@ class CanvasService {
         'avatar_url': avatarUrl,
         'bio': bio,
       };
+      return _memProfile!;
     } catch (e) {
       // Offline/Error fallback
       return {
