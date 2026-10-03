@@ -1,0 +1,15 @@
+#!/bin/bash
+
+# 1. Securely inject Vercel's environment variables into a new local .env file
+echo "GROQ_API_KEY=$GROQ_API_KEY" > .env
+echo "CANVAS_BASE_URL=$CANVAS_BASE_URL" >> .env
+echo "CANVAS_API_TOKEN=" >> .env
+
+# 2. Download the Flutter SDK
+git clone https://github.com/flutter/flutter.git -b stable
+export PATH="$PATH:`pwd`/flutter/bin"
+
+# 3. Build the optimized web application
+flutter clean
+flutter pub get
+flutter build web --release
