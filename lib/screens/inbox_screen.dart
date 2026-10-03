@@ -18,8 +18,10 @@ class InboxScreen extends StatefulWidget {
 class _InboxScreenState extends State<InboxScreen> {
   final CanvasService _canvasService = CanvasService();
   
-  List<Map<String, dynamic>> _threads = [];
-  bool _isLoading = true;
+  static List<Map<String, dynamic>> _cachedThreads = [];
+  List<Map<String, dynamic>> _threads = _cachedThreads;
+
+  bool _isLoading = _cachedThreads.isEmpty;
   String? _errorMessage;
   String _activeFolder = 'inbox';
 
@@ -84,9 +86,9 @@ class _InboxScreenState extends State<InboxScreen> {
       if (mounted) {
         final unread = combinedFeed.where((t) => t['workflow_state'] == 'unread' || t['unread'] == true).length;
         context.read<AppState>().updateUnreadInboxCount(unread);
-
         setState(() {
           _threads = combinedFeed;
+          _cachedThreads = combinedFeed;
           _isLoading = false;
         });
       }
