@@ -46,7 +46,7 @@ class AppShell extends StatelessWidget {
                     activeTab: activeTab, 
                     isDesktop: true,
                     desktopTitle: title,
-                  ),
+                ),
                 ),
                 // Main content area with its own scoped AppBar for actions/buttons
                 Expanded(

@@ -20,9 +20,6 @@ class _InboxScreenState extends State<InboxScreen> {
   
   static List<Map<String, dynamic>> _cachedThreads = [];
   List<Map<String, dynamic>> _threads = _cachedThreads;
-
-  // Items opened in this session (id -> last_message_at when opened), so a
-  // refetch that still reports them as unread doesn't bring the dot back.
   static final Map<String, dynamic> _readLocally = {};
 
   bool _isLoading = _cachedThreads.isEmpty;
