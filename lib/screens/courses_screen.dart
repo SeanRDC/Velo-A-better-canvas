@@ -2,7 +2,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../components/app_shell.dart';
-import '../components/responsive_card_grid.dart';
 import '../models/course.dart';
 import '../models/task.dart';
 import '../services/canvas_refresh.dart';
@@ -110,11 +109,12 @@ class _CoursesScreenState extends State<CoursesScreen> with CanvasRefreshMixin<C
                     child: ListView(
                       physics: const AlwaysScrollableScrollPhysics(),
                       padding: const EdgeInsets.fromLTRB(24, 12, 24, 24),
-                      children: [
-                        ResponsiveCardGrid(
-                          children: _courses.map((course) => _buildCourseCard(course, theme)).toList(),
-                        ),
-                      ],
+                      children: _courses.map((course) {
+                        return Padding(
+                          padding: const EdgeInsets.only(bottom: 10),
+                          child: _buildCourseCard(course, theme),
+                        );
+                      }).toList(),
                     ),
                   ),
                 ),

@@ -4,7 +4,6 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:go_router/go_router.dart';
 import '../components/app_shell.dart';
-import '../components/responsive_card_grid.dart';
 import '../services/canvas_refresh.dart';
 import '../services/canvas_service.dart';
 import 'package:flutter_widget_from_html/flutter_widget_from_html.dart';
@@ -401,7 +400,10 @@ class _InboxScreenState extends State<InboxScreen> with CanvasRefreshMixin<Inbox
 
     final Map<String, List<Widget>> groups = {};
     for (final t in visible) {
-      groups.putIfAbsent(_groupOf(t), () => []).add(_buildThreadCard(t, theme));
+      groups.putIfAbsent(_groupOf(t), () => []).add(Padding(
+        padding: const EdgeInsets.only(bottom: 10),
+        child: _buildThreadCard(t, theme),
+      ));
     }
 
     final List<Widget> sections = [];
@@ -409,10 +411,7 @@ class _InboxScreenState extends State<InboxScreen> with CanvasRefreshMixin<Inbox
       final cards = groups[group];
       if (cards == null) continue;
       sections.add(_buildDivider(group, cards.length, theme));
-      sections.add(Padding(
-        padding: const EdgeInsets.only(bottom: 10),
-        child: ResponsiveCardGrid(children: cards),
-      ));
+      sections.addAll(cards);
     }
 
     return RefreshIndicator(

@@ -5,7 +5,6 @@ import 'package:flutter/rendering.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import '../components/app_shell.dart';
-import '../components/responsive_card_grid.dart';
 import '../components/task_card.dart';
 import '../models/task.dart';
 import '../services/canvas_refresh.dart';
@@ -455,8 +454,6 @@ class _DashboardScreenState extends State<DashboardScreen> with CanvasRefreshMix
 
     String? currentOverdueGroup;
     String? currentUpcomingGroup;
-    List<Widget> overdueCards = [];
-    List<Widget> upcomingCards = [];
     bool laterKeyUsed = false;
 
     for (var task in _filteredTasks) {
@@ -485,35 +482,32 @@ class _DashboardScreenState extends State<DashboardScreen> with CanvasRefreshMix
         }
       }
 
-      final card = TaskCard(
-        task: task,
-        onTap: () {
+      final card = Padding(
+        padding: const EdgeInsets.only(bottom: 10.0),
+        child: TaskCard(
+          task: task,
+          onTap: () {
 
-          final course = Course(
-            id: task.courseId,
-            name: task.courseName,
-            courseCode: task.courseCode,
-          );
+            final course = Course(
+              id: task.courseId,
+              name: task.courseName,
+              courseCode: task.courseCode,
+            );
 
-          context.push('/task', extra: {
-            'course': course,
-            'assignment': task,
-          });
-        },
+            context.push('/task', extra: {
+              'course': course,
+              'assignment': task,
+            });
+          },
+        ),
       );
 
       if (isOverdueItem) {
-        if (header != null) {
-          overdueCards = [];
-          overdueWidgets..add(header)..add(_buildCardGrid(overdueCards));
-        }
-        overdueCards.add(card);
+        if (header != null) overdueWidgets.add(header);
+        overdueWidgets.add(card);
       } else {
-        if (header != null) {
-          upcomingCards = [];
-          upcomingWidgets..add(header)..add(_buildCardGrid(upcomingCards));
-        }
-        upcomingCards.add(card);
+        if (header != null) upcomingWidgets.add(header);
+        upcomingWidgets.add(card);
       }
     }
 
@@ -606,13 +600,6 @@ class _DashboardScreenState extends State<DashboardScreen> with CanvasRefreshMix
           ),
         ),
       ),
-    );
-  }
-
-  Widget _buildCardGrid(List<Widget> cards) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 10),
-      child: ResponsiveCardGrid(children: cards),
     );
   }
 
