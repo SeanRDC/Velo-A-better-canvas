@@ -74,6 +74,7 @@ class _LoginScreenState extends State<LoginScreen> {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
+      constraints: const BoxConstraints(maxWidth: 560),
       backgroundColor: theme.colorScheme.surface,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
@@ -252,137 +253,165 @@ class _LoginScreenState extends State<LoginScreen> {
 
     return Scaffold(
       body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 32.0),
-          child: Column(
-            children: [
-              const Spacer(),
-              Container(
-                height: 64,
-                width: 64,
-                decoration: BoxDecoration(
-                  color: theme.colorScheme.primary,
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                child: Icon(Icons.school, size: 32, color: theme.colorScheme.onPrimary),
-              ),
-              const SizedBox(height: 20),
-              Text(
-                'Velo',
-                style: theme.textTheme.headlineSmall?.copyWith(
-                  fontWeight: FontWeight.bold,
-                  color: theme.colorScheme.onSurface,
-                ),
-              ),
-              const SizedBox(height: 6),
-              Text(
-                'Your Holy Angel coursework, planned for you.',
-                textAlign: TextAlign.center,
-                style: theme.textTheme.bodyMedium?.copyWith(
-                  color: theme.colorScheme.secondary,
-                ),
-              ),
-              const Spacer(),
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final isWide = constraints.maxWidth >= 600;
 
-              TextField(
-                controller: _tokenController,
-                obscureText: _obscureToken,
-                decoration: InputDecoration(
-                  hintText: 'Paste Canvas API Token...',
-                  hintStyle: TextStyle(color: theme.colorScheme.secondary, fontSize: 14),
-                  filled: true,
-                  fillColor: theme.colorScheme.surface,
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide(color: theme.colorScheme.onSurface.withValues(alpha: 0.1)),
-                  ),
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide(color: theme.colorScheme.onSurface.withValues(alpha: 0.1)),
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide(color: theme.colorScheme.primary),
-                  ),
-                  prefixIcon: Icon(Icons.vpn_key_outlined, color: theme.colorScheme.secondary, size: 20),
-                  suffixIcon: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      IconButton(
-                        icon: Icon(_obscureToken ? Icons.visibility_off : Icons.visibility, size: 20),
-                        color: theme.colorScheme.secondary,
-                        onPressed: () => setState(() => _obscureToken = !_obscureToken),
-                      ),
-                      IconButton(
-                        icon: const Icon(Icons.paste, size: 20),
-                        color: theme.colorScheme.secondary,
-                        tooltip: 'Paste from clipboard',
-                        onPressed: () async {
-                          final data = await Clipboard.getData(Clipboard.kTextPlain);
-                          if (data?.text != null) {
-                            _tokenController.text = data!.text!.trim();
-                          }
-                        },
-                      ),
-                    ],
+            return Center(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 32.0),
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 440),
+                  child: Container(
+                    padding: isWide ? const EdgeInsets.all(32) : EdgeInsets.zero,
+                    decoration: isWide
+                        ? BoxDecoration(
+                            color: theme.colorScheme.surface,
+                            borderRadius: BorderRadius.circular(20),
+                            border: Border.all(color: theme.colorScheme.onSurface.withValues(alpha: 0.08)),
+                          )
+                        : null,
+                    child: _buildForm(theme, onCard: isWide),
                   ),
                 ),
               ),
-              const SizedBox(height: 16),
-
-              SizedBox(
-                width: double.infinity,
-                child: FilledButton(
-                  style: FilledButton.styleFrom(
-                    backgroundColor: theme.colorScheme.primary,
-                    foregroundColor: theme.colorScheme.onPrimary,
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                  ),
-                  onPressed: _isLoading ? null : _handleLogin,
-                  child: _isLoading
-                      ? SizedBox(
-                          height: 20,
-                          width: 20,
-                          child: CircularProgressIndicator(strokeWidth: 2, color: theme.colorScheme.onPrimary),
-                        )
-                      : const Text(
-                          'Connect to Canvas',
-                          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                        ),
-                ),
-              ),
-              const SizedBox(height: 12),
-
-              TextButton.icon(
-                onPressed: () => _showInstructionsSheet(theme),
-                icon: Icon(Icons.help_outline, size: 16, color: theme.colorScheme.secondary),
-                label: Text(
-                  'How do I find my access token?',
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: theme.colorScheme.secondary,
-                    fontWeight: FontWeight.w600,
-                    decoration: TextDecoration.underline,
-                  ),
-                ),
-              ),
-              const SizedBox(height: 12),
-
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(Icons.shield_outlined, size: 14, color: theme.colorScheme.secondary),
-                  const SizedBox(width: 6),
-                  Text(
-                    'Stored locally on this device   we never store your password',
-                    style: theme.textTheme.labelSmall?.copyWith(color: theme.colorScheme.secondary),
-                  ),
-                ],
-              ),
-            ],
-          ),
+            );
+          },
         ),
       ),
+    );
+  }
+
+  Widget _buildForm(ThemeData theme, {required bool onCard}) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          height: 64,
+          width: 64,
+          decoration: BoxDecoration(
+            color: theme.colorScheme.primary,
+            borderRadius: BorderRadius.circular(16),
+          ),
+          child: Icon(Icons.school, size: 32, color: theme.colorScheme.onPrimary),
+        ),
+        const SizedBox(height: 20),
+        Text(
+          'Velo',
+          style: theme.textTheme.headlineSmall?.copyWith(
+            fontWeight: FontWeight.bold,
+            color: theme.colorScheme.onSurface,
+          ),
+        ),
+        const SizedBox(height: 6),
+        Text(
+          'Your Holy Angel coursework, planned for you.',
+          textAlign: TextAlign.center,
+          style: theme.textTheme.bodyMedium?.copyWith(
+            color: theme.colorScheme.secondary,
+          ),
+        ),
+        const SizedBox(height: 36),
+
+        TextField(
+          controller: _tokenController,
+          obscureText: _obscureToken,
+          decoration: InputDecoration(
+            hintText: 'Paste Canvas API Token...',
+            hintStyle: TextStyle(color: theme.colorScheme.secondary, fontSize: 14),
+            filled: true,
+            fillColor: onCard ? theme.scaffoldBackgroundColor : theme.colorScheme.surface,
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: BorderSide(color: theme.colorScheme.onSurface.withValues(alpha: 0.1)),
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: BorderSide(color: theme.colorScheme.onSurface.withValues(alpha: 0.1)),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: BorderSide(color: theme.colorScheme.primary),
+            ),
+            prefixIcon: Icon(Icons.vpn_key_outlined, color: theme.colorScheme.secondary, size: 20),
+            suffixIcon: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                IconButton(
+                  icon: Icon(_obscureToken ? Icons.visibility_off : Icons.visibility, size: 20),
+                  color: theme.colorScheme.secondary,
+                  onPressed: () => setState(() => _obscureToken = !_obscureToken),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.paste, size: 20),
+                  color: theme.colorScheme.secondary,
+                  tooltip: 'Paste from clipboard',
+                  onPressed: () async {
+                    final data = await Clipboard.getData(Clipboard.kTextPlain);
+                    if (data?.text != null) {
+                      _tokenController.text = data!.text!.trim();
+                    }
+                  },
+                ),
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(height: 16),
+
+        SizedBox(
+          width: double.infinity,
+          child: FilledButton(
+            style: FilledButton.styleFrom(
+              backgroundColor: theme.colorScheme.primary,
+              foregroundColor: theme.colorScheme.onPrimary,
+              padding: const EdgeInsets.symmetric(vertical: 16),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            ),
+            onPressed: _isLoading ? null : _handleLogin,
+            child: _isLoading
+                ? SizedBox(
+                    height: 20,
+                    width: 20,
+                    child: CircularProgressIndicator(strokeWidth: 2, color: theme.colorScheme.onPrimary),
+                  )
+                : const Text(
+                    'Connect to Canvas',
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                  ),
+          ),
+        ),
+        const SizedBox(height: 12),
+
+        TextButton.icon(
+          onPressed: () => _showInstructionsSheet(theme),
+          icon: Icon(Icons.help_outline, size: 16, color: theme.colorScheme.secondary),
+          label: Text(
+            'How do I find my access token?',
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: theme.colorScheme.secondary,
+              fontWeight: FontWeight.w600,
+              decoration: TextDecoration.underline,
+            ),
+          ),
+        ),
+        const SizedBox(height: 12),
+
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.shield_outlined, size: 14, color: theme.colorScheme.secondary),
+            const SizedBox(width: 6),
+            Flexible(
+              child: Text(
+                'Stored locally on this device · we never store your password',
+                textAlign: TextAlign.center,
+                style: theme.textTheme.labelSmall?.copyWith(color: theme.colorScheme.secondary),
+              ),
+            ),
+          ],
+        ),
+      ],
     );
   }
 }
