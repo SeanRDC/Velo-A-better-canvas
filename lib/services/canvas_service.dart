@@ -323,7 +323,17 @@ class CanvasService {
     await http.put(
       Uri.parse('$_baseUrl/api/v1/conversations/$conversationId'),
       headers: await _getHeaders(),
-      body: jsonEncode({'conversation': {'workflow_state': 'read'}}),
+      body: {'conversation[workflow_state]': 'read'},
+    );
+  }
+
+  Future<void> markAnnouncementAsRead(String courseId, String topicId) async {
+    final prefs = await SharedPreferences.getInstance();
+    if (prefs.getBool('isOffline') ?? false) return;
+
+    await http.put(
+      Uri.parse('$_baseUrl/api/v1/courses/$courseId/discussion_topics/$topicId/read'),
+      headers: await _getHeaders(),
     );
   }
 

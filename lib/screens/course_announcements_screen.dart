@@ -319,6 +319,11 @@ Future<void> _launchLink(String url) async {
               color: theme.scaffoldBackgroundColor,
               child: InkWell(
                 onTap: () {
+                  if (isUnread) {
+                    _canvasService
+                        .markAnnouncementAsRead(widget.course.id, ann['id'].toString())
+                        .catchError((_) {});
+                  }
                   setState(() {
                     _selectedIndex = index;
                     // Optimistically mark as read locally so the indicator clears

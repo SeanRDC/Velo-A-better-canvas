@@ -21,6 +21,10 @@ class _InboxScreenState extends State<InboxScreen> {
   static List<Map<String, dynamic>> _cachedThreads = [];
   List<Map<String, dynamic>> _threads = _cachedThreads;
 
+  // Items opened in this session (id -> last_message_at when opened), so a
+  // refetch that still reports them as unread doesn't bring the dot back.
+  static final Map<String, dynamic> _readLocally = {};
+
   bool _isLoading = _cachedThreads.isEmpty;
   String? _errorMessage;
   String _activeFolder = 'inbox';
@@ -37,6 +41,7 @@ class _InboxScreenState extends State<InboxScreen> {
   }
 
   Future<void> _fetchInbox() async {
+    if (!mounted) return;
     final folder = _activeFolder;
 
     // Only block the screen with a spinner when there is nothing to show yet;
@@ -59,8 +64,10 @@ class _InboxScreenState extends State<InboxScreen> {
             final anns = await _canvasService.fetchAnnouncementsForCourse(course.id);
             return anns.map((a) {
               return {
-                'id': 'ann_${a['id']}', 
+                'id': 'ann_${a['id']}',
                 'kind': 'announcement',
+                'course_id': course.id,
+                'topic_id': a['id'].toString(),
                 'workflow_state': a['read_state'] ?? 'read',
                 'sender': a['user_name'] ?? 'Instructor',
                 'context_name': course.courseCode,
@@ -87,6 +94,15 @@ class _InboxScreenState extends State<InboxScreen> {
         });
       }
 
+      // Keep items read in the app as read, unless a newer message arrived since
+      for (final t in combinedFeed) {
+        final id = t['id'].toString();
+        if (_readLocally.containsKey(id) && _readLocally[id] == t['last_message_at']) {
+          t['workflow_state'] = 'read';
+          t['unread'] = false;
+        }
+      }
+
       // Drop the result if the user switched folders while this was loading
       if (mounted && folder == _activeFolder) {
         if (folder == 'inbox') {
@@ -109,20 +125,30 @@ class _InboxScreenState extends State<InboxScreen> {
     }
   }
 
-  void _markAsReadLocal(int index) {
+  // Clears the unread state locally, then tells Canvas so it stays read
+  Future<void> _markAsRead(int index) async {
     final t = _threads[index];
-    if (t['workflow_state'] == 'unread' || t['unread'] == true) {
-      setState(() {
-        _threads[index]['workflow_state'] = 'read';
-        _threads[index]['unread'] = false;
-      });
-      
+    if (t['workflow_state'] != 'unread' && t['unread'] != true) return;
+
+    _readLocally[t['id'].toString()] = t['last_message_at'];
+    setState(() {
+      t['workflow_state'] = 'read';
+      t['unread'] = false;
+    });
+
+    if (_activeFolder == 'inbox') {
       final unread = _threads.where((th) => th['workflow_state'] == 'unread' || th['unread'] == true).length;
       context.read<AppState>().updateUnreadInboxCount(unread);
+    }
 
-      if (t['kind'] != 'announcement') {
-        _canvasService.markConversationAsRead(t['id'].toString());
+    try {
+      if (t['kind'] == 'announcement') {
+        await _canvasService.markAnnouncementAsRead(t['course_id'].toString(), t['topic_id'].toString());
+      } else {
+        await _canvasService.markConversationAsRead(t['id'].toString());
       }
+    } catch (_) {
+      // Stays read locally; Canvas will be updated the next time it is opened
     }
   }
 
@@ -281,8 +307,8 @@ class _InboxScreenState extends State<InboxScreen> {
               borderRadius: BorderRadius.circular(12),
               child: InkWell(
                 onTap: () async {
-                  _markAsReadLocal(index);
-                  
+                  final marking = _markAsRead(index);
+
                   if (isAnnouncement) {
                     await Navigator.of(context).push(MaterialPageRoute(
                       builder: (context) => AppShell(
@@ -320,9 +346,11 @@ class _InboxScreenState extends State<InboxScreen> {
                         ),
                       ),
                     ));
+                    await marking;
                     _fetchInbox(); // Refresh when returning
                   } else {
                     final result = await context.push('/conversation', extra: t);
+                    await marking;
                     if (result == true) _fetchInbox();
                   }
                 },
