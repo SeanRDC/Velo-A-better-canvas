@@ -187,7 +187,7 @@ class _SideDrawerState extends State<SideDrawer> {
                     isActive: false, 
                     onTap: () async {
                       if (!widget.isDesktop) Navigator.pop(context);
-                      final uri = Uri.parse('hhttps://hau.campus-erp.com/Student/Login.php');
+                      final uri = Uri.parse('https://hau.campus-erp.com');
                       if (await canLaunchUrl(uri)) {
                         await launchUrl(uri, mode: LaunchMode.externalApplication);
                       }
