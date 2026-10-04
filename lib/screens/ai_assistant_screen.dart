@@ -24,9 +24,12 @@ class AiAssistantScreen extends StatefulWidget {
   State<AiAssistantScreen> createState() => _AiAssistantScreenState();
 }
 
-// Bouncing Dots Typing Indicator Component
+// Typing indicator: bouncing dots plus a short note on what the AI is doing
 class TypingBubble extends StatefulWidget {
-  const TypingBubble({super.key});
+  final String status; // e.g. "Thinking", "Looking up your grades"
+  final IconData? icon;
+
+  const TypingBubble({super.key, this.status = 'Thinking', this.icon});
   @override
   State<TypingBubble> createState() => _TypingBubbleState();
 }
@@ -66,39 +69,78 @@ class _TypingBubbleState extends State<TypingBubble> with SingleTickerProviderSt
             child: Icon(Icons.smart_toy_outlined, size: 16, color: theme.colorScheme.onPrimary),
           ),
           const SizedBox(width: 8),
-          Container(
-            padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
-            decoration: BoxDecoration(
-              color: theme.colorScheme.surface,
-              borderRadius: const BorderRadius.only(
-                topLeft: Radius.circular(4),
-                topRight: Radius.circular(20),
-                bottomLeft: Radius.circular(20),
-                bottomRight: Radius.circular(20),
+          Flexible(
+            child: Container(
+              margin: const EdgeInsets.only(right: 16),
+              padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+              decoration: BoxDecoration(
+                color: theme.colorScheme.surface,
+                borderRadius: const BorderRadius.only(
+                  topLeft: Radius.circular(4),
+                  topRight: Radius.circular(20),
+                  bottomLeft: Radius.circular(20),
+                  bottomRight: Radius.circular(20),
+                ),
+                border: Border.all(color: theme.colorScheme.onSurface.withValues(alpha: 0.1)),
               ),
-              border: Border.all(color: theme.colorScheme.onSurface.withValues(alpha: 0.1)),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: List.generate(3, (index) {
-                return AnimatedBuilder(
-                  animation: _controller,
-                  builder: (context, child) {
-                    final offset = math.sin((_controller.value * 2 * math.pi) - (index * 1.5)) * 3;
-                    return Transform.translate(
-                      offset: Offset(0, offset),
-                      child: Container(
-                        margin: const EdgeInsets.symmetric(horizontal: 2),
-                        height: 6, width: 6,
-                        decoration: BoxDecoration(
-                          color: theme.colorScheme.secondary.withValues(alpha: 0.6),
-                          shape: BoxShape.circle,
+              // Grows and shrinks smoothly as the status text changes
+              child: AnimatedSize(
+                duration: const Duration(milliseconds: 200),
+                curve: Curves.easeOut,
+                alignment: Alignment.centerLeft,
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    ...List.generate(3, (index) {
+                      return AnimatedBuilder(
+                        animation: _controller,
+                        builder: (context, child) {
+                          final offset = math.sin((_controller.value * 2 * math.pi) - (index * 1.5)) * 3;
+                          return Transform.translate(
+                            offset: Offset(0, offset),
+                            child: Container(
+                              margin: const EdgeInsets.symmetric(horizontal: 2),
+                              height: 6, width: 6,
+                              decoration: BoxDecoration(
+                                color: theme.colorScheme.secondary.withValues(alpha: 0.6),
+                                shape: BoxShape.circle,
+                              ),
+                            ),
+                          );
+                        },
+                      );
+                    }),
+                    const SizedBox(width: 10),
+                    Flexible(
+                      child: AnimatedSwitcher(
+                        duration: const Duration(milliseconds: 200),
+                        layoutBuilder: (current, previous) => Stack(
+                          alignment: Alignment.centerLeft,
+                          children: [...previous, ?current],
+                        ),
+                        child: Row(
+                          key: ValueKey(widget.status),
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            if (widget.icon != null) ...[
+                              Icon(widget.icon, size: 14, color: theme.colorScheme.secondary),
+                              const SizedBox(width: 6),
+                            ],
+                            Flexible(
+                              child: Text(
+                                widget.status,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.secondary),
+                              ),
+                            ),
+                          ],
                         ),
                       ),
-                    );
-                  },
-                );
-              }),
+                    ),
+                  ],
+                ),
+              ),
             ),
           ),
         ],
@@ -115,6 +157,35 @@ class _AiAssistantScreenState extends State<AiAssistantScreen> {
   bool _isLoading = false;
   bool _isCooldown = false;
   bool _isTyping = false;
+
+  // What the typing bubble says while a reply is being prepared
+  String _status = 'Thinking';
+  IconData? _statusIcon;
+
+  static (String, IconData) _toolStatus(String functionName, Map<String, dynamic> args) {
+    switch (functionName) {
+      case 'get_pending_tasks':
+        return ('Checking your tasks', Icons.checklist_outlined);
+      case 'get_course_grades':
+        return ('Looking up your grades', Icons.school_outlined);
+      case 'get_recent_announcements':
+        return ('Reading announcements', Icons.campaign_outlined);
+      case 'get_messages':
+        final folder = args['folder'];
+        final label = folder == 'sent'
+            ? 'Checking sent messages'
+            : folder == 'archived'
+                ? 'Checking archived messages'
+                : 'Checking your inbox';
+        return (label, Icons.mail_outline);
+      case 'get_thread_details':
+        return ('Reading the conversation', Icons.forum_outlined);
+      case 'get_assignment_details':
+        return ('Reading the assignment details', Icons.description_outlined);
+      default:
+        return ('Checking Canvas', Icons.cloud_outlined);
+    }
+  }
   final bool _isInitializing = false; 
 
 
@@ -131,7 +202,8 @@ class _AiAssistantScreenState extends State<AiAssistantScreen> {
                  "4. If the user asks for instructions on an assignment, use the get_assignment_details tool.\n"
                  "5. If the user asks about messages, use get_messages. To read a specific message, use get_thread_details.\n"
                  "6. NEVER show raw message IDs, thread IDs, or internal database identifiers to the user in plain text.\n"
-                 "7. CRITICAL: When listing tasks, announcements, or messages, ALWAYS embed a markdown link using the EXACT `velo://` URL provided in the tool data. Format it like this: `[Item Name](velo://...)`."
+                 "7. CRITICAL: When listing tasks, announcements, or messages, ALWAYS embed a markdown link using the EXACT `velo://` URL provided in the tool data. Format it like this: `[Item Name](velo://...)`.\n"
+                 "8. FORMATTING: Replies are usually read on a phone. Use a table only for compact data with at most 3 short columns (for example Course | Grade), keep every cell brief, and never put links or long names in a table. For anything longer, use a bulleted list with one item per line."
     }
   ];
 
@@ -267,6 +339,8 @@ class _AiAssistantScreenState extends State<AiAssistantScreen> {
     setState(() {
       _messages.add(ChatMessage(text: text, isUser: true));
       _isLoading = true;
+      _status = 'Thinking';
+      _statusIcon = null;
     });
 
     _controller.clear();
@@ -302,14 +376,18 @@ class _AiAssistantScreenState extends State<AiAssistantScreen> {
             final functionName = toolCall['function']['name'];
             final toolCallId = toolCall['id'];
             
+            // Show what is being looked up inside the typing bubble
             if (mounted) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text('Accessing Canvas: $functionName...'), 
-                  duration: const Duration(seconds: 1),
-                  behavior: SnackBarBehavior.floating,
-                ),
-              );
+              Map<String, dynamic> statusArgs = {};
+              try {
+                final raw = toolCall['function']['arguments']?.toString() ?? '';
+                if (raw.isNotEmpty) statusArgs = Map<String, dynamic>.from(jsonDecode(raw) as Map);
+              } catch (_) {}
+              final (label, icon) = _toolStatus(functionName, statusArgs);
+              setState(() {
+                _status = label;
+                _statusIcon = icon;
+              });
             }
 
             String toolResult = "No data found.";
@@ -341,6 +419,14 @@ class _AiAssistantScreenState extends State<AiAssistantScreen> {
               "tool_call_id": toolCallId,
               "name": functionName,
               "content": toolResult
+            });
+          }
+
+          // Data is in; the next round turns it into a reply
+          if (mounted) {
+            setState(() {
+              _status = 'Putting it together';
+              _statusIcon = null;
             });
           }
         } else {
@@ -443,7 +529,8 @@ class _AiAssistantScreenState extends State<AiAssistantScreen> {
           tooltip: 'Clear Chat',
           onPressed: () {
             setState(() {
-              _messages.removeRange(2, _messages.length);
+              // Keep only the greeting
+              if (_messages.length > 1) _messages.removeRange(1, _messages.length);
               _apiHistory.removeRange(1, _apiHistory.length);
             });
             ScaffoldMessenger.of(context).showSnackBar(
@@ -484,7 +571,7 @@ class _AiAssistantScreenState extends State<AiAssistantScreen> {
                   ),
                 ),
                 if (_isLoading)
-                  const TypingBubble(),
+                  TypingBubble(status: _status, icon: _statusIcon),
 
                 // Bottom Input Area (Suggestions + Field)
                 Container(
