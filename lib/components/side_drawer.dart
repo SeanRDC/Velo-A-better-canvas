@@ -280,7 +280,7 @@ class _SideDrawerState extends State<SideDrawer> {
               padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
               child: InkWell(
                 onTap: () {
-                  Navigator.pop(context);
+                  if (!widget.isDesktop) Navigator.pop(context);
                   context.go('/');
                 },
                 borderRadius: BorderRadius.circular(8),

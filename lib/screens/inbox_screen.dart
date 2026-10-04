@@ -37,18 +37,22 @@ class _InboxScreenState extends State<InboxScreen> {
   }
 
   Future<void> _fetchInbox() async {
+    final folder = _activeFolder;
+
+    // Only block the screen with a spinner when there is nothing to show yet;
+    // otherwise refresh in place so the list and scroll position are kept.
     setState(() {
-      _isLoading = true;
+      _isLoading = _threads.isEmpty;
       _errorMessage = null;
     });
 
     try {
       // 1. Fetch standard conversations (Direct Messages)
-      final conversations = await _canvasService.fetchConversations(scope: _activeFolder);
+      final conversations = await _canvasService.fetchConversations(scope: folder);
       List<Map<String, dynamic>> combinedFeed = List.from(conversations);
 
       // 2. If viewing the Inbox, compile Announcements from all active courses
-      if (_activeFolder == 'inbox') {
+      if (folder == 'inbox') {
         final courses = await _canvasService.fetchActiveCourses();
         final announcementLists = await Future.wait(courses.map((course) async {
           try {
@@ -83,17 +87,20 @@ class _InboxScreenState extends State<InboxScreen> {
         });
       }
 
-      if (mounted) {
-        final unread = combinedFeed.where((t) => t['workflow_state'] == 'unread' || t['unread'] == true).length;
-        context.read<AppState>().updateUnreadInboxCount(unread);
+      // Drop the result if the user switched folders while this was loading
+      if (mounted && folder == _activeFolder) {
+        if (folder == 'inbox') {
+          final unread = combinedFeed.where((t) => t['workflow_state'] == 'unread' || t['unread'] == true).length;
+          context.read<AppState>().updateUnreadInboxCount(unread);
+          _cachedThreads = combinedFeed;
+        }
         setState(() {
           _threads = combinedFeed;
-          _cachedThreads = combinedFeed;
           _isLoading = false;
         });
       }
     } catch (e) {
-      if (mounted) {
+      if (mounted && folder == _activeFolder) {
         setState(() {
           _errorMessage = e.toString();
           _isLoading = false;
@@ -451,7 +458,10 @@ class _InboxScreenState extends State<InboxScreen> {
     return GestureDetector(
       onTap: () {
         if (!isSelected) {
-          setState(() => _activeFolder = folder);
+          setState(() {
+            _activeFolder = folder;
+            _threads = [];
+          });
           _fetchInbox();
         }
       },

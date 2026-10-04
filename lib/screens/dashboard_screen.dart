@@ -316,7 +316,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 child: FloatingActionButton.extended(
                   onPressed: () {
                     // Navigate to the central Planner Hub
-                    context.push('/planner');
+                    context.go('/planner');
                   },
                   backgroundColor: theme.colorScheme.primary,
                   foregroundColor: theme.colorScheme.onPrimary,

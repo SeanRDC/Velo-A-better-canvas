@@ -54,17 +54,63 @@ final _router = GoRouter(
       path: '/',
       builder: (context, state) => const LoginScreen(),
     ),
-    GoRoute(
-      path: '/dashboard',
-      builder: (context, state) => const DashboardScreen(),
-    ),
-    GoRoute(
-      path: '/assistant',
-      builder: (context, state) => const AiAssistantScreen(),
-    ),
-    GoRoute(
-      path: '/courses',
-      builder: (context, state) => const CoursesScreen(),
+    // Top-level tabs live in an indexed stack so each one keeps its state
+    // (loaded data, scroll position, filters) when switching between them.
+    StatefulShellRoute.indexedStack(
+      builder: (context, state, navigationShell) => navigationShell,
+      branches: [
+        StatefulShellBranch(
+          routes: [
+            GoRoute(
+              path: '/dashboard',
+              builder: (context, state) => const DashboardScreen(),
+            ),
+          ],
+        ),
+        StatefulShellBranch(
+          routes: [
+            GoRoute(
+              path: '/assistant',
+              builder: (context, state) => const AiAssistantScreen(),
+            ),
+          ],
+        ),
+        StatefulShellBranch(
+          routes: [
+            GoRoute(
+              path: '/courses',
+              builder: (context, state) => const CoursesScreen(),
+            ),
+          ],
+        ),
+        StatefulShellBranch(
+          routes: [
+            GoRoute(
+              path: '/planner',
+              builder: (context, state) {
+                final taskId = state.extra as String?;
+                return PlannerScreen(initialTaskId: taskId);
+              },
+            ),
+          ],
+        ),
+        StatefulShellBranch(
+          routes: [
+            GoRoute(
+              path: '/inbox',
+              builder: (context, state) => const InboxScreen(),
+            ),
+          ],
+        ),
+        StatefulShellBranch(
+          routes: [
+            GoRoute(
+              path: '/account',
+              builder: (context, state) => const AccountScreen(),
+            ),
+          ],
+        ),
+      ],
     ),
     GoRoute(
       path: '/course', // Using 'extra' to pass the object directly
@@ -142,14 +188,6 @@ final _router = GoRouter(
       },
     ),
     GoRoute(
-      path: '/account',
-      builder: (context, state) => const AccountScreen(),
-    ),
-    GoRoute(
-      path: '/inbox',
-      builder: (context, state) => const InboxScreen(),
-    ),
-    GoRoute(
       path: '/compose',
       builder: (context, state) => const ComposeMessageScreen(),
     ),
@@ -158,13 +196,6 @@ final _router = GoRouter(
       builder: (context, state) {
         final thread = state.extra as Map<String, dynamic>;
         return ConversationDetailScreen(thread: thread);
-      },
-    ),
-    GoRoute(
-      path: '/planner',
-      builder: (context, state) {
-        final taskId = state.extra as String?;
-        return PlannerScreen(initialTaskId: taskId);
       },
     ),
   ],
