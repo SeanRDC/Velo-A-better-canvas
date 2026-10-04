@@ -1,4 +1,4 @@
-// Bottom sheet listing everything due or scheduled on one calendar day.
+// Bottom sheet listing everything due or scheduled on one calendar day in the planner.
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 

@@ -1,3 +1,4 @@
+// Card for a single Canvas task showing its course, title, and due date with a coloured left strip.
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../models/task.dart';
@@ -16,19 +17,16 @@ class TaskCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     
-    // Improved time formatting for a larger card layout
     final dueString = DateFormat('MMM d, h:mm a').format(task.dueDate.toLocal());
     
     final isOverdue = task.dueDate.isBefore(DateTime.now()) && !task.isSubmitted;
     final statusColor = isOverdue ? theme.colorScheme.error : theme.colorScheme.secondary;
 
     return Container(
-      // This ensures the custom left-strip respects the rounded corners!
       clipBehavior: Clip.antiAlias, 
       decoration: BoxDecoration(
         color: theme.colorScheme.surface,
         borderRadius: BorderRadius.circular(12),
-        // Replaced the broken non-uniform border with a standard, subtle uniform outline
         border: Border.all(color: theme.colorScheme.onSurface.withValues(alpha: 0.05)),
         boxShadow: [
           BoxShadow(
@@ -42,7 +40,6 @@ class TaskCard extends StatelessWidget {
         color: Colors.transparent,
         child: Stack(
           children: [
-            // The Classic Canvas Old Dashboard Left-Strip
             Positioned(
               left: 0,
               top: 0,
@@ -53,11 +50,9 @@ class TaskCard extends StatelessWidget {
               ),
             ),
             
-            // The Card Content
             InkWell(
               onTap: onTap,
               child: Padding(
-                // Increased left padding to 26 to accommodate the 6px strip
                 padding: const EdgeInsets.only(left: 26.0, right: 20.0, top: 20.0, bottom: 20.0),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,

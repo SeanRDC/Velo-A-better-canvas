@@ -1,4 +1,5 @@
-// Global Application State and Preferences
+// Global application state and preferences: theme mode, offline mode and reconnect detection,
+// and deadline notifications.
 import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -26,24 +27,18 @@ class AppState extends ChangeNotifier {
     notifyListeners();
   }
 
-  // Watching for a connection to come back while offline mode is on
   final Duration _probeInterval;
   final Future<bool> Function() _connectionProbe;
   Timer? _probeTimer;
   bool _isProbing = false;
   bool _reconnectAvailable = false;
 
-  // Whether the connection has been seen down since the user was last asked.
-  // Starts true so a fresh launch in offline mode with a connection prompts once.
   bool _sawDisconnect = true;
 
-  // True when offline mode is on but Canvas is reachable again: time to ask
-  // the user whether to switch back online.
   bool get reconnectAvailable => _reconnectAvailable;
 
   static Future<bool> _defaultProbe() => CanvasService().isReachable();
 
-  // The probe and its interval can be replaced in tests
   AppState(
     this._prefs, {
     Future<bool> Function()? connectionProbe,
@@ -67,7 +62,6 @@ class AppState extends ChangeNotifier {
   String? get lastSyncTime => _prefs.getString('last_sync_time');
 
   Future<void> _initNotifications() async {
-    // Skip native initialization if running in a web browser
     if (kIsWeb) return;
 
     const AndroidInitializationSettings androidSettings = AndroidInitializationSettings('@mipmap/ic_launcher');
@@ -85,7 +79,6 @@ class AppState extends ChangeNotifier {
     try {
       await _notificationsPlugin.initialize(settings: initSettings);
     } catch (e) {
-      // No notification support on this platform; the app works without it
       debugPrint('Notifications unavailable: $e');
     }
   }
@@ -95,25 +88,19 @@ class AppState extends ChangeNotifier {
     _prefs.setBool('isOffline', _isOffline);
 
     if (_isOffline) {
-      // Chosen on purpose, maybe while still connected: only ask about going
-      // back online once the connection has actually dropped and returned
       _sawDisconnect = false;
       _startWatchingConnection();
     } else {
       _stopWatchingConnection();
-      // Screens showing saved data reload and sync with Canvas
       CanvasService.dataRevision.value++;
     }
     notifyListeners();
   }
 
-  // Accepts the "switch to online mode" prompt
   void goOnline() {
     if (_isOffline) toggleOffline();
   }
 
-  // Declines the prompt: stay offline, and don't ask again until the
-  // connection has dropped and come back
   void dismissReconnectPrompt() {
     _sawDisconnect = false;
     if (_isOffline) _startWatchingConnection();
@@ -135,7 +122,6 @@ class AppState extends ChangeNotifier {
 
   Future<void> _checkConnection() async {
     if (!_isOffline || _reconnectAvailable || _isProbing) return;
-    // Nothing to sync while signed out
     if ((_prefs.getString('canvas_api_token') ?? '').isEmpty) return;
 
     _isProbing = true;
@@ -172,7 +158,6 @@ class AppState extends ChangeNotifier {
   }
 
   Future<void> togglePushNotifications() async {
-    // Ask for native OS permissions only if turning it ON, and not on the web
     if (!_pushEnabled && !kIsWeb) {
       final androidPlugin = _notificationsPlugin.resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>();
       if (androidPlugin != null) {

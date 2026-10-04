@@ -1,4 +1,4 @@
-// Task Detail Screen (Assignment Parity)
+// Task detail screen showing an assignment's description and details, with a form to submit it.
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
@@ -37,7 +37,6 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
     super.initState();
     _submitted = Task.submittedFromJson(widget.assignment);
     
-    // Auto-select the first available submission type tab
     final List<dynamic> types = widget.assignment['submission_types'] ?? [];
     if (types.contains('online_upload')) {
       _selectedTab = 'file';
@@ -76,7 +75,6 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
 
   void _doSubmit() async {
     setState(() => _isUploading = true);
-    // Real API submission call would go here
     await Future.delayed(const Duration(milliseconds: 900));
     setState(() {
       _isUploading = false;
@@ -131,7 +129,6 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
                   ),
                   const SizedBox(height: 16),
                   
-                  // Dynamic Tabs based on Canvas payload
                   if (availableTabs > 1)
                     Container(
                       padding: const EdgeInsets.all(4),
@@ -147,7 +144,6 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
                       ),
                     ),
                   
-                  // Content Inputs
                   if (_selectedTab == 'file' && allowsFile)
                     _fileName != null
                         ? Container(
@@ -261,7 +257,6 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
     final bool isLocked = a['locked_for_user'] == true;
     final List<dynamic> types = a['submission_types'] ?? [];
     
-    // Determine if this assignment can be submitted through the app
     final bool isSubmittable = !isLocked && (
       types.contains('online_upload') || 
       types.contains('online_text_entry') ||
@@ -293,7 +288,6 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
                 ),
                 const SizedBox(height: 16),
                 
-                // Meta Tags
                 Wrap(
                   spacing: 16,
                   runSpacing: 12,
@@ -357,7 +351,6 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
                 ),
                 const SizedBox(height: 16),
                 
-                // Rich HTML Rendering
                 HtmlWidget(
                   description,
                   onTapUrl: (url) async {
@@ -380,7 +373,6 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
             ),
           ),
           
-          // Persistent Submission Bar
           if (isSubmittable)
             Container(
               padding: EdgeInsets.only(

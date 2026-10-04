@@ -1,4 +1,4 @@
-// Module Item Detail Screen (Canvas Progression)
+// Screen showing a single module item's content with previous/next navigation and assignment submission.
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../services/safe_launch.dart';
@@ -32,7 +32,6 @@ class _ModuleItemDetailScreenState extends State<ModuleItemDetailScreen> {
   String _htmlContent = '';
   bool _isLoading = true;
   
-  // Submission state
   bool _submitted = false;
   bool _isUploading = false;
   String _selectedTab = 'file';
@@ -217,7 +216,7 @@ class _ModuleItemDetailScreenState extends State<ModuleItemDetailScreen> {
                       onPressed: canSubmit && !_isUploading
                           ? () async {
                               setModalState(() => _isUploading = true);
-                              await Future.delayed(const Duration(milliseconds: 900)); // Simulate API call
+                              await Future.delayed(const Duration(milliseconds: 900));
                               setState(() => _submitted = true);
                               if (context.mounted) Navigator.pop(context);
                             }
@@ -258,7 +257,6 @@ class _ModuleItemDetailScreenState extends State<ModuleItemDetailScreen> {
       ),
       child: Column(
         children: [
-          // Content Area
           Expanded(
             child: _isLoading 
               ? Center(child: CircularProgressIndicator(color: theme.colorScheme.primary))
@@ -309,7 +307,6 @@ class _ModuleItemDetailScreenState extends State<ModuleItemDetailScreen> {
                         },
                       )
                     else
-                      // Fallback for Files, Quizzes, or External Tools
                       Container(
                         padding: const EdgeInsets.all(32),
                         decoration: BoxDecoration(
@@ -348,7 +345,6 @@ class _ModuleItemDetailScreenState extends State<ModuleItemDetailScreen> {
                 ),
           ),
           
-          // Persistent Bottom Navigation & Submission Bar
           Container(
             padding: EdgeInsets.only(
               left: 16, right: 16, top: 12, 
@@ -361,7 +357,6 @@ class _ModuleItemDetailScreenState extends State<ModuleItemDetailScreen> {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                // Only show the submit button if this module item is an assignment
                 if (currentItem.kind.toLowerCase() == 'assignment') ...[
                   SizedBox(
                     width: double.infinity,

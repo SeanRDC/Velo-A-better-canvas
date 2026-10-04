@@ -1,4 +1,4 @@
-// Handles all HTTP REST communication with the Canvas LMS API with Offline Caching.
+// Handles all HTTP communication with the Canvas LMS REST API, with caching for offline use.
 import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
@@ -15,35 +15,26 @@ class CanvasService {
   Future<SharedPreferences> get _prefs async => _cachedPrefs ??= await SharedPreferences.getInstance();
 
   static const Duration _timeout = Duration(seconds: 15);
-  static const int _maxPages = 5; // Upper bound when following Canvas pagination
+  static const int _maxPages = 5;
   static const String _canvasHost = 'hau.instructure.com';
 
-  // Shared by every CanvasService instance so screens loading together hit
-  // Canvas only once per resource.
   static final Map<String, Future<String>> _inFlight = {};
   static final Map<String, DateTime> _refreshedAt = {};
   static const Duration _minRefreshGap = Duration(seconds: 30);
 
-  // Bumped shortly after a background refresh brings back different data, so
-  // screens can reload from the (now fresh) cache. See CanvasRefreshMixin.
   static final ValueNotifier<int> dataRevision = ValueNotifier<int>(0);
   static Timer? _notifyTimer;
 
-  // While set and in the future, reads wait for Canvas instead of returning
-  // saved data: used right after a write and on pull-to-refresh.
   static DateTime? _freshReadsUntil;
 
-  // Bumped on logout so a refresh still in the air can't write data back
   static int _sessionEpoch = 0;
 
-  // Makes the next reads go to Canvas rather than the saved copy
   static void requestFresh() {
     _refreshedAt.clear();
     _freshReadsUntil = DateTime.now().add(const Duration(seconds: 10));
   }
 
   static void _scheduleNotify() {
-    // Screens load several resources at once; wait for them to settle
     _notifyTimer?.cancel();
     _notifyTimer = Timer(const Duration(milliseconds: 300), () => dataRevision.value++);
   }
@@ -60,9 +51,6 @@ class CanvasService {
     };
   }
 
-  // Maps a URL handed back by Canvas onto the configured base (so it also works
-  // through the web proxy). Returns null for any other host, which must never
-  // be sent the user's token.
   String? _toBaseUrl(String absoluteUrl) {
     final uri = Uri.tryParse(absoluteUrl);
     if (uri == null) return null;
@@ -80,8 +68,6 @@ class CanvasService {
     return match == null ? null : _toBaseUrl(match.group(1)!);
   }
 
-  // Fetches a URL. With [paginate], follows Canvas "next" links so a long list
-  // is not cut off; each extra page is another round trip, so it is opt-in.
   Future<String> _fetchPages(String url, {required bool paginate}) async {
     final headers = await _getHeaders();
     var response = await http.get(Uri.parse(url), headers: headers).timeout(_timeout);
@@ -110,7 +96,6 @@ class CanvasService {
     try {
       await prefs.setString(cacheKey, body);
     } catch (_) {
-      // Storage is full: drop the per-item detail caches and try once more
       const detailPrefixes = ['cache_page_', 'cache_api_', 'cache_conv_'];
       final stale = prefs.getKeys().where((k) => detailPrefixes.any(k.startsWith)).toList();
       for (final key in stale) {
@@ -125,9 +110,6 @@ class CanvasService {
     } catch (_) {}
   }
 
-  // Returns saved data straight away when there is some, and refreshes it from
-  // Canvas in the background. Waits for Canvas only when nothing is saved yet,
-  // when [waitForNetwork] is set, or right after a write / pull-to-refresh.
   Future<String> _fetchWithCache(
     String url,
     String cacheKey, {
@@ -148,7 +130,6 @@ class CanvasService {
     if (cachedData != null && !waitForNetwork && !wantsFresh) {
       final last = _refreshedAt[cacheKey];
       if (last == null || now.difference(last) >= _minRefreshGap) {
-        // Failures here are silent: the saved copy is already on screen
         _download(url, cacheKey, cachedData, paginate).then((_) {}, onError: (_) {});
       }
       return cachedData;
@@ -163,8 +144,6 @@ class CanvasService {
   }
 
   Future<String> _download(String url, String cacheKey, String? previous, bool paginate) {
-    // The callback must not return the removed future: whenComplete would wait
-    // on it, and since it is this very future the request would never finish.
     return _inFlight[cacheKey] ??= _downloadAndStore(url, cacheKey, previous, paginate).whenComplete(() {
       _inFlight.remove(cacheKey);
     });
@@ -174,7 +153,6 @@ class CanvasService {
     final epoch = _sessionEpoch;
     final body = await _fetchPages(url, paginate: paginate);
 
-    // Logged out while this was in the air: keep nothing
     if (epoch != _sessionEpoch) return body;
 
     _refreshedAt[cacheKey] = DateTime.now();
@@ -183,11 +161,8 @@ class CanvasService {
     return body;
   }
 
-  // Call after any write to Canvas so the reads that follow show the result
   void _markChanged() => requestFresh();
 
-  // Whether Canvas answers at all, ignoring offline mode and sign-in. Any HTTP
-  // response counts; only a failed or timed-out request means "no connection".
   Future<bool> isReachable() async {
     try {
       await http
@@ -199,8 +174,6 @@ class CanvasService {
     }
   }
 
-  // Wipes everything tied to the signed-in user: token, cached Canvas data and
-  // saved study plans. App preferences (theme, notifications) are kept.
   Future<void> clearSession() async {
     final prefs = await _prefs;
     final cacheKeys = prefs.getKeys().where((k) => k.startsWith('cache_')).toList();
@@ -233,7 +206,6 @@ class CanvasService {
       ).timeout(_timeout);
 
       if (response.statusCode == 200) {
-        // Start clean so nothing from a previous account carries over
         await clearSession();
         final prefs = await _prefs;
         await prefs.setString('canvas_api_token', token);
@@ -290,7 +262,6 @@ class CanvasService {
       };
       return _memProfile!;
     } catch (e) {
-      // Offline/Error fallback
       return {
         'name': 'Student',
         'email': 'Loading...',
@@ -323,11 +294,8 @@ class CanvasService {
     _markChanged();
   }
 
-  // One request and one cache entry serve the task list, grades and the raw
-  // assignment screens; it includes the user's own submission for each item.
   Future<String> _fetchAssignmentsBody(String courseId) {
     final url = '$_baseUrl/api/v1/courses/$courseId/assignments?include[]=submission&per_page=100';
-    // The one list that is paginated: a cut-off here would hide real tasks
     return _fetchWithCache(url, 'cache_assignments_$courseId', paginate: true);
   }
 
@@ -461,7 +429,6 @@ class CanvasService {
         return jsonDecode(body)['body'] ?? '';
       } 
       else if (apiUrl != null && (type.toLowerCase() == 'assignment' || type.toLowerCase() == 'discussion')) {
-        // Only Canvas itself may receive the token; any other host is skipped
         final safeUrl = _toBaseUrl(apiUrl);
         if (safeUrl == null) return '';
         final body = await _fetchWithCache(safeUrl, 'cache_api_${Uri.parse(apiUrl).path}', waitForNetwork: true);
@@ -539,7 +506,7 @@ class CanvasService {
 
     final response = await http.delete(
       Uri.parse('$_baseUrl/api/v1/conversations/$conversationId'),
-      headers: await _getHeaders(), // DELETE requests don't require JSON bodies
+      headers: await _getHeaders(),
     ).timeout(_timeout);
     _markChanged();
 
@@ -550,7 +517,6 @@ class CanvasService {
 
   Future<Map<String, dynamic>> fetchConversationDetail(String conversationId) async {
     final url = '$_baseUrl/api/v1/conversations/$conversationId';
-    // A thread has no list screen listening for updates, so always show it fresh
     final body = await _fetchWithCache(url, 'cache_conv_$conversationId', waitForNetwork: true);
     return jsonDecode(body) as Map<String, dynamic>;
   }
@@ -673,13 +639,11 @@ class CanvasService {
     try {
       final tasks = await fetchAllActiveTasks(); 
       
-      // Find the closest match to what the AI requested
       final task = tasks.firstWhere(
         (t) => t.title.toLowerCase().contains(targetTitle.toLowerCase()),
         orElse: () => throw Exception('Assignment not found locally'),
       );
 
-      // Fetch the specific assignment payload from Canvas
       final response = await http.get(
         Uri.parse('$_baseUrl/api/v1/courses/${task.courseId}/assignments/${task.id}'),
         headers: await _getHeaders(),
@@ -690,7 +654,6 @@ class CanvasService {
       final data = jsonDecode(response.body);
       final String rawHtml = data['description'] ?? 'No description or instructions provided by the professor.';
 
-      // Strip HTML tags and entities to save AI tokens
       final cleanText = rawHtml
           .replaceAll(RegExp(r'<[^>]*>'), ' ') 
           .replaceAll(RegExp(r'&[^;]+;'), ' ') 
@@ -709,7 +672,6 @@ class CanvasService {
       final conversations = await fetchConversations(scope: folder);
       final List<Map<String, dynamic>> combined = List.from(conversations);
 
-      // Only inject announcements if the AI is specifically looking at the main inbox
       if (folder == 'inbox') {
         final courses = await fetchActiveCourses();
         final perCourse = await Future.wait(
@@ -792,7 +754,6 @@ class CanvasService {
         final authorId = msg['author_id'];
         String authorName = 'Unknown';
         try {
-          // Match the message author ID to the participant list
           authorName = participants.firstWhere((p) => p['id'] == authorId)['name'] ?? 'Unknown';
         } catch (_) {}
         

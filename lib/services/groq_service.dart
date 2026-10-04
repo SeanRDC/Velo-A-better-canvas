@@ -10,8 +10,6 @@ class GroqService {
   static const Duration _timeout = Duration(seconds: 45);
   static const int _maxRetries = 3;
 
-  // Sends the conversation and returns the assistant's reply message, which
-  // holds 'content' and, when tools were offered, possibly 'tool_calls'.
   Future<Map<String, dynamic>> chat({
     required List<Map<String, dynamic>> messages,
     List<Map<String, dynamic>>? tools,
@@ -39,7 +37,6 @@ class GroqService {
         body: body,
       ).timeout(_timeout);
 
-      // Back off and retry on rate limits and server errors
       if ((response.statusCode == 429 || response.statusCode >= 500) && attempt < _maxRetries - 1) {
         final waitSeconds = 2 * (attempt + 1);
         debugPrint('Groq limit/server error (${response.statusCode}). Retrying in ${waitSeconds}s...');

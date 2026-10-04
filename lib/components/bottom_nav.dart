@@ -1,4 +1,4 @@
-// Persistent Bottom Navigation Bar
+// Bottom navigation bar for switching between the app's main tabs on mobile.
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../services/safe_launch.dart';
@@ -20,7 +20,6 @@ class BottomNav extends StatelessWidget {
         child: Row(
           children: [
             _buildTab(context, 'courses', 'Courses', Icons.menu_book_rounded, '/courses'),
-            // External link to the university portal; opens the browser, never active
             _buildTab(context, 'campus', 'Campus++', Icons.open_in_new_rounded, campusPortalUrl, external: true),
             _buildTab(context, 'assistant', 'AI Assistant', Icons.smart_toy_outlined, '/assistant'),
             _buildTab(context, 'tasks', 'Dashboard', Icons.checklist_rtl, '/dashboard'),

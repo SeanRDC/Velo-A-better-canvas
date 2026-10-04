@@ -1,4 +1,4 @@
-// Course Announcements Screen
+// Screen listing a course's announcements and showing the full content of a selected one.
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
@@ -33,7 +33,6 @@ class _CourseAnnouncementsScreenState extends State<CourseAnnouncementsScreen> w
     _fetchAnnouncements();
   }
 
-  // A background refresh brought new data: redraw without a spinner
   @override
   void onCanvasRefreshed() => _fetchAnnouncements(silent: true);
 
@@ -70,7 +69,6 @@ class _CourseAnnouncementsScreenState extends State<CourseAnnouncementsScreen> w
     return DateFormat('MMM d, yyyy').format(date);
   }
 
-  // Used only for the list view preview snippets
   String _stripHtml(String htmlString) {
     RegExp exp = RegExp(r'<[^>]*>', multiLine: true, caseSensitive: false);
     return htmlString.replaceAll(exp, '').replaceAll('&nbsp;', ' ').trim();
@@ -97,7 +95,6 @@ Future<void> _launchLink(String url) async {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
-    // Detail View Layout (Rich HTML)
     if (_selectedIndex != null) {
       final ann = _announcements[_selectedIndex!];
       final List<dynamic> attachments = ann['attachments'] ?? [];
@@ -140,7 +137,6 @@ Future<void> _launchLink(String url) async {
             Container(height: 1, color: theme.colorScheme.onSurface.withValues(alpha: 0.1)),
             const SizedBox(height: 12),
             
-            // Rich HTML Rendering
             HtmlWidget(
               ann['message'] ?? 'No content provided.',
               onTapUrl: (url) async {
@@ -160,7 +156,6 @@ Future<void> _launchLink(String url) async {
               },
             ),
             
-            // Render Attachments Block
             if (attachments.isNotEmpty) ...[
               const SizedBox(height: 24),
               Text(
@@ -224,7 +219,6 @@ Future<void> _launchLink(String url) async {
       );
     }
 
-    // List View Layout
     return AppShell(
       title: 'Announcements',
       activeTab: 'courses',
@@ -317,7 +311,6 @@ Future<void> _launchLink(String url) async {
           final cleanBody = _stripHtml(ann['message'] ?? '');
           final hasAttachments = (ann['attachments'] as List<dynamic>? ?? []).isNotEmpty;
           
-          // Canvas parity fields
           final bool isUnread = ann['read_state'] == 'unread';
           final int replyCount = ann['discussion_subentry_count'] ?? 0;
 
@@ -334,7 +327,6 @@ Future<void> _launchLink(String url) async {
                   }
                   setState(() {
                     _selectedIndex = index;
-                    // Optimistically mark as read locally so the indicator clears
                     _announcements[index]['read_state'] = 'read';
                   });
                 },

@@ -1,4 +1,4 @@
-// Course Assignments Screen
+// Screen listing a course's assignments grouped by status, with a sort toggle.
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
@@ -25,7 +25,7 @@ class _CourseAssignmentsScreenState extends State<CourseAssignmentsScreen> with 
   
   bool _isLoading = true;
   String? _errorMessage;
-  bool _sortByDueSoon = false; // Tracks our toggle state
+  bool _sortByDueSoon = false;
 
   @override
   void initState() {
@@ -33,7 +33,6 @@ class _CourseAssignmentsScreenState extends State<CourseAssignmentsScreen> with 
     _fetchAssignments();
   }
 
-  // A background refresh brought new data: redraw without a spinner
   @override
   void onCanvasRefreshed() => _fetchAssignments(silent: true);
 
@@ -56,7 +55,6 @@ class _CourseAssignmentsScreenState extends State<CourseAssignmentsScreen> with 
         _isLoading = false;
       });
     } catch (e) {
-      // KILL-SWITCH 2
       if (!mounted) return;
       
       setState(() {
@@ -70,7 +68,6 @@ class _CourseAssignmentsScreenState extends State<CourseAssignmentsScreen> with 
     if (!_sortByDueSoon) {
       _displayAssignments = List.from(_originalAssignments);
     } else {
-      // Group by status
       final List<Map<String, dynamic>> pending = [];
       final List<Map<String, dynamic>> submitted = [];
       final List<Map<String, dynamic>> noDate = [];
@@ -187,7 +184,6 @@ class _CourseAssignmentsScreenState extends State<CourseAssignmentsScreen> with 
                   ],
                 ),
                 
-                // Sort Toggle Button
                 if (!_isLoading && _errorMessage == null && _displayAssignments.isNotEmpty)
                   InkWell(
                     onTap: () {

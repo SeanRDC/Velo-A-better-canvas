@@ -1,4 +1,5 @@
-// Main Application Entry Point and Router
+// App entry point: loads saved settings and the environment, defines the go_router routes,
+// and starts the Velo app with its theme and global state.
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -19,7 +20,6 @@ import 'screens/course_grades_screen.dart';
 import 'screens/course_modules_screen.dart';
 import 'screens/course_assignments_screen.dart';
 import 'screens/task_detail_screen.dart';
-// import 'models/task.dart';
 import 'screens/course_announcements_screen.dart';
 import 'screens/module_item_detail_screen.dart';
 import 'screens/account_screen.dart';
@@ -35,8 +35,6 @@ void main() async {
   tz.initializeTimeZones();
   final prefs = await SharedPreferences.getInstance();
 
-  // Open straight on the dashboard when already signed in, instead of
-  // flashing the login screen and then redirecting
   if ((prefs.getString('canvas_api_token') ?? '').isNotEmpty) {
     _initialLocation = '/dashboard';
   }
@@ -54,7 +52,6 @@ void main() async {
   );
 }
 
-// Set in main() before the router is first used (top-level finals are lazy)
 String _initialLocation = '/';
 
 final _router = GoRouter(
@@ -64,8 +61,6 @@ final _router = GoRouter(
       path: '/',
       builder: (context, state) => const LoginScreen(),
     ),
-    // Top-level tabs live in an indexed stack so each one keeps its state
-    // (loaded data, scroll position, filters) when switching between them.
     StatefulShellRoute.indexedStack(
       builder: (context, state, navigationShell) => navigationShell,
       branches: [
@@ -123,9 +118,8 @@ final _router = GoRouter(
       ],
     ),
     GoRoute(
-      path: '/course', // Using 'extra' to pass the object directly
+      path: '/course',
       builder: (context, state) {
-        // Retrieve the Course object passed from the InkWell
         final course = state.extra as Course;
         return CourseDetailScreen(course: course);
       },
@@ -222,7 +216,6 @@ class VeloApp extends StatelessWidget {
       title: 'Velo: Canvas Co-pilot',
       debugShowCheckedModeBanner: false,
       locale: DevicePreview.locale(context),
-      // The reconnect prompt wraps every route so it can appear on any screen
       builder: (context, child) => DevicePreview.appBuilder(
         context,
         ReconnectPrompt(

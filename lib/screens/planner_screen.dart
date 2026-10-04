@@ -1,4 +1,5 @@
-// Interactive Automated Study Planner Hub
+// Study planner hub that generates AI milestone plans for tasks and lets the user view, edit,
+// and track them on a calendar.
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
@@ -31,15 +32,15 @@ class _PlannerScreenState extends State<PlannerScreen> with CanvasRefreshMixin<P
   final CanvasService _canvasService = CanvasService();
   final PlannerStore _store = PlannerStore();
   final GroqService _groqService = GroqService();
-  String _view = 'week'; // 'week' or 'month'
+  String _view = 'week';
 
   List<Task> _activeTasks = [];
   List<Course> _courses = [];
   Task? _selectedTask;
-  Map<String, StudyPlan> _plans = {}; // Saved plans keyed by task id
+  Map<String, StudyPlan> _plans = {};
 
   bool _isLoading = true;
-  String? _generatingTaskId; // Task the AI is currently planning
+  String? _generatingTaskId;
 
   StudyPlan? get _plan => _selectedTask == null ? null : _plans[_selectedTask!.id];
   List<Milestone> get _milestones => _plan?.milestones ?? [];
@@ -47,7 +48,6 @@ class _PlannerScreenState extends State<PlannerScreen> with CanvasRefreshMixin<P
 
   DateTime get _today => dateOnly(DateTime.now());
 
-  // Whole calendar days from today, rounded so a DST shift can't drop a day
   int _daysUntil(DateTime date) => (dateOnly(date).difference(_today).inHours / 24).round();
 
   @override
@@ -56,7 +56,6 @@ class _PlannerScreenState extends State<PlannerScreen> with CanvasRefreshMixin<P
     _fetchData();
   }
 
-  // A background refresh brought new data: reload, keeping the selected task
   @override
   void onCanvasRefreshed() => _fetchData();
 
@@ -74,12 +73,9 @@ class _PlannerScreenState extends State<PlannerScreen> with CanvasRefreshMixin<P
       }).toList()
         ..sort((a, b) => a.dueDate.compareTo(b.dueDate));
 
-      // An empty fetch (e.g. offline with no cache) must not wipe saved plans
       final activeIds = pendingTasks.map((t) => t.id).toSet();
       final Map<String, StudyPlan> plans;
       if (!_isLoading) {
-        // Reloading after a background refresh: the plans in memory are the
-        // latest (a save may still be in flight), so keep them
         plans = Map.of(_plans);
         if (tasks.isNotEmpty) plans.removeWhere((id, _) => !activeIds.contains(id));
       } else {
@@ -88,8 +84,6 @@ class _PlannerScreenState extends State<PlannerScreen> with CanvasRefreshMixin<P
 
       if (!mounted) return;
 
-      // Keep the current selection on a reload; otherwise auto-select the
-      // requested task, or the next most urgent task
       final wantedId = _selectedTask?.id ?? widget.initialTaskId;
       Task? targetTask;
       if (pendingTasks.isNotEmpty) {
@@ -104,7 +98,6 @@ class _PlannerScreenState extends State<PlannerScreen> with CanvasRefreshMixin<P
         _isLoading = false;
       });
 
-      // Only fire off the AI generator when this task has no saved plan yet
       if (targetTask != null && !plans.containsKey(targetTask.id) && _generatingTaskId != targetTask.id) {
         _generatePlan(targetTask);
       }
@@ -126,13 +119,11 @@ class _PlannerScreenState extends State<PlannerScreen> with CanvasRefreshMixin<P
     setState(() => _generatingTaskId = task.id);
 
     final today = _today;
-    // Calculate days remaining so the AI knows its boundary
     final diffDays = _daysUntil(task.dueDate).clamp(0, 365);
     List<Milestone> milestones;
     final isOffline = context.read<AppState>().isOffline;
 
     try {
-      // Offline mode skips the AI and uses the generic steps below
       if (isOffline) throw Exception('Offline mode');
 
       String details = task.description
@@ -142,7 +133,7 @@ class _PlannerScreenState extends State<PlannerScreen> with CanvasRefreshMixin<P
       if (details.length > 1500) details = details.substring(0, 1500);
 
       final message = await _groqService.chat(
-        temperature: 0.2, // Low temperature ensures consistent JSON formatting
+        temperature: 0.2,
         messages: [
             {
               "role": "system",
@@ -157,7 +148,6 @@ class _PlannerScreenState extends State<PlannerScreen> with CanvasRefreshMixin<P
 
       String content = message['content'] ?? '[]';
 
-      // Failsafe: Strip markdown ticks just in case the AI includes them anyway
       content = content.replaceAll(RegExp(r'```(?:json)?\s*'), '').replaceAll(RegExp(r'```\s*'), '').trim();
 
       final List<dynamic> parsed = jsonDecode(content);
@@ -176,7 +166,6 @@ class _PlannerScreenState extends State<PlannerScreen> with CanvasRefreshMixin<P
       }
     } catch (e) {
       debugPrint('Planner AI Error: $e');
-      // Fallback to generic local milestones if the API fails or rate-limits
       milestones = _buildFallbackMilestones(task, diffDays);
     }
 
@@ -212,7 +201,6 @@ class _PlannerScreenState extends State<PlannerScreen> with CanvasRefreshMixin<P
     _store.save(plan);
   }
 
-  // Pass null to add a new step to the selected plan
   Future<void> _editMilestone(Milestone? milestone) async {
     final plan = _plan;
     final task = _selectedTask;
@@ -250,7 +238,6 @@ class _PlannerScreenState extends State<PlannerScreen> with CanvasRefreshMixin<P
     final task = _selectedTask;
     if (task == null) return;
 
-    // Regenerating offline would swap a real plan for generic steps
     if (context.read<AppState>().isOffline) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text("You're in offline mode. Go online to regenerate this plan.")),
@@ -350,7 +337,6 @@ class _PlannerScreenState extends State<PlannerScreen> with CanvasRefreshMixin<P
           ? Center(child: CircularProgressIndicator(color: theme.colorScheme.primary))
           : Column(
               children: [
-                // View Toggle (Constrained width like the React prototype)
                 Padding(
                   padding: const EdgeInsets.fromLTRB(24, 16, 24, 0),
                   child: Center(
@@ -375,7 +361,6 @@ class _PlannerScreenState extends State<PlannerScreen> with CanvasRefreshMixin<P
                 ),
                 Expanded(
                   child: _selectedTask == null
-                      // Empty state
                       ? ListView(
                           padding: const EdgeInsets.only(bottom: 40),
                           children: [
@@ -385,7 +370,6 @@ class _PlannerScreenState extends State<PlannerScreen> with CanvasRefreshMixin<P
                             _buildEmptyState(theme),
                           ],
                         )
-                      // Populated state with ReorderableListView
                       : ReorderableListView.builder(
                           padding: const EdgeInsets.only(bottom: 40),
                           buildDefaultDragHandles: false,
@@ -418,7 +402,6 @@ class _PlannerScreenState extends State<PlannerScreen> with CanvasRefreshMixin<P
                           itemCount: _isGeneratingPlan ? 0 : _milestones.length,
                           onReorderItem: (oldIndex, newIndex) {
                             final plan = _plan!;
-                            // newIndex already accounts for the removed item
                             setState(() => plan.reorder(oldIndex, newIndex));
                             _store.save(plan);
                           },
@@ -448,7 +431,6 @@ class _PlannerScreenState extends State<PlannerScreen> with CanvasRefreshMixin<P
                                       ),
                                       const SizedBox(width: 16),
                                       Expanded(
-                                        // Tap the step to rename, re-date or delete it
                                         child: InkWell(
                                           onTap: () => _editMilestone(m),
                                           child: Column(
@@ -554,7 +536,6 @@ class _PlannerScreenState extends State<PlannerScreen> with CanvasRefreshMixin<P
       spots.add(FlSpot(i.toDouble(), dailyPoints.toDouble()));
     }
 
-    // A day is heavy with 3+ deadlines, or 2+ worth double the week's daily average
     final avgPoints = dayPoints.fold<int>(0, (sum, p) => sum + p) / 7;
     int? heavyIndex;
     for (int i = 0; i < 7; i++) {
@@ -603,7 +584,6 @@ class _PlannerScreenState extends State<PlannerScreen> with CanvasRefreshMixin<P
                       sideTitles: SideTitles(
                         showTitles: true,
                         reservedSize: 28,
-                        // One label per day; without this each letter repeats at fractional positions
                         interval: 1,
                         getTitlesWidget: (value, meta) {
                           final i = value.toInt();
@@ -641,7 +621,7 @@ class _PlannerScreenState extends State<PlannerScreen> with CanvasRefreshMixin<P
                       spots: spots,
                       isCurved: true,
                       preventCurveOverShooting: true,
-                      color: theme.colorScheme.secondary.withValues(alpha: 0.6), // Soft gray line
+                      color: theme.colorScheme.secondary.withValues(alpha: 0.6),
                       barWidth: 2,
                       isStrokeCapRound: true,
                       dotData: const FlDotData(show: true),
@@ -800,7 +780,6 @@ class _PlannerScreenState extends State<PlannerScreen> with CanvasRefreshMixin<P
           children: [
             Text(DateFormat('MMMM yyyy').format(now), style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
             const SizedBox(height: 16),
-            // Weekday Headers
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceAround,
               children: weekDays.map((d) => Expanded(
@@ -824,7 +803,6 @@ class _PlannerScreenState extends State<PlannerScreen> with CanvasRefreshMixin<P
                 final hasTask = taskDays.contains(day);
                 final hasMilestone = milestoneDays.contains(day);
 
-                // Other deadlines get a primary dot, planned steps a gray one
                 final Color dotColor = isDue
                     ? Colors.transparent
                     : hasTask
@@ -913,7 +891,6 @@ class _PlannerScreenState extends State<PlannerScreen> with CanvasRefreshMixin<P
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Tap to switch which task is being planned
           Material(
             color: theme.colorScheme.primary,
             borderRadius: BorderRadius.circular(12),

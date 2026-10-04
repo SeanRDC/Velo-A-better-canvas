@@ -1,4 +1,4 @@
-// Offline Banner Component
+// Banner shown while offline mode is on, telling the user when the saved data was last synced.
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
@@ -12,10 +12,8 @@ class OfflineBanner extends StatelessWidget {
     final theme = Theme.of(context);
     final appState = context.watch<AppState>();
     
-    // Default fallback text
     String syncText = 'Never synced';
     
-    // Parse and format the dynamic timestamp if it exists
     if (appState.lastSyncTime != null) {
       try {
         final date = DateTime.parse(appState.lastSyncTime!).toLocal();

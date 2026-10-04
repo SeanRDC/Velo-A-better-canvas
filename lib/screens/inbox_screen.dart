@@ -1,4 +1,4 @@
-// Inbox Screen
+// Inbox screen listing Canvas conversations and course announcements by folder, with read tracking.
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:go_router/go_router.dart';
@@ -38,7 +38,6 @@ class _InboxScreenState extends State<InboxScreen> with CanvasRefreshMixin<Inbox
     return htmlString.replaceAll(exp, '').replaceAll('&nbsp;', ' ').trim();
   }
 
-  // A background refresh brought new data: reload in place
   @override
   void onCanvasRefreshed() => _fetchInbox();
 
@@ -46,19 +45,15 @@ class _InboxScreenState extends State<InboxScreen> with CanvasRefreshMixin<Inbox
     if (!mounted) return;
     final folder = _activeFolder;
 
-    // Only block the screen with a spinner when there is nothing to show yet;
-    // otherwise refresh in place so the list and scroll position are kept.
     setState(() {
       _isLoading = _threads.isEmpty;
       _errorMessage = null;
     });
 
     try {
-      // 1. Fetch standard conversations (Direct Messages)
       final conversations = await _canvasService.fetchConversations(scope: folder);
       List<Map<String, dynamic>> combinedFeed = List.from(conversations);
 
-      // 2. If viewing the Inbox, compile Announcements from all active courses
       if (folder == 'inbox') {
         final courses = await _canvasService.fetchActiveCourses();
         final announcementLists = await Future.wait(courses.map((course) async {
@@ -88,7 +83,6 @@ class _InboxScreenState extends State<InboxScreen> with CanvasRefreshMixin<Inbox
           combinedFeed.addAll(list);
         }
 
-        // Sort combined feed chronologically (newest first)
         combinedFeed.sort((a, b) {
           final dA = DateTime.parse(a['last_message_at'] ?? DateTime.now().toIso8601String());
           final dB = DateTime.parse(b['last_message_at'] ?? DateTime.now().toIso8601String());
@@ -96,7 +90,6 @@ class _InboxScreenState extends State<InboxScreen> with CanvasRefreshMixin<Inbox
         });
       }
 
-      // Keep items read in the app as read, unless a newer message arrived since
       for (final t in combinedFeed) {
         final id = t['id'].toString();
         if (_readLocally.containsKey(id) && _readLocally[id] == t['last_message_at']) {
@@ -105,7 +98,6 @@ class _InboxScreenState extends State<InboxScreen> with CanvasRefreshMixin<Inbox
         }
       }
 
-      // Drop the result if the user switched folders while this was loading
       if (mounted && folder == _activeFolder) {
         if (folder == 'inbox') {
           final unread = combinedFeed.where((t) => t['workflow_state'] == 'unread' || t['unread'] == true).length;
@@ -127,7 +119,6 @@ class _InboxScreenState extends State<InboxScreen> with CanvasRefreshMixin<Inbox
     }
   }
 
-  // Clears the unread state locally, then tells Canvas so it stays read
   Future<void> _markAsRead(int index) async {
     final t = _threads[index];
     if (t['workflow_state'] != 'unread' && t['unread'] != true) return;
@@ -150,7 +141,6 @@ class _InboxScreenState extends State<InboxScreen> with CanvasRefreshMixin<Inbox
         await _canvasService.markConversationAsRead(t['id'].toString());
       }
     } catch (_) {
-      // Stays read locally; Canvas will be updated the next time it is opened
     }
   }
 
@@ -295,7 +285,6 @@ class _InboxScreenState extends State<InboxScreen> with CanvasRefreshMixin<Inbox
           final List<dynamic> participants = t['participants'] ?? [];
           String senderName = t['sender'] ?? 'Unknown Sender';
 
-          // Sent Folder: Show "To: Recipients". Inbox: Show Sender.
           if (_activeFolder == 'sent') {
             senderName = participants.isNotEmpty ? 'To: ${participants.map((p) => p['name']).join(', ')}' : 'To: Unknown';
           } else if (t['kind'] != 'announcement' && participants.isNotEmpty) {
@@ -352,7 +341,7 @@ class _InboxScreenState extends State<InboxScreen> with CanvasRefreshMixin<Inbox
                       ),
                     ));
                     await marking;
-                    _fetchInbox(); // Refresh when returning
+                    _fetchInbox();
                   } else {
                     final result = await context.push('/conversation', extra: t);
                     await marking;
@@ -370,7 +359,6 @@ class _InboxScreenState extends State<InboxScreen> with CanvasRefreshMixin<Inbox
                   child: Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // Avatar & Unread Indicator (Megaphone for Announcements)
                       SizedBox(
                         height: 40,
                         width: 40,

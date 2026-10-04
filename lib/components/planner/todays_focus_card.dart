@@ -1,4 +1,4 @@
-// Card summarising what to work on today across every saved plan.
+// Card summarising the milestones to work on today across every saved study plan.
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 

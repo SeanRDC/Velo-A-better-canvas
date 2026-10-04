@@ -1,4 +1,4 @@
-// Course Detail Hub Screen
+// Course hub screen with tiles linking to the course's modules, assignments, grades, and announcements.
 import 'package:flutter/material.dart';
 import '../components/app_shell.dart';
 import '../models/course.dart';
@@ -13,7 +13,6 @@ class CourseDetailScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
-    // Navigation Tiles Configuration
     final List<Map<String, dynamic>> sections = [
       {'icon': Icons.campaign_outlined, 'title': 'Announcements', 'sub': 'View posts', 'path': '/course-announcements'},
       {'icon': Icons.grid_view_rounded, 'title': 'Modules', 'sub': 'Course materials', 'path': '/course-modules'},
@@ -31,7 +30,6 @@ class CourseDetailScreen extends StatelessWidget {
       child: ListView(
         padding: const EdgeInsets.only(bottom: 32),
         children: [
-          // Course Header
           Padding(
             padding: const EdgeInsets.fromLTRB(24, 8, 24, 16),
             child: Column(
@@ -53,7 +51,6 @@ class CourseDetailScreen extends StatelessWidget {
                 ),
           ),
 
-          // Navigable Tiles
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 24),
             child: Column(
@@ -72,7 +69,6 @@ class CourseDetailScreen extends StatelessWidget {
                         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
                         child: Row(
                           children: [
-                            // Icon Circle
                             Container(
                               height: 44,
                               width: 44,
@@ -87,7 +83,6 @@ class CourseDetailScreen extends StatelessWidget {
                               ),
                             ),
                             const SizedBox(width: 16),
-                            // Title & Sub
                             Expanded(
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,

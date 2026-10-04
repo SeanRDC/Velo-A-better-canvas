@@ -1,4 +1,4 @@
-/// Conversation Thread Detail Screen (Canvas Parity)
+// Screen showing the full thread of a Canvas conversation, with its attachments and a reply bar.
 library;
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
@@ -53,7 +53,7 @@ class _ConversationDetailScreenState extends State<ConversationDetailScreen> {
     try {
       await _canvasService.replyToConversation(widget.thread['id'].toString(), text);
       _controller.clear();
-      await _fetchThread(); // Refresh thread to show new message
+      await _fetchThread();
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(friendlyError(e, 'Failed to send reply. Please try again.'))));
@@ -169,26 +169,22 @@ class _ConversationDetailScreenState extends State<ConversationDetailScreen> {
                     final msg = messages[index];
                     final authorId = msg['author_id'];
                     
-                    // 1. Identify Sender
                     final authorData = participants.firstWhere(
                       (p) => p['id'] == authorId, 
                       orElse: () => {'name': 'Unknown Sender'}
                     );
                     final String authorName = authorData['name'] ?? 'Unknown Sender';
 
-                    // 2. Identify Recipients (everyone in participants who is NOT the author)
                     final recipientsList = participants
                         .where((p) => p['id'] != authorId)
                         .map((p) => p['name'])
                         .toList();
                     final String toText = recipientsList.isNotEmpty ? recipientsList.join(', ') : 'Unknown';
 
-                    // 3. Format Course and Subject Context
                     final String courseCode = widget.thread['context_name'] ?? widget.thread['courseCode'] ?? '';
                     final String subjectText = widget.thread['subject'] ?? 'No Subject';
                     final String contextLine = courseCode.isNotEmpty ? '$courseCode  ·  $subjectText' : subjectText;
 
-                    // 4. Accurate Date Fallbacks
                     final String msgDate = msg['created_at'] ?? widget.thread['last_message_at'] ?? DateTime.now().toIso8601String();
 
                     final String body = msg['body'] ?? '';
@@ -211,7 +207,6 @@ class _ConversationDetailScreenState extends State<ConversationDetailScreen> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          // Message Header
                           Padding(
                             padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
                             child: Row(
@@ -227,7 +222,6 @@ class _ConversationDetailScreenState extends State<ConversationDetailScreen> {
                                   child: Column(
                                     crossAxisAlignment: CrossAxisAlignment.start,
                                     children: [
-                                      // Author & Timestamp Row
                                       Row(
                                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -253,7 +247,6 @@ class _ConversationDetailScreenState extends State<ConversationDetailScreen> {
                                         ],
                                       ),
                                       const SizedBox(height: 2),
-                                      // To: Line
                                       Text(
                                         'To: $toText',
                                         style: theme.textTheme.bodySmall?.copyWith(
@@ -263,7 +256,6 @@ class _ConversationDetailScreenState extends State<ConversationDetailScreen> {
                                         overflow: TextOverflow.ellipsis,
                                       ),
                                       const SizedBox(height: 4),
-                                      // Course & Subject Line
                                       Text(
                                         contextLine,
                                         style: theme.textTheme.labelSmall?.copyWith(
@@ -281,7 +273,6 @@ class _ConversationDetailScreenState extends State<ConversationDetailScreen> {
                           ),
                           Container(height: 1, color: theme.colorScheme.onSurface.withValues(alpha: 0.05)),
                           
-                          // Rich HTML Message Body
                           Padding(
                             padding: const EdgeInsets.all(16),
                             child: HtmlWidget(
@@ -297,7 +288,6 @@ class _ConversationDetailScreenState extends State<ConversationDetailScreen> {
                             ),
                           ),
 
-                          // Attachments Array
                           if (attachments.isNotEmpty) ...[
                             Container(height: 1, color: theme.colorScheme.onSurface.withValues(alpha: 0.05)),
                             Padding(
@@ -369,7 +359,6 @@ class _ConversationDetailScreenState extends State<ConversationDetailScreen> {
                 ),
           ),
           
-          // Reply Input Bar
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(

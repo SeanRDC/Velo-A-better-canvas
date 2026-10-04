@@ -1,4 +1,4 @@
-// Course Modules Timeline Screen
+// Screen showing a course's modules and their items as a sequential timeline.
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../components/app_shell.dart';
@@ -46,10 +46,8 @@ class _CourseModulesScreenState extends State<CourseModulesScreen> with CanvasRe
     _fetchModules();
   }
 
-  // We store a flattened list of items to power the Next/Previous buttons
   List<ModuleItem> _allNavigableItems = [];
 
-  // A background refresh brought new data: redraw without a spinner
   @override
   void onCanvasRefreshed() => _fetchModules(silent: true);
 
@@ -146,7 +144,6 @@ class _CourseModulesScreenState extends State<CourseModulesScreen> with CanvasRe
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Header
           Padding(
             padding: const EdgeInsets.fromLTRB(24, 8, 24, 16),
             child: Column(
@@ -172,7 +169,6 @@ class _CourseModulesScreenState extends State<CourseModulesScreen> with CanvasRe
             ),
           ),
 
-          // Main Content
           Expanded(
             child: _buildContent(theme),
           ),
@@ -250,7 +246,6 @@ class _CourseModulesScreenState extends State<CourseModulesScreen> with CanvasRe
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Sequential Rail
                 Column(
                   children: [
                     Container(
@@ -280,7 +275,6 @@ class _CourseModulesScreenState extends State<CourseModulesScreen> with CanvasRe
                   ],
                 ),
                 const SizedBox(width: 16),
-                // Module Block
                 Expanded(
                   child: Padding(
                     padding: EdgeInsets.only(bottom: isLast ? 0 : 24.0),

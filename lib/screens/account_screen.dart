@@ -1,4 +1,5 @@
-// Account & Settings Screen
+// Account and settings screen for viewing and editing the profile, changing appearance and preferences,
+// and logging out.
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
@@ -38,7 +39,6 @@ class _AccountScreenState extends State<AccountScreen> {
       final profile = await _canvasService.fetchUserProfile();
       if (mounted) setState(() => _userProfile = profile);
     } catch (e) {
-      // Keep the placeholder profile if it can't be loaded
     }
   }
 
@@ -79,7 +79,6 @@ class _AccountScreenState extends State<AccountScreen> {
                   ),
                   const SizedBox(height: 24),
                   
-                  // Profile Picture Upload
                   Center(
                     child: InkWell(
                       onTap: () async {
@@ -110,7 +109,6 @@ class _AccountScreenState extends State<AccountScreen> {
                   ),
                   const SizedBox(height: 24),
 
-                  // Biography Edit
                   Text('Biography', style: theme.textTheme.labelSmall?.copyWith(fontWeight: FontWeight.bold, color: theme.colorScheme.secondary)),
                   const SizedBox(height: 8),
                   TextField(
@@ -125,7 +123,6 @@ class _AccountScreenState extends State<AccountScreen> {
                   ),
                   const SizedBox(height: 24),
 
-                  // Save Button
                   SizedBox(
                     width: double.infinity,
                     child: ElevatedButton(
@@ -133,7 +130,7 @@ class _AccountScreenState extends State<AccountScreen> {
                         setModalState(() => isSaving = true);
                         try {
                           await _canvasService.updateUserBio(bioController.text.trim());
-                          await _fetchProfile(); // Refresh the local state
+                          await _fetchProfile();
                           if (context.mounted) Navigator.pop(context);
                         } catch (e) {
                           if (context.mounted) {
@@ -288,7 +285,6 @@ class _AccountScreenState extends State<AccountScreen> {
       child: ListView(
         padding: const EdgeInsets.fromLTRB(24, 24, 24, 40),
         children: [
-          // Profile Section
           Column(
             children: [
               CircleAvatar(
@@ -310,7 +306,6 @@ class _AccountScreenState extends State<AccountScreen> {
                 style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold, letterSpacing: -0.5),
                 textAlign: TextAlign.center,
               ),
-              // The program is blank on the web build, so skip its line rather than leave a gap
               if (_userProfile['program']!.isNotEmpty) ...[
                 const SizedBox(height: 4),
                 Text(
@@ -327,7 +322,6 @@ class _AccountScreenState extends State<AccountScreen> {
               ),
               const SizedBox(height: 24),
               
-              // Canvas Parity: Biography Block
               Container(
                 width: double.infinity,
                 padding: const EdgeInsets.all(20),
@@ -372,7 +366,6 @@ class _AccountScreenState extends State<AccountScreen> {
             ],
           ),
           
-          // Appearance
           const SizedBox(height: 32),
           Text(
             'APPEARANCE',
@@ -441,7 +434,6 @@ class _AccountScreenState extends State<AccountScreen> {
             ),
           ),
 
-          // Preferences
           const SizedBox(height: 24),
           Text(
             'PREFERENCES',
@@ -470,7 +462,6 @@ class _AccountScreenState extends State<AccountScreen> {
                   borderTop: true,
                 ),
                 
-                // Expandable Settings Area
                 if (appState.headsUpEnabled)
                   Container(
                     width: double.infinity,
@@ -510,7 +501,6 @@ class _AccountScreenState extends State<AccountScreen> {
 
           
 
-          // Account
           const SizedBox(height: 24),
           Text(
             'ACCOUNT',
@@ -541,13 +531,11 @@ class _AccountScreenState extends State<AccountScreen> {
             ),
           ),
 
-          // Log Out
           const SizedBox(height: 32),
           SizedBox(
             width: double.infinity,
             child: OutlinedButton.icon(
               onPressed: () async {
-                // Remove everything tied to this account, not just the token
                 await _canvasService.clearSession();
                 AiAssistantScreen.resetConversation();
                 if (context.mounted) context.go('/');
@@ -605,7 +593,6 @@ class _AccountScreenState extends State<AccountScreen> {
                   ],
                 ),
               ),
-              // Custom animated pill switch
               AnimatedContainer(
                 duration: const Duration(milliseconds: 200),
                 width: 44, height: 24,

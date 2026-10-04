@@ -1,3 +1,4 @@
+// Data model representing a Canvas course.
 class Course {
   final String id;
   final String name;

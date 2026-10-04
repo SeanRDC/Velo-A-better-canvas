@@ -1,4 +1,4 @@
-// Authentication Screen with Manual Canvas Token Support
+// Login screen where the user connects by entering a Canvas access token, with step-by-step instructions.
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
@@ -284,7 +284,6 @@ class _LoginScreenState extends State<LoginScreen> {
               ),
               const Spacer(),
 
-              // Token Input Field
               TextField(
                 controller: _tokenController,
                 obscureText: _obscureToken,
@@ -331,7 +330,6 @@ class _LoginScreenState extends State<LoginScreen> {
               ),
               const SizedBox(height: 16),
 
-              // Connect Button
               SizedBox(
                 width: double.infinity,
                 child: FilledButton(
@@ -356,7 +354,6 @@ class _LoginScreenState extends State<LoginScreen> {
               ),
               const SizedBox(height: 12),
 
-              // Step-by-Step Instructions Trigger Button
               TextButton.icon(
                 onPressed: () => _showInstructionsSheet(theme),
                 icon: Icon(Icons.help_outline, size: 16, color: theme.colorScheme.secondary),

@@ -1,4 +1,4 @@
-// Reusable Error Dialog matching the design system
+// Reusable error dialog styled to match the app's design system.
 import 'package:flutter/material.dart';
 
 class ErrorDialog extends StatelessWidget {

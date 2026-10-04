@@ -1,4 +1,5 @@
-// Main Application Layout Wrapper
+// Shared page layout that wraps each screen with the app bar, offline banner, and navigation
+// (a pinned side drawer on desktop, a drawer and bottom bar on mobile).
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../state/app_state.dart';
@@ -36,7 +37,6 @@ class AppShell extends StatelessWidget {
             backgroundColor: theme.scaffoldBackgroundColor,
             body: Row(
               children: [
-                // Permanently pin the drawer to the left side, spanning full height
                 Container(
                   width: 280,
                   decoration: BoxDecoration(
@@ -48,19 +48,18 @@ class AppShell extends StatelessWidget {
                     desktopTitle: title,
                 ),
                 ),
-                // Main content area with its own scoped AppBar for actions/buttons
                 Expanded(
                   child: Scaffold(
                     backgroundColor: theme.scaffoldBackgroundColor,
                     appBar: (actions != null || leading != null)
                         ? AppBar(
-                            title: const SizedBox.shrink(), // Title moved to drawer
+                            title: const SizedBox.shrink(),
                             leading: leading,
                             actions: actions,
                             backgroundColor: theme.scaffoldBackgroundColor,
                             elevation: 0,
                           )
-                        : null, // Hide AppBar cleanly if completely empty
+                        : null,
                     body: Column(
                       children: [
                         if (isOffline) const OfflineBanner(),
@@ -74,7 +73,6 @@ class AppShell extends StatelessWidget {
           );
         }
 
-        // Mobile Layout (Unchanged)
         return Scaffold(
           backgroundColor: theme.scaffoldBackgroundColor,
           appBar: AppBar(

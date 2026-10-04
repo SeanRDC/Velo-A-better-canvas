@@ -1,4 +1,4 @@
-// Compose New Message Screen
+// Screen for composing a new Canvas inbox message with a course, recipient, subject, body, and attachment.
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../components/app_shell.dart';
@@ -41,7 +41,6 @@ class _ComposeMessageScreenState extends State<ComposeMessageScreen> {
         });
       }
     } catch (e) {
-      // Safely ignore if the user cancels the picker
     }
   }
 
@@ -100,7 +99,7 @@ class _ComposeMessageScreenState extends State<ComposeMessageScreen> {
         _bodyController.text.trim()
       );
       if (mounted) {
-        context.pop(true); // Return true to trigger inbox refresh
+        context.pop(true);
       }
     } catch (e) {
       if (mounted) {
@@ -151,7 +150,6 @@ class _ComposeMessageScreenState extends State<ComposeMessageScreen> {
         : ListView(
             padding: const EdgeInsets.all(24),
             children: [
-              // Course Selector
               DropdownButtonFormField<Course>(
                 decoration: _inputDeco(theme, 'Select Course'),
                 items: _courses.map((c) => DropdownMenuItem(value: c, child: Text(c.courseCode))).toList(),
@@ -164,7 +162,6 @@ class _ComposeMessageScreenState extends State<ComposeMessageScreen> {
               ),
               const SizedBox(height: 16),
               
-              // Recipient Selector
               if (_isLoadingUsers)
                 const Padding(
                   padding: EdgeInsets.all(8.0),
@@ -179,24 +176,21 @@ class _ComposeMessageScreenState extends State<ComposeMessageScreen> {
                 ),
               const SizedBox(height: 16),
               
-              // Subject
               TextField(
                 controller: _subjectController,
                 decoration: _inputDeco(theme, 'Subject'),
               ),
               const SizedBox(height: 16),
               
-              // Body
               TextField(
                 controller: _bodyController,
                 maxLines: 12,
                 minLines: 8,
-                onChanged: (_) => setState((){}), // Trigger UI update for Send button validation
+                onChanged: (_) => setState((){}),
                 decoration: _inputDeco(theme, 'Compose message...').copyWith(alignLabelWithHint: true),
               ),
               const SizedBox(height: 16),
               
-              // Attachment Area
               if (_fileName != null)
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),

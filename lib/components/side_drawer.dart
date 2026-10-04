@@ -1,4 +1,4 @@
-// Side Drawer Component
+// Side navigation drawer with the user's profile header, main menu links, appearance toggle, and log out.
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
@@ -42,7 +42,7 @@ class _SideDrawerState extends State<SideDrawer> {
     try {
       final profile = await _canvasService.fetchUserProfile();
       if (mounted) setState(() => _userProfile = profile);
-    } catch (e) {// empt
+    } catch (e) {
     }
   }
 
@@ -73,7 +73,6 @@ class _SideDrawerState extends State<SideDrawer> {
                 ),
               ),
 
-            // Header: Avatar + Profile. Tapping it opens Account & Settings
             InkWell(
               onTap: () {
                 if (!widget.isDesktop) Navigator.pop(context);
@@ -125,7 +124,6 @@ class _SideDrawerState extends State<SideDrawer> {
              ),
             ),
 
-            // Menu Items
             Expanded(
               child: ListView(
                 padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -151,7 +149,6 @@ class _SideDrawerState extends State<SideDrawer> {
                       },
                     ),
                     const SizedBox(height: 4),
-                    // External link to the university portal; never the active tab
                     _DrawerTile(
                       icon: Icons.open_in_new_rounded,
                       label: 'Open Campus++',
@@ -207,7 +204,6 @@ class _SideDrawerState extends State<SideDrawer> {
                   
                   const SizedBox(height: 8),
                   
-                  // Appearance Toggle
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                     decoration: BoxDecoration(
@@ -276,7 +272,6 @@ class _SideDrawerState extends State<SideDrawer> {
               ),
             ),
 
-            // Footer — Log Out
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
               child: InkWell(

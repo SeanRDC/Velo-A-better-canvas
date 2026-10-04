@@ -1,10 +1,8 @@
-// Asks to leave offline mode when a connection is detected again
+// Wraps the router and shows a dialog asking to leave offline mode once a connection is detected again.
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../state/app_state.dart';
 
-// Sits above the router so the prompt can appear on any screen. It needs the
-// router's navigator key because dialogs must be shown from inside a Navigator.
 class ReconnectPrompt extends StatefulWidget {
   final GlobalKey<NavigatorState> navigatorKey;
   final Widget child;

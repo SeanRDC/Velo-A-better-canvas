@@ -1,4 +1,4 @@
-// Course Grades Screen
+// Screen showing a course's grade summary and the score and status of each graded item.
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../components/app_shell.dart';
@@ -40,7 +40,6 @@ class _CourseGradesScreenState extends State<CourseGradesScreen> with CanvasRefr
     _fetchGrades();
   }
 
-  // A background refresh brought new data: redraw without a spinner
   @override
   void onCanvasRefreshed() => _fetchGrades(silent: true);
 
@@ -142,7 +141,6 @@ class _CourseGradesScreenState extends State<CourseGradesScreen> with CanvasRefr
       child: ListView(
         padding: const EdgeInsets.only(bottom: 32),
         children: [
-          // Header
           Padding(
             padding: const EdgeInsets.fromLTRB(24, 8, 24, 16),
             child: Column(
@@ -167,7 +165,6 @@ class _CourseGradesScreenState extends State<CourseGradesScreen> with CanvasRefr
             ),
           ),
 
-          // Summary Block
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
             child: Container(
@@ -218,7 +215,6 @@ class _CourseGradesScreenState extends State<CourseGradesScreen> with CanvasRefr
             ),
           ),
 
-          // Grades List
           if (_items.isEmpty)
             Padding(
               padding: const EdgeInsets.all(32.0),
@@ -263,7 +259,6 @@ class _CourseGradesScreenState extends State<CourseGradesScreen> with CanvasRefr
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
                                 ),
-                                // Render Canvas Parity Status Badges
                                 if (item.status != null) ...[
                                   const SizedBox(height: 4),
                                   Container(

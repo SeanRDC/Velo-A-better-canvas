@@ -1,3 +1,4 @@
+// Home dashboard listing upcoming Canvas tasks with filters and sorting, plus a shortcut to the planner.
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:go_router/go_router.dart';
@@ -31,7 +32,7 @@ class _DashboardScreenState extends State<DashboardScreen> with CanvasRefreshMix
   
   bool _isLoading = true;
   String? _errorMessage;
-  bool _isFabVisible = true; // Controls the Auto-Plan bubble visibility
+  bool _isFabVisible = true;
 
   final Map<String, String> _sortLabels = {
     'soonest': 'Soonest first',
@@ -43,7 +44,6 @@ class _DashboardScreenState extends State<DashboardScreen> with CanvasRefreshMix
     super.initState();
     _fetchCanvasData();
 
-    // Native Material scroll behavior: Hide FAB on scroll down, show on scroll up
     _scrollController.addListener(() {
       if (_scrollController.position.userScrollDirection == ScrollDirection.reverse) {
         if (_isFabVisible) setState(() => _isFabVisible = false);
@@ -59,7 +59,6 @@ class _DashboardScreenState extends State<DashboardScreen> with CanvasRefreshMix
     super.dispose();
   }
 
-  // A background refresh brought new data: redraw without a spinner
   @override
   void onCanvasRefreshed() => _fetchCanvasData(silent: true);
 
@@ -222,11 +221,9 @@ class _DashboardScreenState extends State<DashboardScreen> with CanvasRefreshMix
       activeTab: 'tasks',
       child: Stack(
         children: [
-          // Main Dashboard Content
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Summary + sort header
               Padding(
                 padding: const EdgeInsets.fromLTRB(24, 16, 24, 4),
                 child: Row(
@@ -284,7 +281,6 @@ class _DashboardScreenState extends State<DashboardScreen> with CanvasRefreshMix
                 ),
               ),
 
-              // Filter Chips (Scrollable left to right)
               SingleChildScrollView(
                 scrollDirection: Axis.horizontal,
                 physics: const BouncingScrollPhysics(),
@@ -302,14 +298,12 @@ class _DashboardScreenState extends State<DashboardScreen> with CanvasRefreshMix
                 ),
               ),
               
-              // Main Content Area
               Expanded(
                 child: _buildContent(theme),
               ),
             ],
           ),
 
-          // Floating Auto-Plan Button
           Positioned(
             bottom: 24,
             right: 24,
@@ -322,7 +316,6 @@ class _DashboardScreenState extends State<DashboardScreen> with CanvasRefreshMix
                 opacity: _isFabVisible ? 1.0 : 0.0,
                 child: FloatingActionButton.extended(
                   onPressed: () {
-                    // Navigate to the central Planner Hub
                     context.go('/planner');
                   },
                   backgroundColor: theme.colorScheme.primary,
@@ -486,14 +479,12 @@ class _DashboardScreenState extends State<DashboardScreen> with CanvasRefreshMix
             child: useCenter
                 ? CustomScrollView(
                   controller: _scrollController,
-                  center: centerKey, // Forces the viewport to launch exactly here
+                  center: centerKey,
                   slivers: [
-                    // Loaded above the viewport frame
                     SliverPadding(
                       padding: const EdgeInsets.only(left: 24, right: 24),
                       sliver: SliverList.list(children: overdueWidgets),
                     ),
-                    // Rendered at the top of the screen on load
                     SliverPadding(
                       key: centerKey,
                       padding: const EdgeInsets.only(left: 24, right: 24, bottom: 88),

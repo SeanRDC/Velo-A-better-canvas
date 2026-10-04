@@ -1,4 +1,5 @@
-// Chat bubble component for the AI Assistant interface
+// Animated chat bubble for the AI assistant that renders a user or AI message as Markdown,
+// with a copy button on AI replies.
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_markdown_plus/flutter_markdown_plus.dart';
@@ -20,7 +21,6 @@ class ChatBubble extends StatefulWidget {
 }
 
 class _ChatBubbleState extends State<ChatBubble> with SingleTickerProviderStateMixin {
-  // Keeps lines readable on tablets and desktop instead of spanning the window
   static const double _maxBubbleWidth = 720;
 
   late AnimationController _controller;
@@ -31,13 +31,11 @@ class _ChatBubbleState extends State<ChatBubble> with SingleTickerProviderStateM
   @override
   void initState() {
     super.initState();
-    // Configure the sleek entrance animation
     _controller = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 400),
     );
     _fade = CurvedAnimation(parent: _controller, curve: Curves.easeOut);
-    // User bubbles slide in from the right, AI bubbles from the left
     _slide = Tween<Offset>(
       begin: Offset(widget.isUser ? 0.1 : -0.1, 0.0),
       end: Offset.zero,
@@ -57,7 +55,6 @@ class _ChatBubbleState extends State<ChatBubble> with SingleTickerProviderStateM
     if (!mounted) return;
     setState(() => _copied = true);
 
-    // Flip the icon back after a moment
     await Future.delayed(const Duration(milliseconds: 1500));
     if (mounted) setState(() => _copied = false);
   }
@@ -117,8 +114,6 @@ class _ChatBubbleState extends State<ChatBubble> with SingleTickerProviderStateM
                             ),
                             border: widget.isUser ? null : Border.all(color: lineColor),
                           ),
-                          // SelectionArea (long-press to select) rather than selectable
-                          // text, which would swallow the sideways drag that scrolls tables
                           child: SelectionArea(
                            child: MarkdownBody(
                             onTapLink: (text, href, title) {
@@ -153,8 +148,6 @@ class _ChatBubbleState extends State<ChatBubble> with SingleTickerProviderStateM
                                 border: Border(top: BorderSide(color: lineColor)),
                               ),
 
-                              // Tables keep their natural column widths and scroll
-                              // sideways, instead of being squeezed to fit a phone
                               tableColumnWidth: const IntrinsicColumnWidth(),
                               tableScrollbarThumbVisibility: true,
                               tablePadding: const EdgeInsets.only(bottom: 10),
@@ -169,7 +162,6 @@ class _ChatBubbleState extends State<ChatBubble> with SingleTickerProviderStateM
                           ),
                         ),
 
-                        // Copy the reply as text
                         if (!widget.isUser)
                           Padding(
                             padding: const EdgeInsets.only(top: 2, left: 4),

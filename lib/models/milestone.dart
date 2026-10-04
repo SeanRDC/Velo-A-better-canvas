@@ -1,5 +1,4 @@
 // Data models for a saved study plan and its daily milestones.
-
 DateTime dateOnly(DateTime d) => DateTime(d.year, d.month, d.day);
 
 class Milestone {

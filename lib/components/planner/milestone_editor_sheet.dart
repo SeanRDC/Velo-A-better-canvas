@@ -1,4 +1,4 @@
-// Bottom sheet for adding or editing a single plan milestone.
+// Bottom sheet for adding or editing a single study plan milestone.
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 

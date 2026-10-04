@@ -1,4 +1,4 @@
-// Data model representing a Canvas assignment, quiz, or discussion task.
+// Data model representing a Canvas assignment, quiz, or discussion task, including whether it was submitted.
 import 'course.dart';
 
 class Task {
@@ -30,13 +30,9 @@ class Task {
     this.submissionTypes = const [],
   });
 
-  // Whether the signed-in student has handed this in. Canvas's
-  // 'has_submitted_submissions' is true once ANY student submits, so the
-  // user's own submission is checked first and that flag is only a fallback.
   static bool submittedFromJson(Map<String, dynamic> json) {
     final submission = json['submission'];
     if (submission is Map) {
-      // Auto-graded zeros for work that was never handed in still count as pending
       if (submission['missing'] == true) return false;
       const doneStates = ['submitted', 'graded', 'pending_review'];
       return submission['submitted_at'] != null || doneStates.contains(submission['workflow_state']);

@@ -1,3 +1,5 @@
+// AI assistant chat screen that sends the conversation to Groq and lets the model call tools
+// to look up the user's live Canvas data.
 import 'package:flutter/material.dart';
 import 'dart:convert';
 import '../components/app_shell.dart';
@@ -19,16 +21,14 @@ class ChatMessage {
 class AiAssistantScreen extends StatefulWidget {
   const AiAssistantScreen({super.key});
 
-  // Called on logout so the next account starts with an empty conversation
   static void resetConversation() => _AiAssistantScreenState._resetConversation();
 
   @override
   State<AiAssistantScreen> createState() => _AiAssistantScreenState();
 }
 
-// Typing indicator: bouncing dots plus a short note on what the AI is doing
 class TypingBubble extends StatefulWidget {
-  final String status; // e.g. "Thinking", "Looking up your grades"
+  final String status;
   final IconData? icon;
 
   const TypingBubble({super.key, this.status = 'Thinking', this.icon});
@@ -85,7 +85,6 @@ class _TypingBubbleState extends State<TypingBubble> with SingleTickerProviderSt
                 ),
                 border: Border.all(color: theme.colorScheme.onSurface.withValues(alpha: 0.1)),
               ),
-              // Grows and shrinks smoothly as the status text changes
               child: AnimatedSize(
                 duration: const Duration(milliseconds: 200),
                 curve: Curves.easeOut,
@@ -166,7 +165,6 @@ class _AiAssistantScreenState extends State<AiAssistantScreen> {
       "You can still browse what's saved on this device: your Dashboard, Courses, Planner and Inbox.\n\n"
       "[Switch to online mode]($_goOnlineLink) to chat with me.";
 
-  // What the typing bubble says while a reply is being prepared
   String _status = 'Thinking';
   IconData? _statusIcon;
 
@@ -215,14 +213,12 @@ class _AiAssistantScreenState extends State<AiAssistantScreen> {
     }
   ];
 
-  // Forgets the chat so nothing from one account carries over into the next
   static void _resetConversation() {
     _hasWelcomed = false;
     _messages.clear();
-    _apiHistory.removeRange(1, _apiHistory.length); // Keep the system prompt
+    _apiHistory.removeRange(1, _apiHistory.length);
   }
 
-  // Groq Tool Definitions
   final List<Map<String, dynamic>> _tools = [
     {
       "type": "function",
@@ -354,8 +350,6 @@ class _AiAssistantScreenState extends State<AiAssistantScreen> {
     _controller.clear();
     _scrollToBottom();
 
-    // The assistant needs the AI service and live Canvas data, so in offline
-    // mode it explains that instead of failing with a connection error
     if (context.read<AppState>().isOffline) {
       await Future.delayed(const Duration(milliseconds: 350));
       if (!mounted) return;
@@ -373,7 +367,6 @@ class _AiAssistantScreenState extends State<AiAssistantScreen> {
       bool toolCallMade = true;
       String finalResponseText = "I am having trouble processing that right now.";
 
-      // Capped so content pulled from Canvas can't keep the model calling tools forever
       const int maxToolRounds = 6;
       for (int round = 0; toolCallMade && round < maxToolRounds; round++) {
         toolCallMade = false;
@@ -397,7 +390,6 @@ class _AiAssistantScreenState extends State<AiAssistantScreen> {
             final functionName = toolCall['function']['name'];
             final toolCallId = toolCall['id'];
             
-            // Show what is being looked up inside the typing bubble
             if (mounted) {
               Map<String, dynamic> statusArgs = {};
               try {
@@ -429,7 +421,6 @@ class _AiAssistantScreenState extends State<AiAssistantScreen> {
               final threadId = args['thread_id']?.toString() ?? '';
               toolResult = await _canvasService.buildThreadContext(threadId);
             } else if (functionName == 'get_assignment_details') {
-              // Extract the assignment name the AI wants to look up
               final args = jsonDecode(toolCall['function']['arguments'] as String);
               final assignmentName = args['assignment_name'] ?? '';
               toolResult = await _canvasService.buildAssignmentDetailsContext(assignmentName);
@@ -443,7 +434,6 @@ class _AiAssistantScreenState extends State<AiAssistantScreen> {
             });
           }
 
-          // Data is in; the next round turns it into a reply
           if (mounted) {
             setState(() {
               _status = 'Putting it together';
@@ -498,7 +488,6 @@ class _AiAssistantScreenState extends State<AiAssistantScreen> {
   }
 
   void _handleDeepLink(String url) async {
-    // The link in the offline reply turns offline mode off
     if (url == _goOnlineLink) {
       final appState = context.read<AppState>();
       final wasOffline = appState.isOffline;
@@ -513,13 +502,11 @@ class _AiAssistantScreenState extends State<AiAssistantScreen> {
       return;
     }
 
-    // If it is a standard web link (e.g., from an assignment description), launch the browser
     if (!url.startsWith('velo://')) {
       await launchSafeUrl(url);
       return;
     }
 
-    // Intercept internal routing links and fetch objects securely from cache
     try {
       final uri = Uri.parse(url);
       if (url.startsWith('velo://task')) {
@@ -565,7 +552,6 @@ class _AiAssistantScreenState extends State<AiAssistantScreen> {
           tooltip: 'Clear Chat',
           onPressed: () {
             setState(() {
-              // Keep only the greeting
               if (_messages.length > 1) _messages.removeRange(1, _messages.length);
               _apiHistory.removeRange(1, _apiHistory.length);
             });
@@ -609,7 +595,6 @@ class _AiAssistantScreenState extends State<AiAssistantScreen> {
                 if (_isLoading)
                   TypingBubble(status: _status, icon: _statusIcon),
 
-                // Bottom Input Area (Suggestions + Field)
                 Container(
                   decoration: BoxDecoration(
                     color: theme.colorScheme.surface,
@@ -620,7 +605,6 @@ class _AiAssistantScreenState extends State<AiAssistantScreen> {
                   child: SafeArea(
                     child: Column(
                       children: [
-                        // Compact Suggestion Pills
                         if (!_isTyping && _messages.length <= 3 && !_isLoading)
                           Container(
                             width: double.infinity,
@@ -665,7 +649,6 @@ class _AiAssistantScreenState extends State<AiAssistantScreen> {
                             ),
                           ),
 
-                        // Input Bar
                         Padding(
                           padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
                           child: Row(

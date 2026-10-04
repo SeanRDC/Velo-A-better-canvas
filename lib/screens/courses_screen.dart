@@ -1,4 +1,4 @@
-// Courses Master Screen
+// Screen listing the user's active Canvas courses with the number of pending tasks in each.
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../components/app_shell.dart';
@@ -28,7 +28,6 @@ class _CoursesScreenState extends State<CoursesScreen> with CanvasRefreshMixin<C
     _fetchData();
   }
 
-  // A background refresh brought new data: redraw without a spinner
   @override
   void onCanvasRefreshed() => _fetchData(silent: true);
 
@@ -43,7 +42,6 @@ class _CoursesScreenState extends State<CoursesScreen> with CanvasRefreshMixin<C
     try {
       final courses = await _canvasService.fetchActiveCourses();
       
-      // Concurrently fetch active task counts per course without blocking the UI rendering
       Map<String, int> taskCounts = {};
       await Future.wait(courses.map((course) async {
         try {
@@ -88,7 +86,6 @@ class _CoursesScreenState extends State<CoursesScreen> with CanvasRefreshMixin<C
           : Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Summary header
                 Padding(
                   padding: const EdgeInsets.fromLTRB(24, 16, 24, 4),
                   child: Text(
@@ -100,8 +97,6 @@ class _CoursesScreenState extends State<CoursesScreen> with CanvasRefreshMixin<C
                   ),
                 ),
                 
-                // Course list
-                // Course list
                 Expanded(
                   child: RefreshIndicator(
                     onRefresh: () {

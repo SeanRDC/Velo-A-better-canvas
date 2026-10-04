@@ -1,4 +1,4 @@
-// Core Design System Theme Configuration
+// Defines the app's light and dark themes and core design system colours.
 import 'package:flutter/material.dart';
 
 class AppTheme {
