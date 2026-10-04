@@ -4,6 +4,9 @@ import 'package:url_launcher/url_launcher.dart';
 const Set<String> _allowedSchemes = {'http', 'https', 'mailto'};
 const String _canvasOrigin = 'https://hau.instructure.com';
 
+// University portal opened from the main navigation
+const String campusPortalUrl = 'https://hau.campus-erp.com';
+
 // Returns the link to open, or null when it must not be launched. Canvas often
 // writes site-relative links ("/courses/1/files/2"), which resolve to Canvas.
 Uri? resolveSafeUrl(String url) {

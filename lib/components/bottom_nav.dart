@@ -1,6 +1,7 @@
 // Persistent Bottom Navigation Bar
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import '../services/safe_launch.dart';
 
 class BottomNav extends StatelessWidget {
   final String activeTab;
@@ -19,6 +20,8 @@ class BottomNav extends StatelessWidget {
         child: Row(
           children: [
             _buildTab(context, 'courses', 'Courses', Icons.menu_book_rounded, '/courses'),
+            // External link to the university portal; opens the browser, never active
+            _buildTab(context, 'campus', 'Campus++', Icons.open_in_new_rounded, campusPortalUrl, external: true),
             _buildTab(context, 'assistant', 'AI Assistant', Icons.smart_toy_outlined, '/assistant'),
             _buildTab(context, 'tasks', 'Dashboard', Icons.checklist_rtl, '/dashboard'),
           ],
@@ -27,14 +30,18 @@ class BottomNav extends StatelessWidget {
     );
   }
 
-  Widget _buildTab(BuildContext context, String key, String label, IconData icon, String path) {
+  Widget _buildTab(BuildContext context, String key, String label, IconData icon, String path, {bool external = false}) {
     final theme = Theme.of(context);
     final isActive = activeTab == key;
-    
+
     return Expanded(
       child: InkWell(
         onTap: () {
-          if (!isActive) context.go(path);
+          if (external) {
+            launchSafeUrl(path);
+          } else if (!isActive) {
+            context.go(path);
+          }
         },
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -56,6 +63,8 @@ class BottomNav extends StatelessWidget {
             const SizedBox(height: 4),
             Text(
               label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
               style: TextStyle(
                 fontSize: 12,
                 fontWeight: isActive ? FontWeight.w600 : FontWeight.normal,

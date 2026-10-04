@@ -2,7 +2,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
-import 'package:url_launcher/url_launcher.dart';
+import '../services/safe_launch.dart';
 import '../state/app_state.dart';
 import '../services/canvas_service.dart';
 
@@ -145,6 +145,14 @@ class _SideDrawerState extends State<SideDrawer> {
                       },
                     ),
                     const SizedBox(height: 4),
+                    // External link to the university portal; never the active tab
+                    _DrawerTile(
+                      icon: Icons.open_in_new_rounded,
+                      label: 'Open Campus++',
+                      isActive: false,
+                      onTap: () => launchSafeUrl(campusPortalUrl),
+                    ),
+                    const SizedBox(height: 4),
                     _DrawerTile(
                       icon: Icons.menu_book_rounded,
                       label: 'Courses',
@@ -178,19 +186,6 @@ class _SideDrawerState extends State<SideDrawer> {
                     onTap: () {
                       if (!widget.isDesktop) Navigator.pop(context);
                       context.go('/inbox');
-                    },
-                  ),
-                  const SizedBox(height: 4),
-                  _DrawerTile(
-                    icon: Icons.open_in_new_rounded,
-                    label: 'Open Campus++',
-                    isActive: false, 
-                    onTap: () async {
-                      if (!widget.isDesktop) Navigator.pop(context);
-                      final uri = Uri.parse('https://hau.campus-erp.com');
-                      if (await canLaunchUrl(uri)) {
-                        await launchUrl(uri, mode: LaunchMode.externalApplication);
-                      }
                     },
                   ),
                   const SizedBox(height: 4),
