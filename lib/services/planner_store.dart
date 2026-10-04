@@ -5,7 +5,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../models/milestone.dart';
 
 class PlannerStore {
-  static const String _key = 'planner_plans_v1';
+  static const String storageKey = 'planner_plans_v1';
+  static const String _key = storageKey;
 
   SharedPreferences? _cachedPrefs;
   Future<SharedPreferences> get _prefs async => _cachedPrefs ??= await SharedPreferences.getInstance();

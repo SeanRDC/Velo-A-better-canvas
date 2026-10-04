@@ -3,7 +3,6 @@
 # 1. Securely inject your Groq key and leave Canvas URL blank for Method 2
 echo "GROQ_API_KEY=$GROQ_API_KEY" > .env
 echo "CANVAS_BASE_URL=" >> .env
-echo "CANVAS_API_TOKEN=" >> .env
 
 # 2. Download the Flutter SDK
 git clone https://github.com/flutter/flutter.git -b stable

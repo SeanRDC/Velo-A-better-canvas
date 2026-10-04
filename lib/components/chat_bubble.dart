@@ -1,6 +1,6 @@
 // Chat bubble component for the AI Assistant interface
 import 'package:flutter/material.dart';
-import 'package:flutter_markdown/flutter_markdown.dart';
+import 'package:flutter_markdown_plus/flutter_markdown_plus.dart';
 
 class ChatBubble extends StatefulWidget {
   final String text;

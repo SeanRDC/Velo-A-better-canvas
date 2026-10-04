@@ -4,9 +4,10 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:flutter_widget_from_html/flutter_widget_from_html.dart';
-import 'package:url_launcher/url_launcher.dart';
+import '../services/safe_launch.dart';
 import '../components/app_shell.dart';
 import '../services/canvas_service.dart';
+import '../services/error_text.dart';
 
 class ConversationDetailScreen extends StatefulWidget {
   final Map<String, dynamic> thread;
@@ -55,7 +56,7 @@ class _ConversationDetailScreenState extends State<ConversationDetailScreen> {
       await _fetchThread(); // Refresh thread to show new message
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed to send reply: $e')));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(friendlyError(e, 'Failed to send reply. Please try again.'))));
       }
     } finally {
       if (mounted) setState(() => _isSending = false);
@@ -79,15 +80,14 @@ class _ConversationDetailScreenState extends State<ConversationDetailScreen> {
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(friendlyError(e, 'Something went wrong. Please try again.'))));
       }
     }
   }
 
   Future<void> _launchAttachment(String url) async {
     if (url.isEmpty) return;
-    final uri = Uri.parse(url);
-    if (!await launchUrl(uri, mode: LaunchMode.externalApplication)) {
+    if (!await launchSafeUrl(url)) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Could not open attachment.')));
       }

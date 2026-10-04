@@ -1,7 +1,7 @@
 // Module Item Detail Screen (Canvas Progression)
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:url_launcher/url_launcher.dart';
+import '../services/safe_launch.dart';
 import 'package:flutter_widget_from_html/flutter_widget_from_html.dart';
 import '../components/app_shell.dart';
 import '../models/course.dart';
@@ -87,8 +87,7 @@ class _ModuleItemDetailScreenState extends State<ModuleItemDetailScreen> {
 
   Future<void> _launchExternalUrl(String url) async {
     if (url.isEmpty) return;
-    final uri = Uri.parse(url);
-    await launchUrl(uri, mode: LaunchMode.externalApplication);
+    await launchSafeUrl(url);
   }
 
   void _openSubmitSheet(ThemeData theme) {

@@ -148,7 +148,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     theme: theme,
                     stepNumber: 4,
                     title: 'Create a New Token',
-                    description: 'Click the "+ New Access Token" button. In the Purpose field, type "Velo" and leave the expiration date blank.',
+                    description: 'Click the "+ New Access Token" button. In the Purpose field, type "Velo" and set an expiration date, such as the end of the semester.',
                   ),
                   _buildStep(
                     theme: theme,
@@ -329,22 +329,6 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                 ),
               ),
-              const SizedBox(height: 12),
-
-              // Step-by-Step Instructions Trigger Button
-              TextButton.icon(
-                onPressed: () => _showInstructionsSheet(theme),
-                icon: Icon(Icons.help_outline, size: 16, color: theme.colorScheme.secondary),
-                label: Text(
-                  'How do I find my access token?',
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: theme.colorScheme.secondary,
-                    fontWeight: FontWeight.w600,
-                    decoration: TextDecoration.underline,
-                  ),
-                ),
-              ),
-
               const SizedBox(height: 16),
 
               // Connect Button
@@ -370,7 +354,22 @@ class _LoginScreenState extends State<LoginScreen> {
                         ),
                 ),
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: 12),
+
+              // Step-by-Step Instructions Trigger Button
+              TextButton.icon(
+                onPressed: () => _showInstructionsSheet(theme),
+                icon: Icon(Icons.help_outline, size: 16, color: theme.colorScheme.secondary),
+                label: Text(
+                  'How do I find my access token?',
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: theme.colorScheme.secondary,
+                    fontWeight: FontWeight.w600,
+                    decoration: TextDecoration.underline,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 12),
 
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,

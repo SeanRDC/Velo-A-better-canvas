@@ -3,9 +3,10 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:flutter_widget_from_html/flutter_widget_from_html.dart';
-import 'package:url_launcher/url_launcher.dart';
 import '../components/app_shell.dart';
 import '../models/course.dart';
+import '../models/task.dart';
+import '../services/safe_launch.dart';
 import 'package:file_picker/file_picker.dart';
 
 class TaskDetailScreen extends StatefulWidget {
@@ -34,7 +35,7 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
   @override
   void initState() {
     super.initState();
-    _submitted = widget.assignment['has_submitted_submissions'] == true;
+    _submitted = Task.submittedFromJson(widget.assignment);
     
     // Auto-select the first available submission type tab
     final List<dynamic> types = widget.assignment['submission_types'] ?? [];
@@ -64,8 +65,7 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
 
   Future<void> _launchExternalUrl(String url) async {
     if (url.isEmpty) return;
-    final uri = Uri.parse(url);
-    final success = await launchUrl(uri, mode: LaunchMode.externalApplication);
+    final success = await launchSafeUrl(url);
     
     if (!success && mounted) {
       ScaffoldMessenger.of(context).showSnackBar(

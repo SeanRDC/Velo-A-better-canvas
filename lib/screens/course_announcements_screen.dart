@@ -2,7 +2,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
-import 'package:url_launcher/url_launcher.dart';
+import '../services/safe_launch.dart';
 import 'package:flutter_widget_from_html/flutter_widget_from_html.dart';
 import '../components/app_shell.dart';
 import '../models/course.dart';
@@ -77,9 +77,7 @@ class _CourseAnnouncementsScreenState extends State<CourseAnnouncementsScreen> {
 
 Future<void> _launchLink(String url) async {
     if (url.isEmpty) return;
-    final uri = Uri.parse(url);
-
-    final success = await launchUrl(uri, mode: LaunchMode.externalApplication);
+    final success = await launchSafeUrl(url);
     
     if (!success && mounted) {
       ScaffoldMessenger.of(context).showSnackBar(

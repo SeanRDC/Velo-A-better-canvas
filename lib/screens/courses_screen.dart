@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../components/app_shell.dart';
 import '../models/course.dart';
+import '../models/task.dart';
 import '../services/canvas_service.dart';
 
 class CoursesScreen extends StatefulWidget {
@@ -40,7 +41,7 @@ class _CoursesScreenState extends State<CoursesScreen> {
       await Future.wait(courses.map((course) async {
         try {
           final tasks = await _canvasService.fetchRawAssignmentPayloads(course.id);
-          int active = tasks.where((t) => t['has_submitted_submissions'] != true).length;
+          int active = tasks.where((t) => !Task.submittedFromJson(t)).length;
           taskCounts[course.id] = active;
         } catch (_) {
           taskCounts[course.id] = 0;

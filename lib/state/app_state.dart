@@ -56,7 +56,12 @@ class AppState extends ChangeNotifier {
       iOS: iosSettings
     );
     
-    await _notificationsPlugin.initialize(settings: initSettings);
+    try {
+      await _notificationsPlugin.initialize(settings: initSettings);
+    } catch (e) {
+      // No notification support on this platform; the app works without it
+      debugPrint('Notifications unavailable: $e');
+    }
   }
 
   void toggleOffline() {

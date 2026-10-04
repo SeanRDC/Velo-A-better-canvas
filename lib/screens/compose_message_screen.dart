@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import '../components/app_shell.dart';
 import '../models/course.dart';
 import '../services/canvas_service.dart';
+import '../services/error_text.dart';
 import 'package:file_picker/file_picker.dart';
 
 class ComposeMessageScreen extends StatefulWidget {
@@ -103,7 +104,7 @@ class _ComposeMessageScreenState extends State<ComposeMessageScreen> {
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(friendlyError(e, 'Could not send your message. Please try again.'))));
         setState(() => _isSending = false);
       }
     }

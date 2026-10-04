@@ -5,26 +5,110 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/course.dart';
 import '../models/task.dart';
+import 'planner_store.dart';
 
 class CanvasService {
   final String _baseUrl = dotenv.env['CANVAS_BASE_URL'] ?? '';
-  final String _defaultToken = dotenv.env['CANVAS_API_TOKEN'] ?? '';
   SharedPreferences? _cachedPrefs;
   Future<SharedPreferences> get _prefs async => _cachedPrefs ??= await SharedPreferences.getInstance();
 
+  static const Duration _timeout = Duration(seconds: 15);
+  static const int _maxPages = 5; // Upper bound when following Canvas pagination
+  static const String _canvasHost = 'hau.instructure.com';
+
+  // Requests already running, and bodies fetched moments ago, shared by every
+  // CanvasService instance so screens loading together hit Canvas only once.
+  static final Map<String, Future<String>> _inFlight = {};
+  static final Map<String, ({String body, DateTime at})> _recent = {};
+  static const Duration _recentTtl = Duration(seconds: 5);
+
   Future<Map<String, String>> _getHeaders() async {
     final prefs = await _prefs;
-    final token = prefs.getString('canvas_api_token') ?? _defaultToken;
+    final token = prefs.getString('canvas_api_token');
+    if (token == null || token.isEmpty) {
+      throw Exception('Not signed in to Canvas.');
+    }
     return {
       'Authorization': 'Bearer $token',
       'Accept': 'application/json',
     };
   }
 
-  Future<String> _fetchWithCache(String url, String cacheKey) async {
+  // Maps a URL handed back by Canvas onto the configured base (so it also works
+  // through the web proxy). Returns null for any other host, which must never
+  // be sent the user's token.
+  String? _toBaseUrl(String absoluteUrl) {
+    final uri = Uri.tryParse(absoluteUrl);
+    if (uri == null) return null;
+
+    final baseHost = Uri.tryParse(_baseUrl)?.host ?? '';
+    if (uri.hasAuthority && uri.host != _canvasHost && (baseHost.isEmpty || uri.host != baseHost)) {
+      return null;
+    }
+    return '$_baseUrl${uri.path}${uri.hasQuery ? '?${uri.query}' : ''}';
+  }
+
+  String? _nextPageUrl(String? linkHeader) {
+    if (linkHeader == null) return null;
+    final match = RegExp(r'<([^>]+)>;\s*rel="next"').firstMatch(linkHeader);
+    return match == null ? null : _toBaseUrl(match.group(1)!);
+  }
+
+  // Fetches a URL, following Canvas "next" links so long lists are not cut off
+  Future<String> _fetchAllPages(String url) async {
+    final headers = await _getHeaders();
+    var response = await http.get(Uri.parse(url), headers: headers).timeout(_timeout);
+    if (response.statusCode != 200) {
+      throw Exception('Failed to load data from Canvas (Status: ${response.statusCode}).');
+    }
+
+    String? next = _nextPageUrl(response.headers['link']);
+    if (next == null) return response.body;
+
+    final firstPage = jsonDecode(response.body);
+    if (firstPage is! List) return response.body;
+
+    final items = List<dynamic>.from(firstPage);
+    for (int page = 1; page < _maxPages && next != null; page++) {
+      response = await http.get(Uri.parse(next), headers: headers).timeout(_timeout);
+      if (response.statusCode != 200) break;
+      items.addAll(jsonDecode(response.body) as List<dynamic>);
+      next = _nextPageUrl(response.headers['link']);
+    }
+    return jsonEncode(items);
+  }
+
+  Future<void> _writeCache(SharedPreferences prefs, String cacheKey, String body) async {
+    try {
+      await prefs.setString(cacheKey, body);
+    } catch (_) {
+      // Storage is full: drop the per-item detail caches and try once more
+      const detailPrefixes = ['cache_page_', 'cache_api_', 'cache_conv_'];
+      final stale = prefs.getKeys().where((k) => detailPrefixes.any(k.startsWith)).toList();
+      for (final key in stale) {
+        await prefs.remove(key);
+      }
+      try {
+        await prefs.setString(cacheKey, body);
+      } catch (_) {}
+    }
+    try {
+      await prefs.setString('last_sync_time', DateTime.now().toIso8601String());
+    } catch (_) {}
+  }
+
+  Future<String> _fetchWithCache(String url, String cacheKey) {
+    final recent = _recent[cacheKey];
+    if (recent != null && DateTime.now().difference(recent.at) < _recentTtl) {
+      return Future.value(recent.body);
+    }
+    return _inFlight[cacheKey] ??= _loadWithCache(url, cacheKey).whenComplete(() => _inFlight.remove(cacheKey));
+  }
+
+  Future<String> _loadWithCache(String url, String cacheKey) async {
     final prefs = await _prefs;
     final isOffline = prefs.getBool('isOffline') ?? false;
-    
+
     if (isOffline) {
       final cachedData = prefs.getString(cacheKey);
       if (cachedData != null) {
@@ -33,17 +117,15 @@ class CanvasService {
         throw Exception('You are offline. No saved data available for this screen.');
       }
     }
-    
+
     try {
-      final response = await http.get(Uri.parse(url), headers: await _getHeaders());
-             
-      if (response.statusCode == 200) {
-        await prefs.setString(cacheKey, response.body);
-        await prefs.setString('last_sync_time', DateTime.now().toIso8601String()); // Add this line
-        return response.body;
-      } else {
-        throw Exception('Failed to load data from Canvas (Status: ${response.statusCode}).');
-      }
+      final body = await _fetchAllPages(url);
+      await _writeCache(prefs, cacheKey, body);
+
+      final now = DateTime.now();
+      _recent.removeWhere((_, entry) => now.difference(entry.at) >= _recentTtl);
+      _recent[cacheKey] = (body: body, at: now);
+      return body;
     } catch (e) {
       final cachedData = prefs.getString(cacheKey);
       if (cachedData != null) {
@@ -52,6 +134,22 @@ class CanvasService {
         throw Exception('Network error. No connection and no saved data available.');
       }
     }
+  }
+
+  // Wipes everything tied to the signed-in user: token, cached Canvas data and
+  // saved study plans. App preferences (theme, notifications) are kept.
+  Future<void> clearSession() async {
+    final prefs = await _prefs;
+    final cacheKeys = prefs.getKeys().where((k) => k.startsWith('cache_')).toList();
+    for (final key in cacheKeys) {
+      await prefs.remove(key);
+    }
+    await prefs.remove('canvas_api_token');
+    await prefs.remove('last_sync_time');
+    await prefs.remove(PlannerStore.storageKey);
+
+    _memProfile = null;
+    _recent.clear();
   }
 
   Future<bool> verifyAndSaveToken(String rawToken) async {
@@ -66,13 +164,13 @@ class CanvasService {
           'Authorization': 'Bearer $token',
           'Accept': 'application/json',
         },
-      );
+      ).timeout(_timeout);
 
       if (response.statusCode == 200) {
+        // Start clean so nothing from a previous account carries over
+        await clearSession();
         final prefs = await _prefs;
         await prefs.setString('canvas_api_token', token);
-        await prefs.remove('cache_user_profile');
-        await prefs.remove('cache_active_courses');
         return true;
       }
       return false;
@@ -148,13 +246,22 @@ class CanvasService {
       Uri.parse('$_baseUrl/api/v1/users/self/profile'),
       headers: await _getHeaders(),
       body: {'user[bio]': newBio},
-    );
-    
+    ).timeout(_timeout);
+
     if (response.statusCode != 200) {
       throw Exception('Failed to update Canvas profile');
     }
-    
+
     await prefs.remove('cache_user_profile');
+    _memProfile = null;
+    _recent.clear();
+  }
+
+  // One request and one cache entry serve the task list, grades and the raw
+  // assignment screens; it includes the user's own submission for each item.
+  Future<String> _fetchAssignmentsBody(String courseId) {
+    final url = '$_baseUrl/api/v1/courses/$courseId/assignments?include[]=submission&per_page=100';
+    return _fetchWithCache(url, 'cache_assignments_$courseId');
   }
 
   Future<List<Course>> fetchActiveCourses() async {
@@ -169,9 +276,8 @@ class CanvasService {
   }
 
   Future<List<Task>> fetchAssignmentsForCourse(Course course) async {
-    final url = '$_baseUrl/api/v1/courses/${course.id}/assignments?per_page=100';
-    final body = await _fetchWithCache(url, 'cache_assignments_${course.id}');
-    
+    final body = await _fetchAssignmentsBody(course.id);
+
     final List<dynamic> data = jsonDecode(body);
     return data.map((json) => Task.fromCanvasJson(json, course)).toList();
   }
@@ -199,10 +305,9 @@ class CanvasService {
   }
 
   Future<Map<String, dynamic>> fetchGradesForCourse(String courseId) async {
-    final assignUrl = '$_baseUrl/api/v1/courses/$courseId/assignments?include[]=submission&per_page=100';
     final enrollUrl = '$_baseUrl/api/v1/courses/$courseId/enrollments?user_id=self';
 
-    final assignmentsBody = await _fetchWithCache(assignUrl, 'cache_grades_assign_$courseId');
+    final assignmentsBody = await _fetchAssignmentsBody(courseId);
     final enrollmentsBody = await _fetchWithCache(enrollUrl, 'cache_grades_enroll_$courseId');
 
     final List<dynamic> assignmentsData = jsonDecode(assignmentsBody);
@@ -289,7 +394,10 @@ class CanvasService {
         return jsonDecode(body)['body'] ?? '';
       } 
       else if (apiUrl != null && (type.toLowerCase() == 'assignment' || type.toLowerCase() == 'discussion')) {
-        final body = await _fetchWithCache(apiUrl, 'cache_api_${apiUrl.hashCode}');
+        // Only Canvas itself may receive the token; any other host is skipped
+        final safeUrl = _toBaseUrl(apiUrl);
+        if (safeUrl == null) return '';
+        final body = await _fetchWithCache(safeUrl, 'cache_api_${Uri.parse(apiUrl).path}');
         final data = jsonDecode(body);
         return data['description'] ?? data['message'] ?? '';
       }
@@ -300,9 +408,8 @@ class CanvasService {
   }
 
   Future<List<Map<String, dynamic>>> fetchRawAssignmentPayloads(String courseId) async {
-    final url = '$_baseUrl/api/v1/courses/$courseId/assignments?include[]=submission&per_page=100';
-    final body = await _fetchWithCache(url, 'cache_raw_assignments_$courseId');
-    
+    final body = await _fetchAssignmentsBody(courseId);
+
     final List<dynamic> data = jsonDecode(body);
     return data.cast<Map<String, dynamic>>();
   }
@@ -324,7 +431,8 @@ class CanvasService {
       Uri.parse('$_baseUrl/api/v1/conversations/$conversationId'),
       headers: await _getHeaders(),
       body: {'conversation[workflow_state]': 'read'},
-    );
+    ).timeout(_timeout);
+    _recent.clear();
   }
 
   Future<void> markAnnouncementAsRead(String courseId, String topicId) async {
@@ -334,7 +442,8 @@ class CanvasService {
     await http.put(
       Uri.parse('$_baseUrl/api/v1/courses/$courseId/discussion_topics/$topicId/read'),
       headers: await _getHeaders(),
-    );
+    ).timeout(_timeout);
+    _recent.clear();
   }
 
   Future<void> archiveConversation(String conversationId) async {
@@ -347,8 +456,9 @@ class CanvasService {
       Uri.parse('$_baseUrl/api/v1/conversations/$conversationId'),
       headers: await _getHeaders(),
       body: jsonEncode({'conversation': {'workflow_state': 'archived'}}),
-    );
-    
+    ).timeout(_timeout);
+    _recent.clear();
+
     if (response.statusCode != 200) {
       throw Exception('Failed to archive. Canvas returned: ${response.statusCode}');
     }
@@ -363,8 +473,9 @@ class CanvasService {
     final response = await http.delete(
       Uri.parse('$_baseUrl/api/v1/conversations/$conversationId'),
       headers: await _getHeaders(), // DELETE requests don't require JSON bodies
-    );
-    
+    ).timeout(_timeout);
+    _recent.clear();
+
     if (response.statusCode != 200) {
       throw Exception('Failed to delete. Canvas returned: ${response.statusCode}');
     }
@@ -381,7 +492,8 @@ class CanvasService {
       Uri.parse('$_baseUrl/api/v1/conversations/$conversationId/add_message'),
       headers: await _getHeaders(),
       body: {'body': messageBody},
-    );
+    ).timeout(_timeout);
+    _recent.clear();
     if (response.statusCode != 200 && response.statusCode != 201) {
       throw Exception('Failed to send reply.');
     }
@@ -405,7 +517,8 @@ class CanvasService {
         'context_code': 'course_$courseId',
         'force_new': true,
       }),
-    );
+    ).timeout(_timeout);
+    _recent.clear();
     if (response.statusCode != 200 && response.statusCode != 201) {
       throw Exception('Failed to send message.');
     }
@@ -502,7 +615,7 @@ class CanvasService {
       final response = await http.get(
         Uri.parse('$_baseUrl/api/v1/courses/${task.courseId}/assignments/${task.id}'),
         headers: await _getHeaders(),
-      );
+      ).timeout(_timeout);
 
       if (response.statusCode != 200) return "Could not fetch details from Canvas.";
 
@@ -531,19 +644,24 @@ class CanvasService {
       // Only inject announcements if the AI is specifically looking at the main inbox
       if (folder == 'inbox') {
         final courses = await fetchActiveCourses();
-        for (var course in courses) {
-          try {
-            final anns = await fetchAnnouncementsForCourse(course.id);
-            for (var a in anns.take(3)) {
-              combined.add({
+        final perCourse = await Future.wait(
+          courses.map((course) async {
+            try {
+              final anns = await fetchAnnouncementsForCourse(course.id);
+              return anns.take(3).map((a) => <String, dynamic>{
                 'id': 'ann_${a['id']}',
                 'sender': a['user_name'] ?? 'Instructor (${course.courseCode})',
                 'subject': '[${course.courseCode} Announcement] ${a['title'] ?? 'No Subject'}',
                 'last_message': a['message'] ?? '',
                 'last_message_at': a['posted_at'] ?? a['created_at'],
-              });
+              }).toList();
+            } catch (_) {
+              return <Map<String, dynamic>>[];
             }
-          } catch (_) {}
+          }),
+        );
+        for (final items in perCourse) {
+          combined.addAll(items);
         }
       }
 

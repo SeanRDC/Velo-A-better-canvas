@@ -4,8 +4,6 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'dart:convert';
-import 'package:http/http.dart' as http;
-import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 import '../components/app_shell.dart';
 import '../components/planner/day_sheet.dart';
@@ -15,6 +13,7 @@ import '../models/task.dart';
 import '../models/course.dart';
 import '../models/milestone.dart';
 import '../services/canvas_service.dart';
+import '../services/groq_service.dart';
 import '../services/planner_store.dart';
 
 class PlannerScreen extends StatefulWidget {
@@ -28,6 +27,7 @@ class PlannerScreen extends StatefulWidget {
 class _PlannerScreenState extends State<PlannerScreen> {
   final CanvasService _canvasService = CanvasService();
   final PlannerStore _store = PlannerStore();
+  final GroqService _groqService = GroqService();
   String _view = 'week'; // 'week' or 'month'
 
   List<Task> _activeTasks = [];
@@ -115,24 +115,15 @@ class _PlannerScreenState extends State<PlannerScreen> {
     List<Milestone> milestones;
 
     try {
-      final apiKey = dotenv.env['GROQ_API_KEY'] ?? '';
-      if (apiKey.isEmpty) throw Exception("GROQ_API_KEY missing");
-
       String details = task.description
           .replaceAll(RegExp(r'<[^>]*>'), ' ')
           .replaceAll(RegExp(r'\s+'), ' ')
           .trim();
       if (details.length > 1500) details = details.substring(0, 1500);
 
-      final response = await http.post(
-        Uri.parse('https://api.groq.com/openai/v1/chat/completions'),
-        headers: {
-          'Authorization': 'Bearer $apiKey',
-          'Content-Type': 'application/json',
-        },
-        body: jsonEncode({
-          "model": "openai/gpt-oss-120b",
-          "messages": [
+      final message = await _groqService.chat(
+        temperature: 0.2, // Low temperature ensures consistent JSON formatting
+        messages: [
             {
               "role": "system",
               "content": "You are a highly efficient study planner. Break the user's assignment down into 3 to 5 logical daily milestones that are specific to what the assignment actually asks for. Return ONLY a valid JSON array of objects. Each object must have 'title' (string), 'dateOffset' (integer, the number of days from today to do this step, must be between 0 and $diffDays) and 'minutes' (integer, a realistic estimate of the focused work time for this step). Do not include markdown formatting, code block ticks, or any extra text outside the JSON."
@@ -141,17 +132,10 @@ class _PlannerScreenState extends State<PlannerScreen> {
               "role": "user",
               "content": "Task: ${task.title}. Course: ${task.courseCode}. Worth ${task.points} points. Total time until due: $diffDays days. Instructions: $details"
             }
-          ],
-          "temperature": 0.2 // Low temperature ensures consistent JSON formatting
-        }),
+        ],
       );
 
-      if (response.statusCode != 200) {
-        throw Exception('Groq API Error: ${response.statusCode}');
-      }
-
-      final data = jsonDecode(response.body);
-      String content = data['choices'][0]['message']['content'] ?? '[]';
+      String content = message['content'] ?? '[]';
 
       // Failsafe: Strip markdown ticks just in case the AI includes them anyway
       content = content.replaceAll(RegExp(r'```(?:json)?\s*'), '').replaceAll(RegExp(r'```\s*'), '').trim();

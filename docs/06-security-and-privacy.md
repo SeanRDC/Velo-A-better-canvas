@@ -12,18 +12,20 @@
 
 ## Secrets
 
-- Values my app needs at run time: `CANVAS_API_TOKEN`, `CANVAS_BASE_URL`, `GEMINI_API_KEY`
+- Values my app needs at run time: `CANVAS_BASE_URL`, `GROQ_API_KEY`. The Canvas token is never built in: each user pastes their own at login.
 - Where they live locally: `.env`, which is git-ignored
 - Where the deploy workflow gets them: repository secrets (Settings > Secrets
   and variables > Actions; the walkthrough is on page 12 of
   `content/extending-your-app/` in your workspace)
 - Anything my deployed web build carries that a visitor could read, and why that
-  is acceptable: The Flutter web build inherently bundles the injected environment variables (`GEMINI_API_KEY` and `CANVAS_API_TOKEN`) into the compiled client code because this MVP communicates directly with the APIs. This is acceptable for a local-first academic prototype, though a production release would route these calls through a secure backend proxy to obscure the keys.
+  is acceptable: The Flutter web build bundles `.env` as an asset, so `GROQ_API_KEY` can be read by any visitor of the deployed site. This is a known, unresolved risk of this prototype: the key should be rotated, given a spend limit, and moved behind a server-side proxy before wider use. No Canvas token is bundled.
 
 ## What protects the data on the service side
 
 - No third-party database (like Firestore or Supabase) is used. 
-- Nothing leaves the device to a developer-owned backend. All data requests and security protocols are handled directly between the local client and the official Canvas LMS infrastructure, protected by Canvas's own OAuth 2.0 and API security measures.
+- Nothing is stored on a developer-owned backend. Canvas requests go from the client to the official Canvas LMS (on the web build, through the Vercel `/api` rewrite) and are authorized by the user's own access token.
+- The AI assistant and planner send the coursework details needed for a reply (assignments, grades, messages) to Groq.
+- The token and cached data sit in plain `shared_preferences` storage, not encrypted storage. Logging out removes the token, all cached Canvas data, saved study plans and the assistant conversation.
 
 ## Checklist
 

@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import '../components/app_shell.dart';
 import '../models/course.dart';
+import '../models/task.dart';
 import '../services/canvas_service.dart';
 
 class CourseAssignmentsScreen extends StatefulWidget {
@@ -68,7 +69,7 @@ class _CourseAssignmentsScreenState extends State<CourseAssignmentsScreen> {
       final List<Map<String, dynamic>> noDate = [];
 
       for (var a in _originalAssignments) {
-        if (a['has_submitted_submissions'] == true) {
+        if (Task.submittedFromJson(a)) {
           submitted.add(a);
         } else if (a['due_at'] != null) {
           pending.add(a);
@@ -102,7 +103,7 @@ class _CourseAssignmentsScreenState extends State<CourseAssignmentsScreen> {
   }
 
   Widget _buildStatusPill(ThemeData theme, Map<String, dynamic> assignment) {
-    final bool hasSubmitted = assignment['has_submitted_submissions'] == true;
+    final bool hasSubmitted = Task.submittedFromJson(assignment);
     final String? dueAt = assignment['due_at'];
     
     bool isOverdue = false;

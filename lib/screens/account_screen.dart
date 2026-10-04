@@ -5,8 +5,9 @@ import 'package:provider/provider.dart';
 import '../components/app_shell.dart';
 import '../state/app_state.dart';
 import '../services/canvas_service.dart';
+import '../services/error_text.dart';
 import 'package:file_picker/file_picker.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'ai_assistant_screen.dart';
 
 class AccountScreen extends StatefulWidget {
   const AccountScreen({super.key});
@@ -36,7 +37,9 @@ class _AccountScreenState extends State<AccountScreen> {
     try {
       final profile = await _canvasService.fetchUserProfile();
       if (mounted) setState(() => _userProfile = profile);
-    } catch (e) {}
+    } catch (e) {
+      // Keep the placeholder profile if it can't be loaded
+    }
   }
 
   void _openEditProfileSheet(ThemeData theme) {
@@ -81,7 +84,7 @@ class _AccountScreenState extends State<AccountScreen> {
                     child: InkWell(
                       onTap: () async {
                         final result = await FilePicker.pickFiles(type: FileType.image);
-                        if (result.isNotEmpty && mounted) {
+                        if (result.isNotEmpty && context.mounted) {
                           ScaffoldMessenger.of(context).showSnackBar(
                             const SnackBar(content: Text('Avatar selected. (Canvas upload requires AWS S3 multipart integration)')),
                           );
@@ -134,7 +137,7 @@ class _AccountScreenState extends State<AccountScreen> {
                           if (context.mounted) Navigator.pop(context);
                         } catch (e) {
                           if (context.mounted) {
-                            ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
+                            ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(friendlyError(e, 'Could not save your profile. Please try again.'))));
                             setModalState(() => isSaving = false);
                           }
                         }
@@ -195,7 +198,7 @@ class _AccountScreenState extends State<AccountScreen> {
               ),
               const SizedBox(height: 4),
               Text(
-                'Velo is a strictly local-first application. User profiles, Canvas tokens, and cached course tasks are stored entirely on this device using encrypted local storage. No personal data is ever sent to a third-party Velo database.',
+                'Velo is a local-first application. Your profile, Canvas token, study plans and cached course data are kept in this device\'s app storage and are removed when you log out. Velo has no database of its own. When you use the AI assistant or planner, the coursework details needed to answer (such as assignments, grades or messages) are sent to the AI provider, Groq.',
                 style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.secondary, height: 1.5),
               ),
               const SizedBox(height: 16),
@@ -205,7 +208,7 @@ class _AccountScreenState extends State<AccountScreen> {
               ),
               const SizedBox(height: 4),
               Text(
-                'The application relies exclusively on the Canvas LMS as the definitive backend. All data security, transit encryption, and authentication are handled entirely by the official university LMS infrastructure.',
+                'The application relies on the Canvas LMS as its backend. Your coursework is read from and written to the official university LMS over an encrypted connection, using the access token you provided.',
                 style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.secondary, height: 1.5),
               ),
               const SizedBox(height: 16),
@@ -307,13 +310,16 @@ class _AccountScreenState extends State<AccountScreen> {
                 style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold, letterSpacing: -0.5),
                 textAlign: TextAlign.center,
               ),
+              // The program is blank on the web build, so skip its line rather than leave a gap
+              if (_userProfile['program']!.isNotEmpty) ...[
+                const SizedBox(height: 4),
+                Text(
+                  _userProfile['program']!,
+                  style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.secondary),
+                  textAlign: TextAlign.center,
+                ),
+              ],
               const SizedBox(height: 4),
-              Text(
-                _userProfile['program']!,
-                style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.secondary),
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 24),
               Text(
                 _userProfile['email']!,
                 style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onSurface),
@@ -541,10 +547,9 @@ class _AccountScreenState extends State<AccountScreen> {
             width: double.infinity,
             child: OutlinedButton.icon(
               onPressed: () async {
-                final prefs = await SharedPreferences.getInstance();
-                await prefs.remove('canvas_api_token');
-                await prefs.remove('cache_user_profile');
-                await prefs.remove('cache_active_courses');
+                // Remove everything tied to this account, not just the token
+                await _canvasService.clearSession();
+                AiAssistantScreen.resetConversation();
                 if (context.mounted) context.go('/');
               },
               icon: Icon(Icons.logout, size: 18, color: theme.colorScheme.onSurface),

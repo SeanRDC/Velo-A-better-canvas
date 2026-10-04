@@ -1,13 +1,12 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'dart:convert';
-import 'package:http/http.dart' as http;
 import '../components/app_shell.dart';
 import '../components/chat_bubble.dart';
 import '../services/canvas_service.dart';
+import '../services/groq_service.dart';
+import '../services/safe_launch.dart';
 import 'dart:math' as math;
 import 'package:go_router/go_router.dart';
-import 'package:url_launcher/url_launcher.dart';
 
 class ChatMessage {
   final String text;
@@ -17,6 +16,10 @@ class ChatMessage {
 
 class AiAssistantScreen extends StatefulWidget {
   const AiAssistantScreen({super.key});
+
+  // Called on logout so the next account starts with an empty conversation
+  static void resetConversation() => _AiAssistantScreenState._resetConversation();
+
   @override
   State<AiAssistantScreen> createState() => _AiAssistantScreenState();
 }
@@ -108,6 +111,7 @@ class _AiAssistantScreenState extends State<AiAssistantScreen> {
   final TextEditingController _controller = TextEditingController();
   final ScrollController _scrollController = ScrollController();
   final CanvasService _canvasService = CanvasService();
+  final GroqService _groqService = GroqService();
   bool _isLoading = false;
   bool _isCooldown = false;
   bool _isTyping = false;
@@ -131,7 +135,12 @@ class _AiAssistantScreenState extends State<AiAssistantScreen> {
     }
   ];
 
-  // Groq Tool Definitions
+  // Forgets the chat so nothing from one account carries over into the next
+  static void _resetConversation() {
+    _hasWelcomed = false;
+    _messages.clear();
+    _apiHistory.removeRange(1, _apiHistory.length); // Keep the system prompt
+  }
 
   // Groq Tool Definitions
   final List<Map<String, dynamic>> _tools = [
@@ -266,50 +275,16 @@ class _AiAssistantScreenState extends State<AiAssistantScreen> {
     _apiHistory.add({"role": "user", "content": text});
 
     try {
-      final apiKey = dotenv.env['GROQ_API_KEY'] ?? '';
-      if (apiKey.isEmpty) throw Exception("GROQ_API_KEY missing in .env");
-
       bool toolCallMade = true;
       String finalResponseText = "I am having trouble processing that right now.";
 
-      while (toolCallMade) {
+      // Capped so content pulled from Canvas can't keep the model calling tools forever
+      const int maxToolRounds = 6;
+      for (int round = 0; toolCallMade && round < maxToolRounds; round++) {
         toolCallMade = false;
-        http.Response? response;
-        
-        const int maxRetries = 3;
-        for (int attempt = 0; attempt < maxRetries; attempt++) {
-          response = await http.post(
-            Uri.parse('https://api.groq.com/openai/v1/chat/completions'),
-            headers: {
-              'Authorization': 'Bearer $apiKey',
-              'Content-Type': 'application/json',
-            },
-            body: jsonEncode({
-              "model": "openai/gpt-oss-120b",
-              "messages": _apiHistory,
-              "tools": _tools,
-              "tool_choice": "auto"
-            }),
-          );
 
-          if (response.statusCode == 429 || response.statusCode >= 500) {
-            if (attempt < maxRetries - 1) {
-              final waitSeconds = 2 * (attempt + 1);
-              debugPrint('Groq limit/server error (${response.statusCode}). Retrying in ${waitSeconds}s...');
-              await Future.delayed(Duration(seconds: waitSeconds));
-              continue;
-            }
-          }
-          break;
-        }
+        final responseMessage = await _groqService.chat(messages: _apiHistory, tools: _tools);
 
-        if (response == null || response.statusCode != 200) {
-          throw Exception('Groq API Error: ${response?.statusCode ?? 'Unknown'} - ${response?.body ?? ''}');
-        }
-
-        final responseData = jsonDecode(response.body);
-        final responseMessage = responseData['choices'][0]['message'];
-        
         Map<String, dynamic> assistantMessage = {"role": "assistant"};
         if (responseMessage['content'] != null) {
           assistantMessage["content"] = responseMessage['content'];
@@ -418,8 +393,7 @@ class _AiAssistantScreenState extends State<AiAssistantScreen> {
   void _handleDeepLink(String url) async {
     // If it is a standard web link (e.g., from an assignment description), launch the browser
     if (!url.startsWith('velo://')) {
-      final uri = Uri.parse(url);
-      if (await canLaunchUrl(uri)) await launchUrl(uri);
+      await launchSafeUrl(url);
       return;
     }
 
