@@ -235,17 +235,8 @@ class _AiAssistantScreenState extends State<AiAssistantScreen> {
     if (!mounted) return;
 
     setState(() {
-      _messages.add(ChatMessage(text: "Hello there! 👋", isUser: false));
-      _isLoading = true;
-    });
-
-    await Future.delayed(const Duration(milliseconds: 1800));
-    if (!mounted) return;
-
-    setState(() {
-      _isLoading = false;
       _messages.add(ChatMessage(
-        text: "I'm Velo Co-pilot. I have securely loaded your grades, assignments, and deadlines. What do you need?",
+        text: "Hello, I'm Velo Co-pilot. I have securely loaded your grades, assignments, and deadlines. What do you need?",
         isUser: false,
       ));
     });

@@ -32,3 +32,6 @@ Thumbs.db
 # Test files for code testing and compatibility
 practest/
 .widget_preview
+
+# Claude
+.claude/
