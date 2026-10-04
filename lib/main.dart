@@ -7,6 +7,7 @@ import 'package:device_preview/device_preview.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 import 'state/app_state.dart';
+import 'components/reconnect_prompt.dart';
 import 'theme/app_theme.dart';
 import 'screens/login_screen.dart';
 import 'screens/dashboard_screen.dart';
@@ -212,7 +213,14 @@ class VeloApp extends StatelessWidget {
       title: 'Velo: Canvas Co-pilot',
       debugShowCheckedModeBanner: false,
       locale: DevicePreview.locale(context),
-      builder: DevicePreview.appBuilder,
+      // The reconnect prompt wraps every route so it can appear on any screen
+      builder: (context, child) => DevicePreview.appBuilder(
+        context,
+        ReconnectPrompt(
+          navigatorKey: _router.routerDelegate.navigatorKey,
+          child: child ?? const SizedBox.shrink(),
+        ),
+      ),
       theme: AppTheme.light,
       darkTheme: AppTheme.dark,
       themeMode: appState.themeMode,

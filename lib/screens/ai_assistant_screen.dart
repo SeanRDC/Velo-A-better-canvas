@@ -5,6 +5,8 @@ import '../components/chat_bubble.dart';
 import '../services/canvas_service.dart';
 import '../services/groq_service.dart';
 import '../services/safe_launch.dart';
+import '../state/app_state.dart';
+import 'package:provider/provider.dart';
 import 'dart:math' as math;
 import 'package:go_router/go_router.dart';
 
@@ -157,6 +159,12 @@ class _AiAssistantScreenState extends State<AiAssistantScreen> {
   bool _isLoading = false;
   bool _isCooldown = false;
   bool _isTyping = false;
+
+  static const String _goOnlineLink = 'velo://go-online';
+  static const String _offlineReply =
+      "**You're in offline mode.** I can't answer questions or look up your tasks, grades, announcements or messages right now, because that needs a connection to the AI service and Canvas.\n\n"
+      "You can still browse what's saved on this device: your Dashboard, Courses, Planner and Inbox.\n\n"
+      "[Switch to online mode]($_goOnlineLink) to chat with me.";
 
   // What the typing bubble says while a reply is being prepared
   String _status = 'Thinking';
@@ -345,7 +353,20 @@ class _AiAssistantScreenState extends State<AiAssistantScreen> {
 
     _controller.clear();
     _scrollToBottom();
-    
+
+    // The assistant needs the AI service and live Canvas data, so in offline
+    // mode it explains that instead of failing with a connection error
+    if (context.read<AppState>().isOffline) {
+      await Future.delayed(const Duration(milliseconds: 350));
+      if (!mounted) return;
+      setState(() {
+        _messages.add(ChatMessage(text: _offlineReply, isUser: false));
+        _isLoading = false;
+      });
+      _scrollToBottom();
+      return;
+    }
+
     _apiHistory.add({"role": "user", "content": text});
 
     try {
@@ -477,6 +498,21 @@ class _AiAssistantScreenState extends State<AiAssistantScreen> {
   }
 
   void _handleDeepLink(String url) async {
+    // The link in the offline reply turns offline mode off
+    if (url == _goOnlineLink) {
+      final appState = context.read<AppState>();
+      final wasOffline = appState.isOffline;
+      appState.goOnline();
+      setState(() {
+        _messages.add(ChatMessage(
+          text: wasOffline ? "You're back online. What do you need?" : "You're already online. What do you need?",
+          isUser: false,
+        ));
+      });
+      _scrollToBottom();
+      return;
+    }
+
     // If it is a standard web link (e.g., from an assignment description), launch the browser
     if (!url.startsWith('velo://')) {
       await launchSafeUrl(url);
@@ -641,7 +677,11 @@ class _AiAssistantScreenState extends State<AiAssistantScreen> {
                                   readOnly: _isCooldown,
                                   style: theme.textTheme.bodyMedium,
                                   decoration: InputDecoration(
-                                    hintText: _isCooldown ? 'Cooling down...' : 'Ask about your courses...',
+                                    hintText: _isCooldown
+                                        ? 'Cooling down...'
+                                        : context.watch<AppState>().isOffline
+                                            ? 'Offline mode: assistant unavailable'
+                                            : 'Ask about your courses...',
                                     hintStyle: TextStyle(color: theme.colorScheme.secondary, fontSize: 14),
                                     filled: true,
                                     fillColor: theme.scaffoldBackgroundColor,

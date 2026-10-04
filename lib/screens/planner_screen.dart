@@ -15,6 +15,8 @@ import '../models/milestone.dart';
 import '../services/canvas_refresh.dart';
 import '../services/canvas_service.dart';
 import '../services/groq_service.dart';
+import '../state/app_state.dart';
+import 'package:provider/provider.dart';
 import '../services/planner_store.dart';
 
 class PlannerScreen extends StatefulWidget {
@@ -127,8 +129,12 @@ class _PlannerScreenState extends State<PlannerScreen> with CanvasRefreshMixin<P
     // Calculate days remaining so the AI knows its boundary
     final diffDays = _daysUntil(task.dueDate).clamp(0, 365);
     List<Milestone> milestones;
+    final isOffline = context.read<AppState>().isOffline;
 
     try {
+      // Offline mode skips the AI and uses the generic steps below
+      if (isOffline) throw Exception('Offline mode');
+
       String details = task.description
           .replaceAll(RegExp(r'<[^>]*>'), ' ')
           .replaceAll(RegExp(r'\s+'), ' ')
@@ -243,6 +249,14 @@ class _PlannerScreenState extends State<PlannerScreen> with CanvasRefreshMixin<P
   Future<void> _regeneratePlan() async {
     final task = _selectedTask;
     if (task == null) return;
+
+    // Regenerating offline would swap a real plan for generic steps
+    if (context.read<AppState>().isOffline) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("You're in offline mode. Go online to regenerate this plan.")),
+      );
+      return;
+    }
 
     if ((_plan?.doneCount ?? 0) > 0) {
       final confirmed = await showDialog<bool>(

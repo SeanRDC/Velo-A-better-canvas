@@ -1,10 +1,12 @@
 // Global Application State and Preferences
+import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:timezone/timezone.dart' as tz;
 import '../models/task.dart';
+import '../services/canvas_service.dart';
 
 final ValueNotifier<ThemeMode> appThemeMode = ValueNotifier(ThemeMode.light);
 
@@ -24,13 +26,37 @@ class AppState extends ChangeNotifier {
     notifyListeners();
   }
 
-  AppState(this._prefs)
-      : _isOffline = _prefs.getBool('isOffline') ?? false,
+  // Watching for a connection to come back while offline mode is on
+  final Duration _probeInterval;
+  final Future<bool> Function() _connectionProbe;
+  Timer? _probeTimer;
+  bool _isProbing = false;
+  bool _reconnectAvailable = false;
+
+  // Whether the connection has been seen down since the user was last asked.
+  // Starts true so a fresh launch in offline mode with a connection prompts once.
+  bool _sawDisconnect = true;
+
+  // True when offline mode is on but Canvas is reachable again: time to ask
+  // the user whether to switch back online.
+  bool get reconnectAvailable => _reconnectAvailable;
+
+  static Future<bool> _defaultProbe() => CanvasService().isReachable();
+
+  // The probe and its interval can be replaced in tests
+  AppState(
+    this._prefs, {
+    Future<bool> Function()? connectionProbe,
+    Duration probeInterval = const Duration(seconds: 20),
+  })  : _connectionProbe = connectionProbe ?? _defaultProbe,
+        _probeInterval = probeInterval,
+        _isOffline = _prefs.getBool('isOffline') ?? false,
         _themeMode = _prefs.getString('theme') == 'dark' ? ThemeMode.dark : ThemeMode.light,
         _pushEnabled = _prefs.getBool('pushEnabled') ?? false,
         _headsUpEnabled = _prefs.getBool('headsUpEnabled') ?? false,
         _reminderOffsets = _prefs.getStringList('reminderOffsets') ?? ['3d', '1d'] {
     _initNotifications();
+    if (_isOffline) _startWatchingConnection();
   }
 
   bool get isOffline => _isOffline;
@@ -67,7 +93,76 @@ class AppState extends ChangeNotifier {
   void toggleOffline() {
     _isOffline = !_isOffline;
     _prefs.setBool('isOffline', _isOffline);
+
+    if (_isOffline) {
+      // Chosen on purpose, maybe while still connected: only ask about going
+      // back online once the connection has actually dropped and returned
+      _sawDisconnect = false;
+      _startWatchingConnection();
+    } else {
+      _stopWatchingConnection();
+      // Screens showing saved data reload and sync with Canvas
+      CanvasService.dataRevision.value++;
+    }
     notifyListeners();
+  }
+
+  // Accepts the "switch to online mode" prompt
+  void goOnline() {
+    if (_isOffline) toggleOffline();
+  }
+
+  // Declines the prompt: stay offline, and don't ask again until the
+  // connection has dropped and come back
+  void dismissReconnectPrompt() {
+    _sawDisconnect = false;
+    if (_isOffline) _startWatchingConnection();
+    notifyListeners();
+  }
+
+  void _startWatchingConnection() {
+    _probeTimer?.cancel();
+    _reconnectAvailable = false;
+    _probeTimer = Timer.periodic(_probeInterval, (_) => _checkConnection());
+    _checkConnection();
+  }
+
+  void _stopWatchingConnection() {
+    _probeTimer?.cancel();
+    _probeTimer = null;
+    _reconnectAvailable = false;
+  }
+
+  Future<void> _checkConnection() async {
+    if (!_isOffline || _reconnectAvailable || _isProbing) return;
+    // Nothing to sync while signed out
+    if ((_prefs.getString('canvas_api_token') ?? '').isEmpty) return;
+
+    _isProbing = true;
+    bool connected;
+    try {
+      connected = await _connectionProbe();
+    } catch (_) {
+      connected = false;
+    }
+    _isProbing = false;
+
+    if (!_isOffline) return;
+    if (!connected) {
+      _sawDisconnect = true;
+      return;
+    }
+    if (_sawDisconnect) {
+      _reconnectAvailable = true;
+      _probeTimer?.cancel();
+      notifyListeners();
+    }
+  }
+
+  @override
+  void dispose() {
+    _probeTimer?.cancel();
+    super.dispose();
   }
 
   void setTheme(ThemeMode mode) {

@@ -186,6 +186,19 @@ class CanvasService {
   // Call after any write to Canvas so the reads that follow show the result
   void _markChanged() => requestFresh();
 
+  // Whether Canvas answers at all, ignoring offline mode and sign-in. Any HTTP
+  // response counts; only a failed or timed-out request means "no connection".
+  Future<bool> isReachable() async {
+    try {
+      await http
+          .get(Uri.parse('$_baseUrl/api/v1/courses?per_page=1'), headers: {'Accept': 'application/json'})
+          .timeout(const Duration(seconds: 6));
+      return true;
+    } catch (_) {
+      return false;
+    }
+  }
+
   // Wipes everything tied to the signed-in user: token, cached Canvas data and
   // saved study plans. App preferences (theme, notifications) are kept.
   Future<void> clearSession() async {
