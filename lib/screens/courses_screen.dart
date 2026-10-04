@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import '../components/app_shell.dart';
 import '../models/course.dart';
 import '../models/task.dart';
+import '../services/canvas_refresh.dart';
 import '../services/canvas_service.dart';
 
 class CoursesScreen extends StatefulWidget {
@@ -13,7 +14,7 @@ class CoursesScreen extends StatefulWidget {
   State<CoursesScreen> createState() => _CoursesScreenState();
 }
 
-class _CoursesScreenState extends State<CoursesScreen> {
+class _CoursesScreenState extends State<CoursesScreen> with CanvasRefreshMixin<CoursesScreen> {
   final CanvasService _canvasService = CanvasService();
   
   List<Course> _courses = [];
@@ -27,11 +28,17 @@ class _CoursesScreenState extends State<CoursesScreen> {
     _fetchData();
   }
 
-  Future<void> _fetchData() async {
-    setState(() {
-      _isLoading = true;
-      _errorMessage = null;
-    });
+  // A background refresh brought new data: redraw without a spinner
+  @override
+  void onCanvasRefreshed() => _fetchData(silent: true);
+
+  Future<void> _fetchData({bool silent = false}) async {
+    if (!silent) {
+      setState(() {
+        _isLoading = true;
+        _errorMessage = null;
+      });
+    }
 
     try {
       final courses = await _canvasService.fetchActiveCourses();
@@ -97,7 +104,10 @@ class _CoursesScreenState extends State<CoursesScreen> {
                 // Course list
                 Expanded(
                   child: RefreshIndicator(
-                    onRefresh: _fetchData,
+                    onRefresh: () {
+        CanvasService.requestFresh();
+        return _fetchData();
+      },
                     color: theme.colorScheme.primary,
                     backgroundColor: theme.colorScheme.surface,
                     child: ListView.builder(

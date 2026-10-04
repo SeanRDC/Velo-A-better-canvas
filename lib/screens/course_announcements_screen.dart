@@ -6,6 +6,7 @@ import '../services/safe_launch.dart';
 import 'package:flutter_widget_from_html/flutter_widget_from_html.dart';
 import '../components/app_shell.dart';
 import '../models/course.dart';
+import '../services/canvas_refresh.dart';
 import '../services/canvas_service.dart';
 
 class CourseAnnouncementsScreen extends StatefulWidget {
@@ -17,7 +18,7 @@ class CourseAnnouncementsScreen extends StatefulWidget {
   State<CourseAnnouncementsScreen> createState() => _CourseAnnouncementsScreenState();
 }
 
-class _CourseAnnouncementsScreenState extends State<CourseAnnouncementsScreen> {
+class _CourseAnnouncementsScreenState extends State<CourseAnnouncementsScreen> with CanvasRefreshMixin<CourseAnnouncementsScreen> {
   final CanvasService _canvasService = CanvasService();
   
   List<Map<String, dynamic>> _announcements = [];
@@ -32,11 +33,17 @@ class _CourseAnnouncementsScreenState extends State<CourseAnnouncementsScreen> {
     _fetchAnnouncements();
   }
 
-  Future<void> _fetchAnnouncements() async {
-    setState(() {
-      _isLoading = true;
-      _errorMessage = null;
-    });
+  // A background refresh brought new data: redraw without a spinner
+  @override
+  void onCanvasRefreshed() => _fetchAnnouncements(silent: true);
+
+  Future<void> _fetchAnnouncements({bool silent = false}) async {
+    if (!silent) {
+      setState(() {
+        _isLoading = true;
+        _errorMessage = null;
+      });
+    }
 
     try {
       final data = await _canvasService.fetchAnnouncementsForCourse(widget.course.id);
@@ -296,7 +303,10 @@ Future<void> _launchLink(String url) async {
     }
 
     return RefreshIndicator(
-      onRefresh: _fetchAnnouncements,
+      onRefresh: () {
+        CanvasService.requestFresh();
+        return _fetchAnnouncements();
+      },
       color: theme.colorScheme.primary,
       backgroundColor: theme.colorScheme.surface,
       child: ListView.builder(

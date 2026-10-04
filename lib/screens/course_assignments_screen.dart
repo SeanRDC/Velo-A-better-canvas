@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 import '../components/app_shell.dart';
 import '../models/course.dart';
 import '../models/task.dart';
+import '../services/canvas_refresh.dart';
 import '../services/canvas_service.dart';
 
 class CourseAssignmentsScreen extends StatefulWidget {
@@ -16,7 +17,7 @@ class CourseAssignmentsScreen extends StatefulWidget {
   State<CourseAssignmentsScreen> createState() => _CourseAssignmentsScreenState();
 }
 
-class _CourseAssignmentsScreenState extends State<CourseAssignmentsScreen> {
+class _CourseAssignmentsScreenState extends State<CourseAssignmentsScreen> with CanvasRefreshMixin<CourseAssignmentsScreen> {
   final CanvasService _canvasService = CanvasService();
   
   List<Map<String, dynamic>> _originalAssignments = [];
@@ -32,11 +33,17 @@ class _CourseAssignmentsScreenState extends State<CourseAssignmentsScreen> {
     _fetchAssignments();
   }
 
-  Future<void> _fetchAssignments() async {
-    setState(() {
-      _isLoading = true;
-      _errorMessage = null;
-    });
+  // A background refresh brought new data: redraw without a spinner
+  @override
+  void onCanvasRefreshed() => _fetchAssignments(silent: true);
+
+  Future<void> _fetchAssignments({bool silent = false}) async {
+    if (!silent) {
+      setState(() {
+        _isLoading = true;
+        _errorMessage = null;
+      });
+    }
 
     try {
       final data = await _canvasService.fetchRawAssignmentPayloads(widget.course.id);
@@ -260,7 +267,10 @@ class _CourseAssignmentsScreenState extends State<CourseAssignmentsScreen> {
     }
 
     return RefreshIndicator(
-      onRefresh: _fetchAssignments,
+      onRefresh: () {
+        CanvasService.requestFresh();
+        return _fetchAssignments();
+      },
       color: theme.colorScheme.primary,
       backgroundColor: theme.colorScheme.surface,
       child: ListView.builder(

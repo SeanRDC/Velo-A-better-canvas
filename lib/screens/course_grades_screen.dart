@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../components/app_shell.dart';
 import '../models/course.dart';
+import '../services/canvas_refresh.dart';
 import '../services/canvas_service.dart';
 
 class GradeItem {
@@ -23,7 +24,7 @@ class CourseGradesScreen extends StatefulWidget {
   State<CourseGradesScreen> createState() => _CourseGradesScreenState();
 }
 
-class _CourseGradesScreenState extends State<CourseGradesScreen> {
+class _CourseGradesScreenState extends State<CourseGradesScreen> with CanvasRefreshMixin<CourseGradesScreen> {
   final CanvasService _canvasService = CanvasService();
   
   List<GradeItem> _items = [];
@@ -39,11 +40,17 @@ class _CourseGradesScreenState extends State<CourseGradesScreen> {
     _fetchGrades();
   }
 
-  Future<void> _fetchGrades() async {
-    setState(() {
-      _isLoading = true;
-      _errorMessage = null;
-    });
+  // A background refresh brought new data: redraw without a spinner
+  @override
+  void onCanvasRefreshed() => _fetchGrades(silent: true);
+
+  Future<void> _fetchGrades({bool silent = false}) async {
+    if (!silent) {
+      setState(() {
+        _isLoading = true;
+        _errorMessage = null;
+      });
+    }
 
     try {
       final data = await _canvasService.fetchGradesForCourse(widget.course.id);
@@ -126,7 +133,10 @@ class _CourseGradesScreenState extends State<CourseGradesScreen> {
     }
 
     return RefreshIndicator(
-      onRefresh: _fetchGrades,
+      onRefresh: () {
+        CanvasService.requestFresh();
+        return _fetchGrades();
+      },
       color: theme.colorScheme.primary,
       backgroundColor: theme.colorScheme.surface,
       child: ListView(

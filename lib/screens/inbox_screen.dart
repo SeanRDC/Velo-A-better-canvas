@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:go_router/go_router.dart';
 import '../components/app_shell.dart';
+import '../services/canvas_refresh.dart';
 import '../services/canvas_service.dart';
 import 'package:flutter_widget_from_html/flutter_widget_from_html.dart';
 import 'package:provider/provider.dart';
@@ -15,7 +16,7 @@ class InboxScreen extends StatefulWidget {
   State<InboxScreen> createState() => _InboxScreenState();
 }
 
-class _InboxScreenState extends State<InboxScreen> {
+class _InboxScreenState extends State<InboxScreen> with CanvasRefreshMixin<InboxScreen> {
   final CanvasService _canvasService = CanvasService();
   
   static List<Map<String, dynamic>> _cachedThreads = [];
@@ -36,6 +37,10 @@ class _InboxScreenState extends State<InboxScreen> {
     RegExp exp = RegExp(r'<[^>]*>', multiLine: true, caseSensitive: false);
     return htmlString.replaceAll(exp, '').replaceAll('&nbsp;', ' ').trim();
   }
+
+  // A background refresh brought new data: reload in place
+  @override
+  void onCanvasRefreshed() => _fetchInbox();
 
   Future<void> _fetchInbox() async {
     if (!mounted) return;
@@ -274,7 +279,10 @@ class _InboxScreenState extends State<InboxScreen> {
     }
 
     return RefreshIndicator(
-      onRefresh: _fetchInbox,
+      onRefresh: () {
+        CanvasService.requestFresh();
+        return _fetchInbox();
+      },
       color: theme.colorScheme.primary,
       backgroundColor: theme.colorScheme.surface,
       child: ListView.builder(

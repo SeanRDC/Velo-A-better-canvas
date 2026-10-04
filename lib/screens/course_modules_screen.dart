@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../components/app_shell.dart';
 import '../models/course.dart';
+import '../services/canvas_refresh.dart';
 import '../services/canvas_service.dart';
 
 class ModuleItem {
@@ -32,7 +33,7 @@ class CourseModulesScreen extends StatefulWidget {
   State<CourseModulesScreen> createState() => _CourseModulesScreenState();
 }
 
-class _CourseModulesScreenState extends State<CourseModulesScreen> {
+class _CourseModulesScreenState extends State<CourseModulesScreen> with CanvasRefreshMixin<CourseModulesScreen> {
   final CanvasService _canvasService = CanvasService();
   
   List<Module> _modules = [];
@@ -48,11 +49,17 @@ class _CourseModulesScreenState extends State<CourseModulesScreen> {
   // We store a flattened list of items to power the Next/Previous buttons
   List<ModuleItem> _allNavigableItems = [];
 
-  Future<void> _fetchModules() async {
-    setState(() {
-      _isLoading = true;
-      _errorMessage = null;
-    });
+  // A background refresh brought new data: redraw without a spinner
+  @override
+  void onCanvasRefreshed() => _fetchModules(silent: true);
+
+  Future<void> _fetchModules({bool silent = false}) async {
+    if (!silent) {
+      setState(() {
+        _isLoading = true;
+        _errorMessage = null;
+      });
+    }
 
     try {
       final data = await _canvasService.fetchModulesForCourse(widget.course.id);
@@ -226,7 +233,10 @@ class _CourseModulesScreenState extends State<CourseModulesScreen> {
     }
 
     return RefreshIndicator(
-      onRefresh: _fetchModules,
+      onRefresh: () {
+        CanvasService.requestFresh();
+        return _fetchModules();
+      },
       color: theme.colorScheme.primary,
       backgroundColor: theme.colorScheme.surface,
       child: ListView.builder(

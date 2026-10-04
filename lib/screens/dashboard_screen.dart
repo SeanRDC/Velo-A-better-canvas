@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 import '../components/app_shell.dart';
 import '../components/task_card.dart';
 import '../models/task.dart';
+import '../services/canvas_refresh.dart';
 import '../services/canvas_service.dart';
 import '../models/course.dart';
 import 'package:provider/provider.dart';
@@ -17,7 +18,7 @@ class DashboardScreen extends StatefulWidget {
   State<DashboardScreen> createState() => _DashboardScreenState();
 }
 
-class _DashboardScreenState extends State<DashboardScreen> {
+class _DashboardScreenState extends State<DashboardScreen> with CanvasRefreshMixin<DashboardScreen> {
   final CanvasService _canvasService = CanvasService();
   final ScrollController _scrollController = ScrollController();
   
@@ -58,11 +59,17 @@ class _DashboardScreenState extends State<DashboardScreen> {
     super.dispose();
   }
 
-  Future<void> _fetchCanvasData() async {
-    setState(() {
-      _isLoading = true;
-      _errorMessage = null;
-    });
+  // A background refresh brought new data: redraw without a spinner
+  @override
+  void onCanvasRefreshed() => _fetchCanvasData(silent: true);
+
+  Future<void> _fetchCanvasData({bool silent = false}) async {
+    if (!silent) {
+      setState(() {
+        _isLoading = true;
+        _errorMessage = null;
+      });
+    }
 
     try {
       final tasks = await _canvasService.fetchAllActiveTasks();
@@ -470,7 +477,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
       child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 800),
           child: RefreshIndicator(
-            onRefresh: _fetchCanvasData,
+            onRefresh: () {
+        CanvasService.requestFresh();
+        return _fetchCanvasData();
+      },
             color: theme.colorScheme.primary,
             backgroundColor: theme.colorScheme.surface,
             child: useCenter

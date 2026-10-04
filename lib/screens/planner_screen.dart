@@ -12,6 +12,7 @@ import '../components/planner/todays_focus_card.dart';
 import '../models/task.dart';
 import '../models/course.dart';
 import '../models/milestone.dart';
+import '../services/canvas_refresh.dart';
 import '../services/canvas_service.dart';
 import '../services/groq_service.dart';
 import '../services/planner_store.dart';
@@ -24,7 +25,7 @@ class PlannerScreen extends StatefulWidget {
   State<PlannerScreen> createState() => _PlannerScreenState();
 }
 
-class _PlannerScreenState extends State<PlannerScreen> {
+class _PlannerScreenState extends State<PlannerScreen> with CanvasRefreshMixin<PlannerScreen> {
   final CanvasService _canvasService = CanvasService();
   final PlannerStore _store = PlannerStore();
   final GroqService _groqService = GroqService();
@@ -53,6 +54,10 @@ class _PlannerScreenState extends State<PlannerScreen> {
     _fetchData();
   }
 
+  // A background refresh brought new data: reload, keeping the selected task
+  @override
+  void onCanvasRefreshed() => _fetchData();
+
   Future<void> _fetchData() async {
     try {
       final courses = await _canvasService.fetchActiveCourses();
@@ -68,16 +73,25 @@ class _PlannerScreenState extends State<PlannerScreen> {
         ..sort((a, b) => a.dueDate.compareTo(b.dueDate));
 
       // An empty fetch (e.g. offline with no cache) must not wipe saved plans
-      final plans = tasks.isEmpty
-          ? await _store.loadAll()
-          : await _store.prune(pendingTasks.map((t) => t.id).toSet());
+      final activeIds = pendingTasks.map((t) => t.id).toSet();
+      final Map<String, StudyPlan> plans;
+      if (!_isLoading) {
+        // Reloading after a background refresh: the plans in memory are the
+        // latest (a save may still be in flight), so keep them
+        plans = Map.of(_plans);
+        if (tasks.isNotEmpty) plans.removeWhere((id, _) => !activeIds.contains(id));
+      } else {
+        plans = tasks.isEmpty ? await _store.loadAll() : await _store.prune(activeIds);
+      }
 
       if (!mounted) return;
 
-      // Auto-select the requested task, or the next most urgent task
+      // Keep the current selection on a reload; otherwise auto-select the
+      // requested task, or the next most urgent task
+      final wantedId = _selectedTask?.id ?? widget.initialTaskId;
       Task? targetTask;
       if (pendingTasks.isNotEmpty) {
-        targetTask = pendingTasks.firstWhere((t) => t.id == widget.initialTaskId, orElse: () => pendingTasks.first);
+        targetTask = pendingTasks.firstWhere((t) => t.id == wantedId, orElse: () => pendingTasks.first);
       }
 
       setState(() {
@@ -89,7 +103,7 @@ class _PlannerScreenState extends State<PlannerScreen> {
       });
 
       // Only fire off the AI generator when this task has no saved plan yet
-      if (targetTask != null && !plans.containsKey(targetTask.id)) {
+      if (targetTask != null && !plans.containsKey(targetTask.id) && _generatingTaskId != targetTask.id) {
         _generatePlan(targetTask);
       }
 
