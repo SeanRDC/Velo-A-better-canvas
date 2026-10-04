@@ -131,7 +131,7 @@ class _SideDrawerState extends State<SideDrawer> {
                   if (widget.isDesktop) ...[
                     _DrawerTile(
                       icon: Icons.checklist_rtl,
-                      label: 'Dashboard',
+                      label: 'To do',
                       isActive: widget.activeTab == 'tasks',
                       onTap: () {
                         if (!widget.isDesktop) Navigator.pop(context);

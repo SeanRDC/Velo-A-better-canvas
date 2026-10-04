@@ -1,4 +1,5 @@
-// Card for a single Canvas task showing its course, title, and due date with a coloured left strip.
+// Compact card for a single Canvas task showing a date block, its title, course, points,
+// and how soon it is due (or how late it is).
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../models/task.dart';
@@ -13,121 +14,139 @@ class TaskCard extends StatelessWidget {
     required this.onTap,
   });
 
+  String _relativeDue(DateTime due, DateTime now) {
+    final diff = due.difference(now);
+    final span = diff.abs();
+
+    String text;
+    if (span.inMinutes < 60) {
+      final minutes = span.inMinutes < 1 ? 1 : span.inMinutes;
+      text = '$minutes min';
+    } else if (span.inHours < 24) {
+      text = span.inHours == 1 ? '1 hour' : '${span.inHours} hours';
+    } else {
+      text = span.inDays == 1 ? '1 day' : '${span.inDays} days';
+    }
+
+    return diff.isNegative ? '$text late' : 'in $text';
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    
-    final dueString = DateFormat('MMM d, h:mm a').format(task.dueDate.toLocal());
-    
-    final isOverdue = task.dueDate.isBefore(DateTime.now()) && !task.isSubmitted;
-    final statusColor = isOverdue ? theme.colorScheme.error : theme.colorScheme.secondary;
+    final now = DateTime.now();
+    final due = task.dueDate.toLocal();
 
-    return Container(
-      clipBehavior: Clip.antiAlias, 
-      decoration: BoxDecoration(
-        color: theme.colorScheme.surface,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: theme.colorScheme.onSurface.withValues(alpha: 0.05)),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.03),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          )
-        ],
+    final isOverdue = due.isBefore(now) && !task.isSubmitted;
+    final isToday = !isOverdue && due.year == now.year && due.month == now.month && due.day == now.day;
+
+    final Color blockColor;
+    final Color blockTextColor;
+    if (isOverdue) {
+      blockColor = theme.colorScheme.error;
+      blockTextColor = theme.colorScheme.onError;
+    } else if (isToday) {
+      blockColor = theme.colorScheme.primary;
+      blockTextColor = theme.colorScheme.onPrimary;
+    } else {
+      blockColor = theme.colorScheme.secondary.withValues(alpha: 0.12);
+      blockTextColor = theme.colorScheme.onSurface;
+    }
+
+    final statusColor = isOverdue ? theme.colorScheme.error : theme.colorScheme.secondary;
+    final meta = task.points > 0 ? '${task.courseCode} · ${task.points} pts' : task.courseCode;
+
+    return Material(
+      color: theme.colorScheme.surface,
+      clipBehavior: Clip.antiAlias,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(14),
+        side: BorderSide(color: theme.colorScheme.onSurface.withValues(alpha: 0.08)),
       ),
-      child: Material(
-        color: Colors.transparent,
-        child: Stack(
-          children: [
-            Positioned(
-              left: 0,
-              top: 0,
-              bottom: 0,
-              child: Container(
-                width: 6,
-                color: isOverdue ? theme.colorScheme.error : theme.colorScheme.primary,
+      child: InkWell(
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(12, 12, 8, 12),
+          child: Row(
+            children: [
+              Container(
+                width: 52,
+                height: 56,
+                decoration: BoxDecoration(
+                  color: blockColor,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(
+                      DateFormat('MMM').format(due).toUpperCase(),
+                      style: theme.textTheme.labelSmall?.copyWith(
+                        fontSize: 10,
+                        fontWeight: FontWeight.bold,
+                        letterSpacing: 0.8,
+                        color: blockTextColor.withValues(alpha: 0.8),
+                      ),
+                    ),
+                    Text(
+                      '${due.day}',
+                      style: theme.textTheme.titleLarge?.copyWith(
+                        fontWeight: FontWeight.bold,
+                        height: 1.1,
+                        color: blockTextColor,
+                      ),
+                    ),
+                  ],
+                ),
               ),
-            ),
-            
-            InkWell(
-              onTap: onTap,
-              child: Padding(
-                padding: const EdgeInsets.only(left: 26.0, right: 20.0, top: 20.0, bottom: 20.0),
+              const SizedBox(width: 14),
+              Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                          decoration: BoxDecoration(
-                            color: theme.colorScheme.secondary.withValues(alpha: 0.1),
-                            borderRadius: BorderRadius.circular(6),
-                          ),
-                          child: Text(
-                            task.courseCode,
-                            style: theme.textTheme.labelSmall?.copyWith(
-                              fontWeight: FontWeight.bold,
-                              color: theme.colorScheme.secondary,
-                            ),
-                          ),
-                        ),
-                        if (isOverdue)
-                          Row(
-                            children: [
-                              Icon(Icons.warning_amber_rounded, size: 14, color: theme.colorScheme.error),
-                              const SizedBox(width: 4),
-                              Text(
-                                'Overdue',
-                                style: theme.textTheme.labelSmall?.copyWith(
-                                  color: theme.colorScheme.error,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                            ],
-                          )
-                        else 
-                          Text(
-                            '${task.points} pts',
-                            style: theme.textTheme.labelSmall?.copyWith(
-                              fontWeight: FontWeight.bold,
-                              color: theme.colorScheme.onSurface,
-                            ),
-                          ),
-                      ],
-                    ),
-                    const SizedBox(height: 12),
                     Text(
                       task.title,
-                      style: theme.textTheme.titleMedium?.copyWith( 
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: theme.textTheme.titleSmall?.copyWith(
+                        fontSize: 15,
                         fontWeight: FontWeight.bold,
                         color: theme.colorScheme.onSurface,
-                        height: 1.3,
+                        height: 1.25,
                       ),
                     ),
-                    const SizedBox(height: 16),
+                    const SizedBox(height: 3),
+                    Text(
+                      meta,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.secondary),
+                    ),
+                    const SizedBox(height: 5),
                     Row(
                       children: [
-                        Icon(Icons.calendar_today_outlined, size: 16, color: statusColor),
-                        const SizedBox(width: 8),
-                        Text(
-                          'Due $dueString',
-                          style: theme.textTheme.bodySmall?.copyWith(
-                            color: statusColor,
-                            fontWeight: isOverdue ? FontWeight.bold : FontWeight.w500,
+                        Icon(Icons.schedule, size: 14, color: statusColor),
+                        const SizedBox(width: 5),
+                        Flexible(
+                          child: Text(
+                            '${DateFormat('h:mm a').format(due)} · ${_relativeDue(due, now)}',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              color: statusColor,
+                              fontWeight: isOverdue ? FontWeight.bold : FontWeight.w500,
+                            ),
                           ),
                         ),
-                        const Spacer(),
-                        Icon(Icons.chevron_right, size: 20, color: theme.colorScheme.secondary.withValues(alpha: 0.4)),
                       ],
                     ),
                   ],
                 ),
               ),
-            ),
-          ],
+              const SizedBox(width: 4),
+              Icon(Icons.chevron_right, size: 20, color: theme.colorScheme.secondary.withValues(alpha: 0.4)),
+            ],
+          ),
         ),
       ),
     );

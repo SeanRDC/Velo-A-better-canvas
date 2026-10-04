@@ -22,7 +22,7 @@ class BottomNav extends StatelessWidget {
             _buildTab(context, 'courses', 'Courses', Icons.menu_book_rounded, '/courses'),
             _buildTab(context, 'campus', 'Campus++', Icons.open_in_new_rounded, campusPortalUrl, external: true),
             _buildTab(context, 'assistant', 'AI Assistant', Icons.smart_toy_outlined, '/assistant'),
-            _buildTab(context, 'tasks', 'Dashboard', Icons.checklist_rtl, '/dashboard'),
+            _buildTab(context, 'tasks', 'To do', Icons.checklist_rtl, '/dashboard'),
           ],
         ),
       ),

@@ -19,10 +19,10 @@ void main() {
     double x(String label) => tester.getCenter(find.text(label)).dx;
     expect(x('Courses'), lessThan(x('Campus++')));
     expect(x('Campus++'), lessThan(x('AI Assistant')));
-    expect(x('AI Assistant'), lessThan(x('Dashboard')));
+    expect(x('AI Assistant'), lessThan(x('To do')));
 
     // Every label is fully on screen, on one line
-    for (final label in ['Courses', 'Campus++', 'AI Assistant', 'Dashboard']) {
+    for (final label in ['Courses', 'Campus++', 'AI Assistant', 'To do']) {
       final box = tester.getRect(find.text(label));
       expect(box.left, greaterThanOrEqualTo(0));
       expect(box.right, lessThanOrEqualTo(320));

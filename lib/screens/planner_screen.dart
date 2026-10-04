@@ -875,7 +875,7 @@ class _PlannerScreenState extends State<PlannerScreen> with CanvasRefreshMixin<P
               foregroundColor: theme.colorScheme.onPrimary,
               elevation: 0,
             ),
-            child: const Text('Go to Dashboard'),
+            child: const Text('Back to To do'),
           ),
         ],
       ),

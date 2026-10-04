@@ -1,4 +1,5 @@
-// Home dashboard listing upcoming Canvas tasks with filters and sorting, plus a shortcut to the planner.
+// "To do" home screen: summary counts and a grouped list of upcoming Canvas tasks with course filters
+// and sorting, plus a shortcut to the planner.
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:go_router/go_router.dart';
@@ -38,6 +39,15 @@ class _DashboardScreenState extends State<DashboardScreen> with CanvasRefreshMix
     'soonest': 'Soonest first',
     'course': 'By course',
   };
+
+  final Map<String, String> _sortShortLabels = {
+    'soonest': 'Soonest',
+    'course': 'By course',
+  };
+
+  final GlobalKey _overdueKey = GlobalKey();
+  final GlobalKey _todayKey = GlobalKey();
+  final GlobalKey _laterKey = GlobalKey();
 
   @override
   void initState() {
@@ -207,101 +217,134 @@ class _DashboardScreenState extends State<DashboardScreen> with CanvasRefreshMix
     );
   }
 
-  bool _isOverdue(Task task) {
-    return task.dueDate.isBefore(DateTime.now());
+  void _scrollToSection(List<GlobalKey> candidates) {
+    void scroll() {
+      for (final key in candidates) {
+        final target = key.currentContext;
+        if (target != null) {
+          Scrollable.ensureVisible(
+            target,
+            duration: const Duration(milliseconds: 350),
+            curve: Curves.easeOutCubic,
+          );
+          return;
+        }
+      }
+    }
+
+    if (_sortBy != 'soonest') {
+      _setSortBy('soonest');
+      WidgetsBinding.instance.addPostFrameCallback((_) => scroll());
+    } else {
+      scroll();
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final overdueCount = _filteredTasks.where(_isOverdue).length;
+
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final weekEnd = today.add(const Duration(days: 7));
+
+    int overdueCount = 0;
+    int todayCount = 0;
+    int weekCount = 0;
+    for (final task in _filteredTasks) {
+      final taskDate = DateTime(task.dueDate.year, task.dueDate.month, task.dueDate.day);
+      if (task.dueDate.isBefore(now)) overdueCount++;
+      if (taskDate == today) todayCount++;
+      if (!taskDate.isBefore(today) && taskDate.isBefore(weekEnd)) weekCount++;
+    }
+    final hasData = !_isLoading || _allTasks.isNotEmpty;
 
     return AppShell(
-      title: 'My Tasks',
+      title: 'To do',
       activeTab: 'tasks',
+      actions: [
+        Padding(
+          padding: const EdgeInsets.only(right: 12),
+          child: TextButton.icon(
+            onPressed: _showSortSheet,
+            style: TextButton.styleFrom(foregroundColor: theme.colorScheme.onSurface),
+            icon: const Icon(Icons.swap_vert, size: 18),
+            label: Text(
+              _sortShortLabels[_sortBy]!,
+              style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+            ),
+          ),
+        ),
+      ],
       child: Stack(
         children: [
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Padding(
-                padding: const EdgeInsets.fromLTRB(24, 16, 24, 4),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+          Align(
+            alignment: Alignment.topCenter,
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 800),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(24, 8, 24, 4),
+                    child: Row(
                       children: [
-                        Text(
-                          '${_filteredTasks.length} active tasks',
-                          style: theme.textTheme.headlineSmall?.copyWith(
-                            fontWeight: FontWeight.bold,
-                            color: theme.colorScheme.onSurface,
-                            letterSpacing: -0.5,
+                        Expanded(
+                          child: _buildSummaryTile(
+                            theme,
+                            value: hasData ? '$overdueCount' : '–',
+                            label: 'Overdue',
+                            alert: overdueCount > 0,
+                            onTap: () => _scrollToSection([_overdueKey, _todayKey]),
                           ),
                         ),
-                        const SizedBox(height: 2),
-                        Text(
-                          overdueCount > 0 
-                              ? '$overdueCount overdue • needs attention' 
-                              : "You're on track",
-                          style: theme.textTheme.bodySmall?.copyWith(
-                            color: overdueCount > 0 ? theme.colorScheme.error : theme.colorScheme.secondary,
-                            fontWeight: overdueCount > 0 ? FontWeight.bold : FontWeight.normal,
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: _buildSummaryTile(
+                            theme,
+                            value: hasData ? '$todayCount' : '–',
+                            label: 'Due today',
+                            alert: false,
+                            onTap: () => _scrollToSection([_todayKey, _laterKey]),
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: _buildSummaryTile(
+                            theme,
+                            value: hasData ? '$weekCount' : '–',
+                            label: 'This week',
+                            alert: false,
+                            onTap: () => _scrollToSection([_laterKey, _todayKey]),
                           ),
                         ),
                       ],
                     ),
-                    InkWell(
-                      onTap: _showSortSheet,
-                      borderRadius: BorderRadius.circular(8),
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                        decoration: BoxDecoration(
-                          color: theme.colorScheme.surface,
-                          borderRadius: BorderRadius.circular(8),
-                          border: Border.all(color: theme.colorScheme.onSurface.withValues(alpha: 0.1)),
-                        ),
-                        child: Row(
-                          children: [
-                            Icon(Icons.swap_vert, size: 16, color: theme.colorScheme.secondary),
-                            const SizedBox(width: 6),
-                            Text(
-                              _sortLabels[_sortBy]!,
-                              style: theme.textTheme.bodySmall?.copyWith(
-                                fontWeight: FontWeight.w600,
-                                color: theme.colorScheme.onSurface,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
+                  ),
 
-              SingleChildScrollView(
-                scrollDirection: Axis.horizontal,
-                physics: const BouncingScrollPhysics(),
-                padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 12.0),
-                child: Row(
-                  children: [
-                    _buildFilterChip('All', _activeFilter == 'All', theme),
-                    ..._courseCodes.map((code) {
-                      return Padding(
-                        padding: const EdgeInsets.only(left: 8.0),
-                        child: _buildFilterChip(code, _activeFilter == code, theme),
-                      );
-                    }),
-                  ],
-                ),
+                  SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    physics: const BouncingScrollPhysics(),
+                    padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 12.0),
+                    child: Row(
+                      children: [
+                        _buildFilterChip('All', _activeFilter == 'All', theme),
+                        ..._courseCodes.map((code) {
+                          return Padding(
+                            padding: const EdgeInsets.only(left: 8.0),
+                            child: _buildFilterChip(code, _activeFilter == code, theme),
+                          );
+                        }),
+                      ],
+                    ),
+                  ),
+
+                  Expanded(
+                    child: _buildContent(theme),
+                  ),
+                ],
               ),
-              
-              Expanded(
-                child: _buildContent(theme),
-              ),
-            ],
+            ),
           ),
 
           Positioned(
@@ -373,12 +416,12 @@ class _DashboardScreenState extends State<DashboardScreen> with CanvasRefreshMix
                 decoration: BoxDecoration(
                   color: theme.colorScheme.surface,
                   shape: BoxShape.circle,
-                  boxShadow: [BoxShadow(color: theme.colorScheme.shadow.withValues(alpha: 0.05), blurRadius: 10, offset: const Offset(0, 4))],
+                  border: Border.all(color: theme.colorScheme.onSurface.withValues(alpha: 0.08)),
                 ),
                 child: Icon(Icons.check, size: 32, color: theme.colorScheme.secondary),
               ),
               const SizedBox(height: 16),
-              Text('Nothing pending here', style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
+              Text('Nothing to do here', style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
               const SizedBox(height: 4),
               Text('No active tasks match this filter.', style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.secondary)),
             ],
@@ -387,54 +430,66 @@ class _DashboardScreenState extends State<DashboardScreen> with CanvasRefreshMix
       );
     }
 
-    final List<Widget> overdueWidgets = [];
-    final List<Widget> upcomingWidgets = [];
-    
-    String? currentOverdueGroup;
-    String? currentUpcomingGroup;
-
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
+    final tomorrow = today.add(const Duration(days: 1));
+
+    bool isOverdueDay(Task task) {
+      final taskDate = DateTime(task.dueDate.year, task.dueDate.month, task.dueDate.day);
+      return taskDate.isBefore(today);
+    }
+
+    String groupOf(Task task) {
+      if (_sortBy != 'soonest') return task.courseCode;
+
+      final taskDate = DateTime(task.dueDate.year, task.dueDate.month, task.dueDate.day);
+      if (taskDate.isBefore(today)) return 'Overdue';
+      if (taskDate == today) return 'Today';
+      if (taskDate == tomorrow) return 'Tomorrow';
+      return DateFormat('EEE, MMM d').format(taskDate);
+    }
+
+    final Map<String, int> groupCounts = {};
+    for (final task in _filteredTasks) {
+      final countKey = '${isOverdueDay(task)}:${groupOf(task)}';
+      groupCounts[countKey] = (groupCounts[countKey] ?? 0) + 1;
+    }
+
+    final List<Widget> overdueWidgets = [];
+    final List<Widget> upcomingWidgets = [];
+
+    String? currentOverdueGroup;
+    String? currentUpcomingGroup;
+    bool laterKeyUsed = false;
 
     for (var task in _filteredTasks) {
-      String taskGroup = '';
-      bool isOverdueItem = false;
-      
-      final taskDate = DateTime(task.dueDate.year, task.dueDate.month, task.dueDate.day);
-      if (taskDate.isBefore(today)) {
-        isOverdueItem = true;
-      }
-      
-      if (_sortBy == 'soonest') {
-         final tomorrow = today.add(const Duration(days: 1));
-         if (isOverdueItem) {
-           taskGroup = 'Overdue';
-         } else if (taskDate == today) {
-           taskGroup = 'Today';
-         } else if (taskDate == tomorrow) {
-           taskGroup = 'Tomorrow';
-         } else {
-           taskGroup = DateFormat('EEEE, MMM d').format(taskDate);
-         }
-      } else {
-         taskGroup = task.courseCode;
-      }
+      final isOverdueItem = isOverdueDay(task);
+      final taskGroup = groupOf(task);
+      final count = groupCounts['$isOverdueItem:$taskGroup']!;
 
       Widget? header;
       if (isOverdueItem) {
         if (taskGroup != currentOverdueGroup) {
-          header = _buildDivider(taskGroup, theme, isOverdue: true);
+          final key = currentOverdueGroup == null ? _overdueKey : null;
+          header = _buildDivider(taskGroup, count, theme, isOverdue: true, key: key);
           currentOverdueGroup = taskGroup;
         }
       } else {
         if (taskGroup != currentUpcomingGroup) {
-          header = _buildDivider(taskGroup, theme, isOverdue: false);
+          Key? key;
+          if (_sortBy == 'soonest' && taskGroup == 'Today') {
+            key = _todayKey;
+          } else if (!laterKeyUsed) {
+            key = _laterKey;
+            laterKeyUsed = true;
+          }
+          header = _buildDivider(taskGroup, count, theme, isOverdue: false, key: key);
           currentUpcomingGroup = taskGroup;
         }
       }
 
       final card = Padding(
-        padding: const EdgeInsets.only(bottom: 12.0),
+        padding: const EdgeInsets.only(bottom: 10.0),
         child: TaskCard(
           task: task,
           onTap: () {
@@ -447,7 +502,7 @@ class _DashboardScreenState extends State<DashboardScreen> with CanvasRefreshMix
 
             context.push('/task', extra: {
               'course': course,
-              'assignment': task, 
+              'assignment': task,
             });
           },
         ),
@@ -465,60 +520,106 @@ class _DashboardScreenState extends State<DashboardScreen> with CanvasRefreshMix
     final Key centerKey = const ValueKey('upcoming-tasks');
     final bool useCenter = upcomingWidgets.isNotEmpty && overdueWidgets.isNotEmpty;
 
-    return Align(
-      alignment: Alignment.topCenter,
-      child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 800),
-          child: RefreshIndicator(
-            onRefresh: () {
+    return RefreshIndicator(
+      onRefresh: () {
         CanvasService.requestFresh();
         return _fetchCanvasData();
       },
-            color: theme.colorScheme.primary,
-            backgroundColor: theme.colorScheme.surface,
-            child: useCenter
-                ? CustomScrollView(
-                  controller: _scrollController,
-                  center: centerKey,
-                  slivers: [
-                    SliverPadding(
-                      padding: const EdgeInsets.only(left: 24, right: 24),
-                      sliver: SliverList.list(children: overdueWidgets),
-                    ),
-                    SliverPadding(
-                      key: centerKey,
-                      padding: const EdgeInsets.only(left: 24, right: 24, bottom: 88),
-                      sliver: SliverList.list(children: upcomingWidgets),
-                    ),
-                  ],
-                )
-              : ListView(
-                  controller: _scrollController,
-                  padding: const EdgeInsets.only(left: 24, right: 24, bottom: 88),
-                  children: overdueWidgets.isNotEmpty ? overdueWidgets : upcomingWidgets,
+      color: theme.colorScheme.primary,
+      backgroundColor: theme.colorScheme.surface,
+      child: CustomScrollView(
+        controller: _scrollController,
+        physics: const AlwaysScrollableScrollPhysics(),
+        center: useCenter ? centerKey : null,
+        slivers: [
+          if (overdueWidgets.isNotEmpty)
+            SliverPadding(
+              padding: EdgeInsets.only(left: 24, right: 24, bottom: upcomingWidgets.isEmpty ? 88 : 0),
+              sliver: SliverToBoxAdapter(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: overdueWidgets,
                 ),
+              ),
+            ),
+          if (upcomingWidgets.isNotEmpty)
+            SliverPadding(
+              key: centerKey,
+              padding: const EdgeInsets.only(left: 24, right: 24, bottom: 88),
+              sliver: SliverToBoxAdapter(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: upcomingWidgets,
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSummaryTile(
+    ThemeData theme, {
+    required String value,
+    required String label,
+    required bool alert,
+    required VoidCallback onTap,
+  }) {
+    final borderColor = alert
+        ? theme.colorScheme.error.withValues(alpha: 0.35)
+        : theme.colorScheme.onSurface.withValues(alpha: 0.08);
+
+    return Material(
+      color: theme.colorScheme.surface,
+      clipBehavior: Clip.antiAlias,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(14),
+        side: BorderSide(color: borderColor),
+      ),
+      child: InkWell(
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                value,
+                style: theme.textTheme.headlineSmall?.copyWith(
+                  fontWeight: FontWeight.bold,
+                  color: alert ? theme.colorScheme.error : theme.colorScheme.onSurface,
+                  letterSpacing: -0.5,
+                  height: 1.1,
+                ),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: alert ? theme.colorScheme.error : theme.colorScheme.secondary,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
   }
 
-  Widget _buildDivider(String groupName, ThemeData theme, {required bool isOverdue}) {
+  Widget _buildDivider(String groupName, int count, ThemeData theme, {required bool isOverdue, Key? key}) {
     return Padding(
-      padding: const EdgeInsets.only(top: 24, bottom: 12),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            groupName.toUpperCase(),
-            style: theme.textTheme.labelSmall?.copyWith(
-              fontWeight: FontWeight.bold,
-              color: isOverdue ? theme.colorScheme.error : theme.colorScheme.secondary,
-              letterSpacing: 1.2,
-            ),
-          ),
-          const SizedBox(height: 8),
-          Container(height: 1, color: theme.colorScheme.onSurface.withValues(alpha: 0.1)),
-        ],
+      key: key,
+      padding: const EdgeInsets.only(top: 14, bottom: 10),
+      child: Text(
+        '${groupName.toUpperCase()} · $count',
+        style: theme.textTheme.labelSmall?.copyWith(
+          fontWeight: FontWeight.bold,
+          color: isOverdue ? theme.colorScheme.error : theme.colorScheme.secondary,
+          letterSpacing: 1.2,
+        ),
       ),
     );
   }
@@ -531,6 +632,9 @@ class _DashboardScreenState extends State<DashboardScreen> with CanvasRefreshMix
         decoration: BoxDecoration(
           color: isSelected ? theme.colorScheme.primary : theme.colorScheme.surface,
           borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: isSelected ? theme.colorScheme.primary : theme.colorScheme.onSurface.withValues(alpha: 0.1),
+          ),
         ),
         child: Text(
           label,

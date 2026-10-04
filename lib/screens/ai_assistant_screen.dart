@@ -162,7 +162,7 @@ class _AiAssistantScreenState extends State<AiAssistantScreen> {
   static const String _goOnlineLink = 'velo://go-online';
   static const String _offlineReply =
       "**You're in offline mode.** I can't answer questions or look up your tasks, grades, announcements or messages right now, because that needs a connection to the AI service and Canvas.\n\n"
-      "You can still browse what's saved on this device: your Dashboard, Courses, Planner and Inbox.\n\n"
+      "You can still browse what's saved on this device: your To do list, Courses, Planner and Inbox.\n\n"
       "[Switch to online mode]($_goOnlineLink) to chat with me.";
 
   String _status = 'Thinking';
