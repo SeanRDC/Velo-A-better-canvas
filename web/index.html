@@ -5,17 +5,95 @@
 
   <meta charset="UTF-8">
   <meta content="IE=Edge" http-equiv="X-UA-Compatible">
-  
+
   <meta name="description" content="Velo - A distraction-free Canvas LMS Co-pilot for students.">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  
+
   <title>Velo - Canvas Co-pilot</title>
-  
+
   <link rel="manifest" href="manifest.json">
   <link rel="icon" type="image/png" href="favicon.png">
   <link rel="apple-touch-icon" href="icons/Icon-192.png">
+
+  <!-- Opening screen shown while the app loads. It matches the app's own
+       background, so it fades straight into the first screen. -->
+  <style>
+    html, body { margin: 0; height: 100%; background: #FAFAFA; }
+    html.velo-dark, html.velo-dark body { background: #121212; }
+
+    #velo-splash {
+      position: fixed;
+      inset: 0;
+      z-index: 9999;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: #FAFAFA;
+      transition: opacity 400ms ease;
+    }
+    html.velo-dark #velo-splash { background: #121212; }
+
+    #velo-splash img {
+      width: 88px;
+      height: 88px;
+      border-radius: 22px;
+      opacity: 0;
+      /* Ease in once, then breathe gently until the app is ready */
+      animation: velo-in 500ms ease-out forwards, velo-breathe 1600ms ease-in-out 500ms infinite;
+    }
+    html.velo-dark #velo-splash img { box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.12); }
+
+    /* App is ready: fade out to reveal the first screen underneath */
+    #velo-splash.velo-done { opacity: 0; pointer-events: none; }
+
+    @keyframes velo-in {
+      from { opacity: 0; transform: scale(0.86); }
+      to   { opacity: 1; transform: scale(1); }
+    }
+    @keyframes velo-breathe {
+      0%, 100% { transform: scale(1); }
+      50%      { transform: scale(1.05); }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      #velo-splash img { animation: none; opacity: 1; }
+    }
+  </style>
+  <script>
+    // Use the theme saved by the app so a dark-mode user never sees a light flash
+    try {
+      var savedTheme = window.localStorage.getItem('flutter.theme') || '';
+      if (savedTheme.indexOf('dark') !== -1) document.documentElement.classList.add('velo-dark');
+    } catch (e) {}
+  </script>
 </head>
 <body>
+  <div id="velo-splash" aria-hidden="true">
+    <img src="icons/Icon-192.png" alt="">
+  </div>
+
+  <script>
+    (function () {
+      var splash = document.getElementById('velo-splash');
+      var shownAt = Date.now();
+      var MIN_VISIBLE_MS = 700;   // Long enough for the logo to ease in on fast loads
+      var FALLBACK_MS = 15000;    // Never leave the splash covering the app
+      var dismissed = false;
+
+      function dismiss() {
+        if (dismissed || !splash) return;
+        dismissed = true;
+        var wait = Math.max(0, MIN_VISIBLE_MS - (Date.now() - shownAt));
+        setTimeout(function () {
+          splash.classList.add('velo-done');
+          setTimeout(function () { splash.remove(); }, 450);
+        }, wait);
+      }
+
+      // Fired by Flutter once the first screen has been drawn
+      window.addEventListener('flutter-first-frame', dismiss);
+      setTimeout(dismiss, FALLBACK_MS);
+    })();
+  </script>
 
   <script src="flutter_bootstrap.js" async></script>
 </body>

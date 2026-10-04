@@ -73,8 +73,13 @@ class _SideDrawerState extends State<SideDrawer> {
                 ),
               ),
 
-            // Header: Avatar + Profile
-            Padding(
+            // Header: Avatar + Profile. Tapping it opens Account & Settings
+            InkWell(
+              onTap: () {
+                if (!widget.isDesktop) Navigator.pop(context);
+                context.go('/account');
+              },
+             child: Padding(
               padding: EdgeInsets.fromLTRB(24, (widget.isDesktop && widget.desktopTitle != null) ? 16 : 24, 24, 24),
               child: Row(
                 children: [
@@ -117,8 +122,9 @@ class _SideDrawerState extends State<SideDrawer> {
                   ),
                 ],
               ),
+             ),
             ),
-            
+
             // Menu Items
             Expanded(
               child: ListView(

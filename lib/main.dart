@@ -35,6 +35,12 @@ void main() async {
   tz.initializeTimeZones();
   final prefs = await SharedPreferences.getInstance();
 
+  // Open straight on the dashboard when already signed in, instead of
+  // flashing the login screen and then redirecting
+  if ((prefs.getString('canvas_api_token') ?? '').isNotEmpty) {
+    _initialLocation = '/dashboard';
+  }
+
   const String mobileFrameSetting = "disable";
   
   runApp(
@@ -48,8 +54,11 @@ void main() async {
   );
 }
 
+// Set in main() before the router is first used (top-level finals are lazy)
+String _initialLocation = '/';
+
 final _router = GoRouter(
-  initialLocation: '/',
+  initialLocation: _initialLocation,
   routes: [
     GoRoute(
       path: '/',
