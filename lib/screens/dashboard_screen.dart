@@ -5,6 +5,7 @@ import 'package:flutter/rendering.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import '../components/app_shell.dart';
+import '../components/responsive_card_grid.dart';
 import '../components/task_card.dart';
 import '../models/task.dart';
 import '../services/canvas_refresh.dart';
@@ -278,73 +279,67 @@ class _DashboardScreenState extends State<DashboardScreen> with CanvasRefreshMix
       ],
       child: Stack(
         children: [
-          Align(
-            alignment: Alignment.topCenter,
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 800),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(24, 8, 24, 4),
-                    child: Row(
-                      children: [
-                        Expanded(
-                          child: _buildSummaryTile(
-                            theme,
-                            value: hasData ? '$overdueCount' : '–',
-                            label: 'Overdue',
-                            alert: overdueCount > 0,
-                            onTap: () => _scrollToSection([_overdueKey, _todayKey]),
-                          ),
-                        ),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: _buildSummaryTile(
-                            theme,
-                            value: hasData ? '$todayCount' : '–',
-                            label: 'Due today',
-                            alert: false,
-                            onTap: () => _scrollToSection([_todayKey, _laterKey]),
-                          ),
-                        ),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: _buildSummaryTile(
-                            theme,
-                            value: hasData ? '$weekCount' : '–',
-                            label: 'This week',
-                            alert: false,
-                            onTap: () => _scrollToSection([_laterKey, _todayKey]),
-                          ),
-                        ),
-                      ],
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(24, 8, 24, 4),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: _buildSummaryTile(
+                        theme,
+                        value: hasData ? '$overdueCount' : '–',
+                        label: 'Overdue',
+                        alert: overdueCount > 0,
+                        onTap: () => _scrollToSection([_overdueKey, _todayKey]),
+                      ),
                     ),
-                  ),
-
-                  SingleChildScrollView(
-                    scrollDirection: Axis.horizontal,
-                    physics: const BouncingScrollPhysics(),
-                    padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 12.0),
-                    child: Row(
-                      children: [
-                        _buildFilterChip('All', _activeFilter == 'All', theme),
-                        ..._courseCodes.map((code) {
-                          return Padding(
-                            padding: const EdgeInsets.only(left: 8.0),
-                            child: _buildFilterChip(code, _activeFilter == code, theme),
-                          );
-                        }),
-                      ],
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: _buildSummaryTile(
+                        theme,
+                        value: hasData ? '$todayCount' : '–',
+                        label: 'Due today',
+                        alert: false,
+                        onTap: () => _scrollToSection([_todayKey, _laterKey]),
+                      ),
                     ),
-                  ),
-
-                  Expanded(
-                    child: _buildContent(theme),
-                  ),
-                ],
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: _buildSummaryTile(
+                        theme,
+                        value: hasData ? '$weekCount' : '–',
+                        label: 'This week',
+                        alert: false,
+                        onTap: () => _scrollToSection([_laterKey, _todayKey]),
+                      ),
+                    ),
+                  ],
+                ),
               ),
-            ),
+
+              SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                physics: const BouncingScrollPhysics(),
+                padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 12.0),
+                child: Row(
+                  children: [
+                    _buildFilterChip('All', _activeFilter == 'All', theme),
+                    ..._courseCodes.map((code) {
+                      return Padding(
+                        padding: const EdgeInsets.only(left: 8.0),
+                        child: _buildFilterChip(code, _activeFilter == code, theme),
+                      );
+                    }),
+                  ],
+                ),
+              ),
+
+              Expanded(
+                child: _buildContent(theme),
+              ),
+            ],
           ),
 
           Positioned(
@@ -460,6 +455,8 @@ class _DashboardScreenState extends State<DashboardScreen> with CanvasRefreshMix
 
     String? currentOverdueGroup;
     String? currentUpcomingGroup;
+    List<Widget> overdueCards = [];
+    List<Widget> upcomingCards = [];
     bool laterKeyUsed = false;
 
     for (var task in _filteredTasks) {
@@ -488,32 +485,35 @@ class _DashboardScreenState extends State<DashboardScreen> with CanvasRefreshMix
         }
       }
 
-      final card = Padding(
-        padding: const EdgeInsets.only(bottom: 10.0),
-        child: TaskCard(
-          task: task,
-          onTap: () {
+      final card = TaskCard(
+        task: task,
+        onTap: () {
 
-            final course = Course(
-              id: task.courseId,
-              name: task.courseName,
-              courseCode: task.courseCode,
-            );
+          final course = Course(
+            id: task.courseId,
+            name: task.courseName,
+            courseCode: task.courseCode,
+          );
 
-            context.push('/task', extra: {
-              'course': course,
-              'assignment': task,
-            });
-          },
-        ),
+          context.push('/task', extra: {
+            'course': course,
+            'assignment': task,
+          });
+        },
       );
 
       if (isOverdueItem) {
-        if (header != null) overdueWidgets.add(header);
-        overdueWidgets.add(card);
+        if (header != null) {
+          overdueCards = [];
+          overdueWidgets..add(header)..add(_buildCardGrid(overdueCards));
+        }
+        overdueCards.add(card);
       } else {
-        if (header != null) upcomingWidgets.add(header);
-        upcomingWidgets.add(card);
+        if (header != null) {
+          upcomingCards = [];
+          upcomingWidgets..add(header)..add(_buildCardGrid(upcomingCards));
+        }
+        upcomingCards.add(card);
       }
     }
 
@@ -606,6 +606,13 @@ class _DashboardScreenState extends State<DashboardScreen> with CanvasRefreshMix
           ),
         ),
       ),
+    );
+  }
+
+  Widget _buildCardGrid(List<Widget> cards) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: ResponsiveCardGrid(children: cards),
     );
   }
 
