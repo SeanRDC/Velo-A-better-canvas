@@ -111,6 +111,8 @@ class _ExtraEncoder extends Converter<Object?, Object?> {
         'description': value.description,
         'isLocked': value.isLocked,
         'submissionTypes': value.submissionTypes,
+        'courseImageUrl': value.courseImageUrl,
+        'courseColorHex': value.courseColorHex,
       };
     }
     if (value is ModuleItem) {
@@ -169,6 +171,8 @@ class _ExtraDecoder extends Converter<Object?, Object?> {
           description: value['description'] as String,
           isLocked: value['isLocked'] as bool,
           submissionTypes: value['submissionTypes'] as List<dynamic>,
+          courseImageUrl: value['courseImageUrl'] as String? ?? '',
+          courseColorHex: value['courseColorHex'] as String? ?? '',
         );
       case 'ModuleItem':
         return ModuleItem(

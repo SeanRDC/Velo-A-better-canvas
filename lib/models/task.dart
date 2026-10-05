@@ -14,6 +14,8 @@ class Task {
   final String description;
   final bool isLocked;
   final List<dynamic> submissionTypes;
+  final String courseImageUrl;
+  final String courseColorHex;
 
   Task({
     required this.id,
@@ -28,6 +30,8 @@ class Task {
     this.description = '',
     this.isLocked = false,
     this.submissionTypes = const [],
+    this.courseImageUrl = '',
+    this.courseColorHex = '',
   });
 
   static bool submittedFromJson(Map<String, dynamic> json) {
@@ -56,6 +60,8 @@ class Task {
       description: json['description'] ?? '<p>No description provided.</p>',
       isLocked: json['locked_for_user'] as bool? ?? false,
       submissionTypes: json['submission_types'] ?? [],
+      courseImageUrl: course.imageUrl,
+      courseColorHex: course.colorHex,
     );
   }
 }

@@ -35,3 +35,6 @@ practest/
 
 # Claude
 .claude/
+
+# Script for Presentation
+SCRIPT.md

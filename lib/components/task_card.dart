@@ -1,8 +1,10 @@
-// Compact card for a single Canvas task showing a date block, its title, course, points,
-// and how soon it is due (or how late it is).
+// Compact card for a single Canvas task showing its course image, title, course, points,
+// and when it is due (or how late it is).
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import '../models/course.dart';
 import '../models/task.dart';
+import 'course_image.dart';
 
 class TaskCard extends StatelessWidget {
   final Task task;
@@ -40,20 +42,23 @@ class TaskCard extends StatelessWidget {
     final isOverdue = due.isBefore(now) && !task.isSubmitted;
     final isToday = !isOverdue && due.year == now.year && due.month == now.month && due.day == now.day;
 
-    final Color blockColor;
-    final Color blockTextColor;
-    if (isOverdue) {
-      blockColor = theme.colorScheme.error;
-      blockTextColor = theme.colorScheme.onError;
-    } else if (isToday) {
-      blockColor = theme.colorScheme.primary;
-      blockTextColor = theme.colorScheme.onPrimary;
-    } else {
-      blockColor = theme.colorScheme.secondary.withValues(alpha: 0.12);
-      blockTextColor = theme.colorScheme.onSurface;
-    }
+    final course = Course(
+      id: task.courseId,
+      name: task.courseName,
+      courseCode: task.courseCode,
+      imageUrl: task.courseImageUrl,
+      colorHex: task.courseColorHex,
+    );
 
-    final statusColor = isOverdue ? theme.colorScheme.error : theme.colorScheme.secondary;
+    final Color statusColor;
+    if (isOverdue) {
+      statusColor = theme.colorScheme.error;
+    } else if (isToday) {
+      statusColor = theme.colorScheme.primary;
+    } else {
+      statusColor = theme.colorScheme.secondary;
+    }
+    final dueLabel = isToday ? 'Today' : DateFormat('MMM d').format(due);
     final meta = task.points > 0 ? '${task.courseCode} · ${task.points} pts' : task.courseCode;
 
     return Material(
@@ -69,37 +74,8 @@ class TaskCard extends StatelessWidget {
           padding: const EdgeInsets.fromLTRB(12, 12, 8, 12),
           child: Row(
             children: [
-              Container(
-                width: 52,
-                height: 56,
-                decoration: BoxDecoration(
-                  color: blockColor,
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Text(
-                      DateFormat('MMM').format(due).toUpperCase(),
-                      style: theme.textTheme.labelSmall?.copyWith(
-                        fontSize: 10,
-                        fontWeight: FontWeight.bold,
-                        letterSpacing: 0.8,
-                        color: blockTextColor.withValues(alpha: 0.8),
-                      ),
-                    ),
-                    Text(
-                      '${due.day}',
-                      style: theme.textTheme.titleLarge?.copyWith(
-                        fontWeight: FontWeight.bold,
-                        height: 1.1,
-                        color: blockTextColor,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(width: 14),
+              CourseImage(course: course, width: 56, height: 56, radius: 10),
+              const SizedBox(width: 12),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -129,12 +105,12 @@ class TaskCard extends StatelessWidget {
                         const SizedBox(width: 5),
                         Flexible(
                           child: Text(
-                            '${DateFormat('h:mm a').format(due)} · ${_relativeDue(due, now)}',
+                            '$dueLabel, ${DateFormat('h:mm a').format(due)} · ${_relativeDue(due, now)}',
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                             style: theme.textTheme.bodySmall?.copyWith(
                               color: statusColor,
-                              fontWeight: isOverdue ? FontWeight.bold : FontWeight.w500,
+                              fontWeight: isOverdue || isToday ? FontWeight.bold : FontWeight.w500,
                             ),
                           ),
                         ),
