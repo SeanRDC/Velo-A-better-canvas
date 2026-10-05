@@ -257,21 +257,32 @@ class _LoginScreenState extends State<LoginScreen> {
           builder: (context, constraints) {
             final isWide = constraints.maxWidth >= 600;
 
+            if (!isWide) {
+              // Phone layout: content reads from the top-left, with the privacy note resting
+              // at the bottom of the screen. Scrolls when the keyboard takes up the space.
+              const padding = EdgeInsets.fromLTRB(24, 40, 24, 16);
+              return SingleChildScrollView(
+                padding: padding,
+                child: ConstrainedBox(
+                  constraints: BoxConstraints(minHeight: constraints.maxHeight - padding.vertical),
+                  child: IntrinsicHeight(child: _buildForm(theme, onCard: false)),
+                ),
+              );
+            }
+
             return Center(
               child: SingleChildScrollView(
                 padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 32.0),
                 child: ConstrainedBox(
                   constraints: const BoxConstraints(maxWidth: 440),
                   child: Container(
-                    padding: isWide ? const EdgeInsets.all(32) : EdgeInsets.zero,
-                    decoration: isWide
-                        ? BoxDecoration(
-                            color: theme.colorScheme.surface,
-                            borderRadius: BorderRadius.circular(20),
-                            border: Border.all(color: theme.colorScheme.onSurface.withValues(alpha: 0.08)),
-                          )
-                        : null,
-                    child: _buildForm(theme, onCard: isWide),
+                    padding: const EdgeInsets.all(32),
+                    decoration: BoxDecoration(
+                      color: theme.colorScheme.surface,
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(color: theme.colorScheme.onSurface.withValues(alpha: 0.08)),
+                    ),
+                    child: _buildForm(theme, onCard: true),
                   ),
                 ),
               ),
@@ -283,8 +294,12 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   Widget _buildForm(ThemeData theme, {required bool onCard}) {
+    // On the desktop card everything is centered; on phones it is left-aligned.
+    final textAlign = onCard ? TextAlign.center : TextAlign.start;
+
     return Column(
-      mainAxisSize: MainAxisSize.min,
+      mainAxisSize: onCard ? MainAxisSize.min : MainAxisSize.max,
+      crossAxisAlignment: onCard ? CrossAxisAlignment.center : CrossAxisAlignment.start,
       children: [
         Container(
           height: 64,
@@ -298,7 +313,7 @@ class _LoginScreenState extends State<LoginScreen> {
         const SizedBox(height: 20),
         Text(
           'Velo',
-          style: theme.textTheme.headlineSmall?.copyWith(
+          style: (onCard ? theme.textTheme.headlineSmall : theme.textTheme.headlineMedium)?.copyWith(
             fontWeight: FontWeight.bold,
             color: theme.colorScheme.onSurface,
           ),
@@ -306,7 +321,7 @@ class _LoginScreenState extends State<LoginScreen> {
         const SizedBox(height: 6),
         Text(
           'Your Holy Angel coursework, planned for you.',
-          textAlign: TextAlign.center,
+          textAlign: textAlign,
           style: theme.textTheme.bodyMedium?.copyWith(
             color: theme.colorScheme.secondary,
           ),
@@ -385,6 +400,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
         TextButton.icon(
           onPressed: () => _showInstructionsSheet(theme),
+          style: onCard ? null : TextButton.styleFrom(padding: const EdgeInsets.symmetric(horizontal: 4)),
           icon: Icon(Icons.help_outline, size: 16, color: theme.colorScheme.secondary),
           label: Text(
             'How do I find my access token?',
@@ -396,16 +412,17 @@ class _LoginScreenState extends State<LoginScreen> {
           ),
         ),
         const SizedBox(height: 12),
+        if (!onCard) const Spacer(),
 
         Row(
-          mainAxisAlignment: MainAxisAlignment.center,
+          mainAxisAlignment: onCard ? MainAxisAlignment.center : MainAxisAlignment.start,
           children: [
             Icon(Icons.shield_outlined, size: 14, color: theme.colorScheme.secondary),
             const SizedBox(width: 6),
             Flexible(
               child: Text(
                 'Stored locally on this device · we never store your password',
-                textAlign: TextAlign.center,
+                textAlign: textAlign,
                 style: theme.textTheme.labelSmall?.copyWith(color: theme.colorScheme.secondary),
               ),
             ),
