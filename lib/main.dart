@@ -294,6 +294,7 @@ final _router = GoRouter(
           safeMap = incomingData;
         } else {
           safeMap = {
+            'id': incomingData.id,
             'name': incomingData.title,
             'due_at': incomingData.dueDate.toIso8601String(),
             'points_possible': incomingData.points,

@@ -4,10 +4,12 @@ import 'package:go_router/go_router.dart';
 import '../services/safe_launch.dart';
 import 'package:flutter_widget_from_html/flutter_widget_from_html.dart';
 import '../components/app_shell.dart';
+import '../components/submission_comments.dart';
+import '../components/submission_sheet.dart';
 import '../models/course.dart';
+import '../models/task.dart';
 import '../services/canvas_service.dart';
 import 'course_modules_screen.dart';
-import 'package:file_picker/file_picker.dart';
 
 class ModuleItemDetailScreen extends StatefulWidget {
   final Course course;
@@ -32,11 +34,10 @@ class _ModuleItemDetailScreenState extends State<ModuleItemDetailScreen> {
   String _htmlContent = '';
   bool _isLoading = true;
   
-  bool _submitted = false;
-  bool _isUploading = false;
-  String _selectedTab = 'file';
-  String? _fileName;
-  final TextEditingController _textController = TextEditingController();
+  Map<String, dynamic>? _assignment;
+  Map<String, dynamic>? _submission;
+
+  bool get _submitted => _submission != null && Task.submittedFromJson({'submission': _submission});
 
   @override
   void initState() {
@@ -45,29 +46,51 @@ class _ModuleItemDetailScreenState extends State<ModuleItemDetailScreen> {
     _loadCurrentItem();
   }
 
-  @override
-  void dispose() {
-    _textController.dispose();
-    super.dispose();
+  String? _assignmentIdOf(ModuleItem item) {
+    if (item.kind.toLowerCase() != 'assignment' || item.apiUrl == null) return null;
+    return RegExp(r'/assignments/(\d+)').firstMatch(item.apiUrl!)?.group(1);
   }
 
   Future<void> _loadCurrentItem() async {
-    setState(() => _isLoading = true);
-    final item = widget.items[_currentIndex];
-    
+    final index = _currentIndex;
+    setState(() {
+      _isLoading = true;
+      _assignment = null;
+      _submission = null;
+    });
+    final item = widget.items[index];
+
     final html = await _canvasService.fetchModuleItemHtml(
-      widget.course.id, 
-      item.kind, 
-      item.pageUrl, 
+      widget.course.id,
+      item.kind,
+      item.pageUrl,
       item.apiUrl,
     );
 
-    if (mounted) {
+    if (!mounted || index != _currentIndex) return;
+    setState(() {
+      _htmlContent = html;
+      _isLoading = false;
+    });
+
+    final assignmentId = _assignmentIdOf(item);
+    if (assignmentId != null) _loadSubmission(index, assignmentId);
+  }
+
+  // Reads the assignment's rules and the student's real submission from Canvas, so the submit
+  // button and the comment thread reflect what Canvas has.
+  Future<void> _loadSubmission(int index, String assignmentId) async {
+    try {
+      final results = await Future.wait([
+        _canvasService.fetchAssignment(widget.course.id, assignmentId),
+        _canvasService.fetchMySubmission(widget.course.id, assignmentId),
+      ]);
+      if (!mounted || index != _currentIndex) return;
       setState(() {
-        _htmlContent = html;
-        _isLoading = false;
+        _assignment = results[0];
+        _submission = results[1];
       });
-    }
+    } catch (_) {}
   }
 
   void _goToPrevious() {
@@ -89,155 +112,28 @@ class _ModuleItemDetailScreenState extends State<ModuleItemDetailScreen> {
     await launchSafeUrl(url);
   }
 
-  void _openSubmitSheet(ThemeData theme) {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: theme.colorScheme.surface,
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
-      builder: (BuildContext context) {
-        return StatefulBuilder(
-          builder: (BuildContext context, StateSetter setModalState) {
-            final canSubmit = (_selectedTab == 'file' && _fileName != null) || 
-                              (_selectedTab == 'text' && _textController.text.trim().isNotEmpty);
-            return Padding(
-              padding: EdgeInsets.only(
-                bottom: MediaQuery.of(context).viewInsets.bottom + 24,
-                left: 24, right: 24, top: 12,
-              ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Center(
-                    child: Container(
-                      height: 4, width: 40,
-                      decoration: BoxDecoration(color: theme.colorScheme.onSurface.withValues(alpha: 0.2), borderRadius: BorderRadius.circular(2)),
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text('Submit work', style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold)),
-                      IconButton(icon: const Icon(Icons.close), onPressed: () => Navigator.pop(context)),
-                    ],
-                  ),
-                  const SizedBox(height: 16),
-                  Container(
-                    padding: const EdgeInsets.all(4),
-                    decoration: BoxDecoration(color: theme.scaffoldBackgroundColor, borderRadius: BorderRadius.circular(8)),
-                    child: Row(
-                      children: [
-                        Expanded(
-                          child: GestureDetector(
-                            onTap: () => setModalState(() => _selectedTab = 'file'),
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(vertical: 10),
-                              decoration: BoxDecoration(
-                                color: _selectedTab == 'file' ? theme.colorScheme.primary : Colors.transparent,
-                                borderRadius: BorderRadius.circular(6),
-                              ),
-                              alignment: Alignment.center,
-                              child: Text('File upload', style: TextStyle(fontWeight: FontWeight.w600, color: _selectedTab == 'file' ? theme.colorScheme.onPrimary : theme.colorScheme.secondary)),
-                            ),
-                          ),
-                        ),
-                        Expanded(
-                          child: GestureDetector(
-                            onTap: () => setModalState(() => _selectedTab = 'text'),
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(vertical: 10),
-                              decoration: BoxDecoration(
-                                color: _selectedTab == 'text' ? theme.colorScheme.primary : Colors.transparent,
-                                borderRadius: BorderRadius.circular(6),
-                              ),
-                              alignment: Alignment.center,
-                              child: Text('Text entry', style: TextStyle(fontWeight: FontWeight.w600, color: _selectedTab == 'text' ? theme.colorScheme.onPrimary : theme.colorScheme.secondary)),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  if (_selectedTab == 'file')
-                    _fileName != null
-                        ? Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-                            decoration: BoxDecoration(color: theme.scaffoldBackgroundColor, borderRadius: BorderRadius.circular(12)),
-                            child: Row(
-                              children: [
-                                Icon(Icons.attach_file, size: 20, color: theme.colorScheme.primary),
-                                const SizedBox(width: 12),
-                                Expanded(child: Text(_fileName!, style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.bold))),
-                                InkWell(
-                                  onTap: () => setModalState(() => _fileName = null),
-                                  child: Text('Remove', style: theme.textTheme.labelSmall?.copyWith(color: theme.colorScheme.secondary)),
-                                )
-                              ],
-                            ),
-                          )
-                        : InkWell(
-                            onTap: () async {
-                              final result = await FilePicker.pickFiles();
-                              if (result.isNotEmpty) {
-                                setModalState(() => _fileName = result.first.name);
-                              }
-                            },
-                            borderRadius: BorderRadius.circular(12),
-                            child: Container(
-                              width: double.infinity, padding: const EdgeInsets.symmetric(vertical: 32),
-                              decoration: BoxDecoration(color: theme.scaffoldBackgroundColor, borderRadius: BorderRadius.circular(12)),
-                              child: Column(
-                                children: [
-                                  Icon(Icons.cloud_upload_outlined, size: 32, color: theme.colorScheme.secondary),
-                                  const SizedBox(height: 8),
-                                  Text('Choose a file', style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w500)),
-                                  Text('PDF, DOCX, ZIP up to 50 MB', style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.secondary)),
-                                ],
-                              ),
-                            ),
-                          )
-                  else
-                    TextField(
-                      controller: _textController,
-                      maxLines: 5,
-                      onChanged: (val) => setModalState(() {}),
-                      decoration: InputDecoration(
-                        hintText: 'Type your submission here...', filled: true, fillColor: theme.scaffoldBackgroundColor,
-                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
-                      ),
-                    ),
-                  const SizedBox(height: 24),
-                  SizedBox(
-                    width: double.infinity,
-                    child: ElevatedButton(
-                      onPressed: canSubmit && !_isUploading
-                          ? () async {
-                              setModalState(() => _isUploading = true);
-                              await Future.delayed(const Duration(milliseconds: 900));
-                              setState(() => _submitted = true);
-                              if (context.mounted) Navigator.pop(context);
-                            }
-                          : null,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: theme.colorScheme.primary, foregroundColor: theme.colorScheme.onPrimary,
-                        padding: const EdgeInsets.symmetric(vertical: 16), elevation: 0,
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                      ),
-                      child: _isUploading
-                          ? SizedBox(height: 20, width: 20, child: CircularProgressIndicator(color: theme.colorScheme.onPrimary, strokeWidth: 2))
-                          : Text(_submitted ? 'Submitted' : 'Submit to Canvas', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-                    ),
-                  ),
-                ],
-              ),
-            );
-          },
-        );
-      },
+  Future<void> _openSubmitSheet() async {
+    final assignment = _assignment;
+    if (assignment == null) return;
+
+    final submitted = await showSubmissionSheet(
+      context,
+      courseId: widget.course.id,
+      assignment: assignment,
+      resubmitting: _submitted,
     );
+    if (!submitted || !mounted) return;
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Submitted to Canvas.')),
+    );
+    await _loadSubmission(_currentIndex, assignment['id'].toString());
+  }
+
+  Future<void> _sendComment(String text) async {
+    final assignmentId = _assignment!['id'].toString();
+    await _canvasService.addSubmissionComment(widget.course.id, assignmentId, text);
+    await _loadSubmission(_currentIndex, assignmentId);
   }
 
   @override
@@ -247,6 +143,13 @@ class _ModuleItemDetailScreenState extends State<ModuleItemDetailScreen> {
     
     final canGoBack = _currentIndex > 0;
     final canGoForward = _currentIndex < widget.items.length - 1;
+
+    final assignment = _assignment;
+    final submission = _submission;
+    final List<dynamic> types = assignment?['submission_types'] ?? [];
+    final bool isSubmittable = assignment != null &&
+        assignment['locked_for_user'] != true &&
+        (types.any(inAppSubmissionTypes.contains) || types.contains('media_recording'));
 
     return AppShell(
       title: widget.course.courseCode,
@@ -341,6 +244,15 @@ class _ModuleItemDetailScreenState extends State<ModuleItemDetailScreen> {
                           ],
                         ),
                       ),
+
+                    if (submission != null) ...[
+                      const SizedBox(height: 32),
+                      SubmissionComments(
+                        comments: submission['submission_comments'] ?? [],
+                        ownUserId: submission['user_id']?.toString(),
+                        onSend: _sendComment,
+                      ),
+                    ],
                   ],
                 ),
           ),
@@ -357,11 +269,11 @@ class _ModuleItemDetailScreenState extends State<ModuleItemDetailScreen> {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                if (currentItem.kind.toLowerCase() == 'assignment') ...[
+                if (isSubmittable) ...[
                   SizedBox(
                     width: double.infinity,
                     child: ElevatedButton.icon(
-                      onPressed: () => _openSubmitSheet(theme),
+                      onPressed: _openSubmitSheet,
                       icon: const Icon(Icons.cloud_upload_outlined),
                       label: Text(
                         _submitted ? 'Resubmit' : 'Submit Assignment',

@@ -1,13 +1,16 @@
-// Task detail screen showing an assignment's description and details, with a form to submit it.
+// Task detail screen showing an assignment's description and details, with a form to submit it
+// and the comment thread on the submission.
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:flutter_widget_from_html/flutter_widget_from_html.dart';
 import '../components/app_shell.dart';
+import '../components/submission_comments.dart';
+import '../components/submission_sheet.dart';
 import '../models/course.dart';
 import '../models/task.dart';
+import '../services/canvas_service.dart';
 import '../services/safe_launch.dart';
-import 'package:file_picker/file_picker.dart';
 
 class TaskDetailScreen extends StatefulWidget {
   final Course course;
@@ -24,36 +27,40 @@ class TaskDetailScreen extends StatefulWidget {
 }
 
 class _TaskDetailScreenState extends State<TaskDetailScreen> {
-  String _selectedTab = 'file';
-  String? _fileName;
-  String? _mediaName;
-  final TextEditingController _textController = TextEditingController();
-  final TextEditingController _urlController = TextEditingController();
+  final CanvasService _canvasService = CanvasService();
+
+  late Map<String, dynamic> _assignment;
+  Map<String, dynamic>? _submission;
   late bool _submitted;
-  bool _isUploading = false;
+
+  String? get _assignmentId => _assignment['id']?.toString();
 
   @override
   void initState() {
     super.initState();
-    _submitted = Task.submittedFromJson(widget.assignment);
-    
-    final List<dynamic> types = widget.assignment['submission_types'] ?? [];
-    if (types.contains('online_upload')) {
-      _selectedTab = 'file';
-    } else if (types.contains('online_text_entry')) {
-      _selectedTab = 'text';
-    } else if (types.contains('online_url')) {
-      _selectedTab = 'url';
-    } else if (types.contains('media_recording')) {
-      _selectedTab = 'media';
-    }
+    _assignment = widget.assignment;
+    _submitted = Task.submittedFromJson(_assignment);
+    _loadFromCanvas();
   }
 
-  @override
-  void dispose() {
-    _textController.dispose();
-    _urlController.dispose();
-    super.dispose();
+  // The list screens pass in a cached copy, so the real submission state and the comment
+  // thread are read from Canvas here.
+  Future<void> _loadFromCanvas() async {
+    final assignmentId = _assignmentId;
+    if (assignmentId == null) return;
+
+    try {
+      final results = await Future.wait([
+        _canvasService.fetchAssignment(widget.course.id, assignmentId),
+        _canvasService.fetchMySubmission(widget.course.id, assignmentId),
+      ]);
+      if (!mounted) return;
+      setState(() {
+        _assignment = results[0];
+        _submission = results[1];
+        _submitted = Task.submittedFromJson({'submission': results[1]});
+      });
+    } catch (_) {}
   }
 
   String _formatDate(String? dateStr) {
@@ -62,10 +69,16 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
     return DateFormat('MMM d, yyyy').format(date);
   }
 
+  String _submittedLabel() {
+    final submittedAt = DateTime.tryParse(_submission?['submitted_at']?.toString() ?? '');
+    if (submittedAt == null) return 'Submitted';
+    return 'Submitted ${DateFormat('MMM d, h:mm a').format(submittedAt.toLocal())}';
+  }
+
   Future<void> _launchExternalUrl(String url) async {
     if (url.isEmpty) return;
     final success = await launchSafeUrl(url);
-    
+
     if (!success && mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Could not open the link.')),
@@ -73,192 +86,38 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
     }
   }
 
-  void _doSubmit() async {
-    setState(() => _isUploading = true);
-    await Future.delayed(const Duration(milliseconds: 900));
-    setState(() {
-      _isUploading = false;
-      _submitted = true;
-    });
+  Future<void> _openSubmitSheet() async {
+    final submitted = await showSubmissionSheet(
+      context,
+      courseId: widget.course.id,
+      assignment: _assignment,
+      resubmitting: _submitted,
+    );
+    if (!submitted || !mounted) return;
+
+    setState(() => _submitted = true);
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Submitted to Canvas.')),
+    );
+    _loadFromCanvas();
   }
 
-  void _openSubmitSheet(ThemeData theme) {
-    final List<dynamic> types = widget.assignment['submission_types'] ?? [];
-    final bool allowsFile = types.contains('online_upload');
-    final bool allowsText = types.contains('online_text_entry');
-    final bool allowsUrl = types.contains('online_url');
-    final bool allowsMedia = types.contains('media_recording');
-
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: theme.colorScheme.surface,
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
-      builder: (BuildContext context) {
-        return StatefulBuilder(
-          builder: (BuildContext context, StateSetter setModalState) {
-            final canSubmit = (_selectedTab == 'file' && _fileName != null) ||
-                              (_selectedTab == 'text' && _textController.text.trim().isNotEmpty) ||
-                              (_selectedTab == 'url' && _urlController.text.trim().isNotEmpty) ||
-                              (_selectedTab == 'media' && _mediaName != null);
-            
-            final int availableTabs = [allowsFile, allowsText, allowsUrl, allowsMedia].where((e) => e).length;
-            
-            return Padding(
-              padding: EdgeInsets.only(
-                bottom: MediaQuery.of(context).viewInsets.bottom + 24,
-                left: 24, right: 24, top: 12,
-              ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Center(
-                    child: Container(
-                      height: 4, width: 40,
-                      decoration: BoxDecoration(color: theme.colorScheme.onSurface.withValues(alpha: 0.2), borderRadius: BorderRadius.circular(2)),
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text('Submit work', style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold)),
-                      IconButton(icon: const Icon(Icons.close), onPressed: () => Navigator.pop(context)),
-                    ],
-                  ),
-                  const SizedBox(height: 16),
-                  
-                  if (availableTabs > 1)
-                    Container(
-                      padding: const EdgeInsets.all(4),
-                      margin: const EdgeInsets.only(bottom: 16),
-                      decoration: BoxDecoration(color: theme.scaffoldBackgroundColor, borderRadius: BorderRadius.circular(8)),
-                      child: Row(
-                        children: [
-                          if (allowsFile) _buildModalTab('file', 'File', theme, setModalState),
-                          if (allowsText) _buildModalTab('text', 'Text', theme, setModalState),
-                          if (allowsUrl) _buildModalTab('url', 'URL', theme, setModalState),
-                          if (allowsMedia) _buildModalTab('media', 'Media', theme, setModalState),
-                        ],
-                      ),
-                    ),
-                  
-                  if (_selectedTab == 'file' && allowsFile)
-                    _fileName != null
-                        ? Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-                            decoration: BoxDecoration(color: theme.scaffoldBackgroundColor, borderRadius: BorderRadius.circular(12)),
-                            child: Row(
-                              children: [
-                                Icon(Icons.attach_file, size: 20, color: theme.colorScheme.primary),
-                                const SizedBox(width: 12),
-                                Expanded(child: Text(_fileName!, style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.bold))),
-                                InkWell(
-                                  onTap: () => setModalState(() => _fileName = null),
-                                  child: Text('Remove', style: theme.textTheme.labelSmall?.copyWith(color: theme.colorScheme.secondary)),
-                                )
-                              ],
-                            ),
-                          )
-                        : InkWell(
-                              onTap: () async {
-                              final result = await FilePicker.pickFiles();
-                              if (result.isNotEmpty) {
-                                setModalState(() => _fileName = result.first.name);
-                              }
-                            },
-                              borderRadius: BorderRadius.circular(12),
-                              child: Container(
-                                width: double.infinity, padding: const EdgeInsets.symmetric(vertical: 32),
-                                decoration: BoxDecoration(color: theme.scaffoldBackgroundColor, borderRadius: BorderRadius.circular(12)),
-                                child: Column(
-                                  children: [
-                                    Icon(Icons.cloud_upload_outlined, size: 32, color: theme.colorScheme.secondary),
-                                    const SizedBox(height: 8),
-                                    Text('Choose a file', style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w500)),
-                                  ],
-                                ),
-                              ),
-                            ),
-
-                  if (_selectedTab == 'text' && allowsText)
-                    TextField(
-                      controller: _textController,
-                      maxLines: 6,
-                      onChanged: (val) => setModalState(() {}),
-                      decoration: InputDecoration(
-                        hintText: 'Type your submission here...', filled: true, fillColor: theme.scaffoldBackgroundColor,
-                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
-                      ),
-                    ),
-
-                  if (_selectedTab == 'url' && allowsUrl)
-                    TextField(
-                      controller: _urlController,
-                      onChanged: (val) => setModalState(() {}),
-                      decoration: InputDecoration(
-                        hintText: 'https://...', filled: true, fillColor: theme.scaffoldBackgroundColor,
-                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
-                      ),
-                    ),
-
-                  if (_selectedTab == 'media' && allowsMedia)
-                    InkWell(
-                      onTap: () async {
-                        final result = await FilePicker.pickFiles(type: FileType.media);
-                        if (result.isNotEmpty) {
-                          setModalState(() => _mediaName = result.first.name);
-                        }
-                      },
-                      borderRadius: BorderRadius.circular(12),
-                      child: Container(
-                        width: double.infinity, padding: const EdgeInsets.symmetric(vertical: 32),
-                        decoration: BoxDecoration(color: theme.scaffoldBackgroundColor, borderRadius: BorderRadius.circular(12)),
-                        child: Column(
-                          children: [
-                            Icon(Icons.mic_none, size: 32, color: theme.colorScheme.secondary),
-                            const SizedBox(height: 8),
-                            Text(_mediaName ?? 'Tap to record or upload media', style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w500)),
-                          ],
-                        ),
-                      ),
-                    ),
-                    
-                  const SizedBox(height: 24),
-                  SizedBox(
-                    width: double.infinity,
-                    child: ElevatedButton(
-                      onPressed: canSubmit && !_isUploading ? _doSubmit : null,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: theme.colorScheme.primary, foregroundColor: theme.colorScheme.onPrimary,
-                        padding: const EdgeInsets.symmetric(vertical: 16), elevation: 0,
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                      ),
-                      child: _isUploading
-                          ? SizedBox(height: 20, width: 20, child: CircularProgressIndicator(color: theme.colorScheme.onPrimary, strokeWidth: 2))
-                          : Text(_submitted ? 'Resubmit' : 'Submit to Canvas', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-                    ),
-                  ),
-                ],
-              ),
-            );
-          },
-        );
-      },
-    );
+  Future<void> _sendComment(String text) async {
+    await _canvasService.addSubmissionComment(widget.course.id, _assignmentId!, text);
+    await _loadFromCanvas();
   }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final a = widget.assignment;
-    
+    final a = _assignment;
+    final submission = _submission;
+
     final bool isLocked = a['locked_for_user'] == true;
     final List<dynamic> types = a['submission_types'] ?? [];
-    
-    final bool isSubmittable = !isLocked && (
-      types.contains('online_upload') || 
+
+    final bool isSubmittable = !isLocked && _assignmentId != null && (
+      types.contains('online_upload') ||
       types.contains('online_text_entry') ||
       types.contains('online_url') ||
       types.contains('media_recording')
@@ -287,7 +146,7 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
                   ),
                 ),
                 const SizedBox(height: 16),
-                
+
                 Wrap(
                   spacing: 16,
                   runSpacing: 12,
@@ -296,7 +155,7 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
                     _buildMeta(theme, Icons.emoji_events_outlined, '${a['points_possible'] ?? 0} pts', 'Points Possible'),
                   ],
                 ),
-                
+
                 if (_submitted) ...[
                   const SizedBox(height: 24),
                   Container(
@@ -306,7 +165,7 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
                       children: [
                         Icon(Icons.check_circle, size: 20, color: theme.colorScheme.primary),
                         const SizedBox(width: 12),
-                        Text('Submitted', style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.bold)),
+                        Text(_submittedLabel(), style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.bold)),
                       ],
                     ),
                   ),
@@ -344,13 +203,13 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
                 Text(
                   'INSTRUCTIONS',
                   style: theme.textTheme.labelSmall?.copyWith(
-                    fontWeight: FontWeight.bold, 
-                    color: theme.colorScheme.secondary, 
+                    fontWeight: FontWeight.bold,
+                    color: theme.colorScheme.secondary,
                     letterSpacing: 1.0,
                   ),
                 ),
                 const SizedBox(height: 16),
-                
+
                 HtmlWidget(
                   description,
                   onTapUrl: (url) async {
@@ -369,14 +228,23 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
                     return null;
                   },
                 ),
+
+                if (submission != null) ...[
+                  const SizedBox(height: 32),
+                  SubmissionComments(
+                    comments: submission['submission_comments'] ?? [],
+                    ownUserId: submission['user_id']?.toString(),
+                    onSend: _sendComment,
+                  ),
+                ],
               ],
             ),
           ),
-          
+
           if (isSubmittable)
             Container(
               padding: EdgeInsets.only(
-                left: 24, right: 24, top: 16, 
+                left: 24, right: 24, top: 16,
                 bottom: MediaQuery.of(context).padding.bottom > 0 ? MediaQuery.of(context).padding.bottom : 24,
               ),
               decoration: BoxDecoration(
@@ -386,7 +254,7 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
               child: SizedBox(
                 width: double.infinity,
                 child: ElevatedButton.icon(
-                  onPressed: () => _openSubmitSheet(theme),
+                  onPressed: _openSubmitSheet,
                   icon: const Icon(Icons.cloud_upload_outlined),
                   label: Text(
                     _submitted ? 'Resubmit' : 'Submit Assignment',
@@ -421,31 +289,6 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
           ],
         ),
       ],
-    );
-  }
-
-  Widget _buildModalTab(String tabKey, String label, ThemeData theme, StateSetter setModalState) {
-    final isActive = _selectedTab == tabKey;
-    return Expanded(
-      child: GestureDetector(
-        onTap: () => setModalState(() => _selectedTab = tabKey),
-        child: Container(
-          padding: const EdgeInsets.symmetric(vertical: 10),
-          decoration: BoxDecoration(
-            color: isActive ? theme.colorScheme.primary : Colors.transparent,
-            borderRadius: BorderRadius.circular(6),
-          ),
-          alignment: Alignment.center,
-          child: Text(
-            label, 
-            style: TextStyle(
-              fontWeight: FontWeight.w600, 
-              fontSize: 13,
-              color: isActive ? theme.colorScheme.onPrimary : theme.colorScheme.secondary,
-            ),
-          ),
-        ),
-      ),
     );
   }
 }

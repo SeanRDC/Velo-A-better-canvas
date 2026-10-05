@@ -9,12 +9,19 @@ import '../models/course.dart';
 import '../models/task.dart';
 import 'planner_store.dart';
 
+// Turns a thrown error into a sentence that can be shown to the student.
+String readableError(Object error) {
+  if (error is TimeoutException) return 'Canvas took too long to respond. Please try again.';
+  return error.toString().replaceFirst('Exception: ', '');
+}
+
 class CanvasService {
   final String _baseUrl = dotenv.env['CANVAS_BASE_URL'] ?? '';
   SharedPreferences? _cachedPrefs;
   Future<SharedPreferences> get _prefs async => _cachedPrefs ??= await SharedPreferences.getInstance();
 
   static const Duration _timeout = Duration(seconds: 15);
+  static const Duration _uploadTimeout = Duration(minutes: 3);
   static const int _maxPages = 5;
   static const String _canvasHost = 'hau.instructure.com';
 
@@ -446,6 +453,151 @@ class CanvasService {
 
     final List<dynamic> data = jsonDecode(body);
     return data.cast<Map<String, dynamic>>();
+  }
+
+  Future<void> _requireOnline(String action) async {
+    final prefs = await _prefs;
+    if (prefs.getBool('isOffline') ?? false) {
+      throw Exception('Cannot $action while offline.');
+    }
+  }
+
+  String _canvasError(http.Response response, String fallback) {
+    try {
+      final data = jsonDecode(response.body);
+      if (data is Map) {
+        final errors = data['errors'];
+        if (errors is List && errors.isNotEmpty) {
+          final first = errors.first;
+          if (first is Map && first['message'] != null) return first['message'].toString();
+        }
+        if (errors is Map && errors.isNotEmpty) {
+          final first = errors.values.first;
+          if (first is String) return first;
+          if (first is List && first.isNotEmpty && first.first is Map && first.first['message'] != null) {
+            return first.first['message'].toString();
+          }
+        }
+        if (data['message'] != null) return data['message'].toString();
+      }
+    } catch (_) {}
+    return '$fallback (Status: ${response.statusCode}).';
+  }
+
+  Map<String, dynamic>? _decodeMap(String body) {
+    try {
+      final data = jsonDecode(body);
+      return data is Map<String, dynamic> ? data : null;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  Future<Map<String, dynamic>> fetchAssignment(String courseId, String assignmentId) async {
+    final url = '$_baseUrl/api/v1/courses/$courseId/assignments/$assignmentId?include[]=submission';
+    final body = await _fetchWithCache(url, 'cache_api_assignment_${courseId}_$assignmentId', waitForNetwork: true);
+    return jsonDecode(body) as Map<String, dynamic>;
+  }
+
+  Future<Map<String, dynamic>> fetchMySubmission(String courseId, String assignmentId) async {
+    final url = '$_baseUrl/api/v1/courses/$courseId/assignments/$assignmentId/submissions/self?include[]=submission_comments';
+    final body = await _fetchWithCache(url, 'cache_api_submission_${courseId}_$assignmentId', waitForNetwork: true);
+    return jsonDecode(body) as Map<String, dynamic>;
+  }
+
+  // Canvas file uploads take three steps: ask Canvas for an upload slot, send the bytes to the
+  // URL it returns, then confirm. The file id that comes back is what the submission refers to.
+  Future<String> uploadSubmissionFile(String courseId, String assignmentId, String fileName, Uint8List bytes) async {
+    await _requireOnline('upload files');
+    final headers = await _getHeaders();
+
+    final slotResponse = await http.post(
+      Uri.parse('$_baseUrl/api/v1/courses/$courseId/assignments/$assignmentId/submissions/self/files'),
+      headers: headers,
+      body: {'name': fileName, 'size': bytes.length.toString()},
+    ).timeout(_timeout);
+    if (slotResponse.statusCode != 200 && slotResponse.statusCode != 201) {
+      throw Exception(_canvasError(slotResponse, 'Canvas did not accept the file'));
+    }
+
+    final slot = _decodeMap(slotResponse.body);
+    final uploadUrl = slot?['upload_url'] as String?;
+    if (slot == null || uploadUrl == null) {
+      throw Exception('Canvas did not return an upload location.');
+    }
+
+    final request = http.MultipartRequest('POST', Uri.parse(_toBaseUrl(uploadUrl) ?? uploadUrl));
+    final params = slot['upload_params'];
+    if (params is Map) {
+      params.forEach((key, value) => request.fields[key.toString()] = value.toString());
+    }
+    request.files.add(http.MultipartFile.fromBytes(
+      (slot['file_param'] ?? 'file').toString(),
+      bytes,
+      filename: fileName,
+    ));
+
+    final uploaded = await http.Response.fromStream(await request.send().timeout(_uploadTimeout));
+    var file = _decodeMap(uploaded.body);
+
+    if (file?['id'] == null) {
+      final location = uploaded.headers['location'];
+      final confirmUrl = location == null ? null : _toBaseUrl(location);
+      if (confirmUrl != null) {
+        final confirmed = await http.get(Uri.parse(confirmUrl), headers: headers).timeout(_timeout);
+        file = _decodeMap(confirmed.body);
+      }
+    }
+
+    final fileId = file?['id'];
+    if (fileId == null) {
+      throw Exception('The file upload did not complete (Status: ${uploaded.statusCode}).');
+    }
+    return fileId.toString();
+  }
+
+  Future<void> submitAssignment(
+    String courseId,
+    String assignmentId, {
+    required String type,
+    String? body,
+    String? url,
+    String? fileId,
+    String? comment,
+  }) async {
+    await _requireOnline('submit assignments');
+
+    final fields = <String, String>{'submission[submission_type]': type};
+    if (body != null) fields['submission[body]'] = body;
+    if (url != null) fields['submission[url]'] = url;
+    if (fileId != null) fields['submission[file_ids][]'] = fileId;
+    if (comment != null && comment.trim().isNotEmpty) fields['comment[text_comment]'] = comment.trim();
+
+    final response = await http.post(
+      Uri.parse('$_baseUrl/api/v1/courses/$courseId/assignments/$assignmentId/submissions'),
+      headers: await _getHeaders(),
+      body: fields,
+    ).timeout(_timeout);
+    if (response.statusCode != 200 && response.statusCode != 201) {
+      throw Exception(_canvasError(response, 'Canvas rejected the submission'));
+    }
+
+    _markChanged();
+    _fetchAssignmentsBody(courseId).then((_) {}, onError: (_) {});
+  }
+
+  Future<void> addSubmissionComment(String courseId, String assignmentId, String text) async {
+    await _requireOnline('post comments');
+
+    final response = await http.put(
+      Uri.parse('$_baseUrl/api/v1/courses/$courseId/assignments/$assignmentId/submissions/self'),
+      headers: await _getHeaders(),
+      body: {'comment[text_comment]': text.trim()},
+    ).timeout(_timeout);
+    if (response.statusCode != 200 && response.statusCode != 201) {
+      throw Exception(_canvasError(response, 'Canvas rejected the comment'));
+    }
+    _markChanged();
   }
 
   Future<List<Map<String, dynamic>>> fetchConversations({String scope = 'inbox'}) async {
