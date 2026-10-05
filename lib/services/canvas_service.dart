@@ -307,14 +307,28 @@ class CanvasService {
   }
 
   Future<List<Course>> fetchActiveCourses() async {
-    final url = '$_baseUrl/api/v1/courses?enrollment_state=active&include[]=term&include[]=teachers&per_page=50';
+    final url = '$_baseUrl/api/v1/courses?enrollment_state=active&include[]=term&include[]=teachers&include[]=course_image&per_page=50';
+    final colorsFuture = _fetchCourseColors();
     final body = await _fetchWithCache(url, 'cache_active_courses');
-    
+    final colors = await colorsFuture;
+
     final List<dynamic> data = jsonDecode(body);
     return data
-        .map((json) => Course.fromJson(json))
+        .map((json) => Course.fromJson(json, colorHex: colors['course_${json['id']}'] ?? ''))
         .where((course) => course.name != 'Unnamed Course')
         .toList();
+  }
+
+  // The colour each course has on the student's Canvas dashboard, keyed as "course_<id>".
+  Future<Map<String, String>> _fetchCourseColors() async {
+    try {
+      final body = await _fetchWithCache('$_baseUrl/api/v1/users/self/colors', 'cache_course_colors');
+      final colors = jsonDecode(body)['custom_colors'];
+      if (colors is! Map) return {};
+      return colors.map((key, value) => MapEntry(key.toString(), value.toString()));
+    } catch (_) {
+      return {};
+    }
   }
 
   Future<List<Task>> fetchAssignmentsForCourse(Course course) async {

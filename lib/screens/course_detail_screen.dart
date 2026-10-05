@@ -1,6 +1,7 @@
 // Course hub screen with tiles linking to the course's modules, assignments, grades, and announcements.
 import 'package:flutter/material.dart';
 import '../components/app_shell.dart';
+import '../components/course_image.dart';
 import '../models/course.dart';
 import 'package:go_router/go_router.dart';
 
@@ -30,6 +31,10 @@ class CourseDetailScreen extends StatelessWidget {
       child: ListView(
         padding: const EdgeInsets.only(bottom: 32),
         children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(24, 8, 24, 8),
+            child: CourseImage(course: course, width: double.infinity, height: 132, radius: 16),
+          ),
           Padding(
             padding: const EdgeInsets.fromLTRB(24, 8, 24, 16),
             child: Column(

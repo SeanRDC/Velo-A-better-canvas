@@ -2,6 +2,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../components/app_shell.dart';
+import '../components/course_image.dart';
 import '../models/course.dart';
 import '../models/task.dart';
 import '../services/canvas_refresh.dart';
@@ -139,6 +140,8 @@ class _CoursesScreenState extends State<CoursesScreen> with CanvasRefreshMixin<C
           padding: const EdgeInsets.fromLTRB(14, 14, 8, 14),
           child: Row(
             children: [
+              CourseImage(course: course, width: 56, height: 56, radius: 10),
+              const SizedBox(width: 12),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,

@@ -5,6 +5,8 @@ class Course {
   final String courseCode;
   final String instructor;
   final String term;
+  final String imageUrl;
+  final String colorHex;
 
   Course({
     required this.id,
@@ -12,9 +14,11 @@ class Course {
     required this.courseCode,
     this.instructor = 'Instructor unassigned',
     this.term = 'Current Term',
+    this.imageUrl = '',
+    this.colorHex = '',
   });
 
-  factory Course.fromJson(Map<String, dynamic> json) {
+  factory Course.fromJson(Map<String, dynamic> json, {String colorHex = ''}) {
     String parsedInstructor = 'Instructor unassigned';
     if (json['teachers'] != null && (json['teachers'] as List).isNotEmpty) {
       parsedInstructor = json['teachers'][0]['display_name'] ?? 'Instructor unassigned';
@@ -31,6 +35,8 @@ class Course {
       courseCode: json['course_code'] ?? 'Unknown Code',
       instructor: parsedInstructor,
       term: parsedTerm,
+      imageUrl: json['image_download_url'] ?? '',
+      colorHex: colorHex,
     );
   }
 }

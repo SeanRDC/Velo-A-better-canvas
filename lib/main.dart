@@ -92,6 +92,8 @@ class _ExtraEncoder extends Converter<Object?, Object?> {
         'courseCode': value.courseCode,
         'instructor': value.instructor,
         'term': value.term,
+        'imageUrl': value.imageUrl,
+        'colorHex': value.colorHex,
       };
     }
     if (value is Task) {
@@ -150,6 +152,8 @@ class _ExtraDecoder extends Converter<Object?, Object?> {
           courseCode: value['courseCode'] as String,
           instructor: value['instructor'] as String,
           term: value['term'] as String,
+          imageUrl: value['imageUrl'] as String? ?? '',
+          colorHex: value['colorHex'] as String? ?? '',
         );
       case 'Task':
         return Task(
