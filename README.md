@@ -13,7 +13,8 @@
 
 | | |
 | --- | --- |
-| **Live app** | [Open Velo][live] |
+| **Landing page** | [velo-landing-page-delta.vercel.app](https://velo-landing-page-delta.vercel.app/) |
+| **Live app** | [velo-canvas-copilot.vercel.app][live] |
 | **Demo video** | [Watch on Google Drive](https://drive.google.com/file/d/1srRAMAWLhorcxRxCmBE96qDclZ4s_ygR/view?usp=sharing) |
 | **Course** | Applications Development and Emerging Technologies (6ADET), Holy Angel University |
 | **Author** | Sean Rhani J. Dela Cruz |
@@ -47,23 +48,23 @@ The live app is connected to Holy Angel University's Canvas, so it needs a HAU C
 
 | Log in | To do | Courses |
 | :---: | :---: | :---: |
-| <img src="docs/assets/screenshots/login.png" alt="Log in" width="250"> | <img src="docs/assets/screenshots/todo.png" alt="To do" width="250"> | <img src="docs/assets/screenshots/courses.png" alt="Courses" width="250"> |
+| <img src="docs/assets/login-final.png" alt="Log in" width="250"> | <img src="docs/assets/todo-final.png" alt="To do" width="250"> | <img src="docs/assets/courses-final.png" alt="Courses" width="250"> |
 
 | ADET course | Announcements | Modules |
 | :---: | :---: | :---: |
-| <img src="docs/assets/screenshots/course-adet.png" alt="ADET course" width="250"> | <img src="docs/assets/screenshots/announcements.png" alt="Announcements" width="250"> | <img src="docs/assets/screenshots/modules.png" alt="Modules" width="250"> |
+| <img src="docs/assets/adet-final.png" alt="ADET course" width="250"> | <img src="docs/assets/announcements-final.png" alt="Announcements" width="250"> | <img src="docs/assets/modules-final.png" alt="Modules" width="250"> |
 
 | Grades | Assignments | Planner |
 | :---: | :---: | :---: |
-| <img src="docs/assets/screenshots/grades.png" alt="Grades" width="250"> | <img src="docs/assets/screenshots/assignments.png" alt="Assignments" width="250"> | <img src="docs/assets/screenshots/planner.png" alt="Planner" width="250"> |
+| <img src="docs/assets/grades-final.png" alt="Grades" width="250"> | <img src="docs/assets/assignments-final.png" alt="Assignments" width="250"> | <img src="docs/assets/planner-final.png" alt="Planner" width="250"> |
 
 | AI Assistant | Inbox | Side drawer |
 | :---: | :---: | :---: |
-| <img src="docs/assets/screenshots/ai-assistant.png" alt="AI Assistant" width="250"> | <img src="docs/assets/screenshots/inbox.png" alt="Inbox" width="250"> | <img src="docs/assets/screenshots/side-drawer.png" alt="Side drawer" width="250"> |
+| <img src="docs/assets/aiassisstant-final.png" alt="AI Assistant" width="250"> | <img src="docs/assets/inbox-final.png" alt="Inbox" width="250"> | <img src="docs/assets/sidedrawer-final.png" alt="Side drawer" width="250"> |
 
 | Account & Settings |
 | :---: |
-| <img src="docs/assets/screenshots/account-settings.png" alt="Account and Settings" width="250"> |
+| <img src="docs/assets/accountandsettings-final.png" alt="Account and Settings" width="250"> |
 
 ## What it does
 
@@ -162,4 +163,4 @@ This project was built with AI assistance. Assistant used and how much: `TODO`. 
 
 MIT, see [LICENSE](LICENSE).
 
-[live]: https://REPLACE-WITH-YOUR-LIVE-LINK
+[live]: https://velo-canvas-copilot.vercel.app/
