@@ -76,47 +76,26 @@ At least six entries. One per real use. Every entry needs a commit link.
 Three cases. Be specific. If you write that the AI was never wrong, this section
 scores zero.
 
-### Case 1 - Retrying does not fix a spent quota
-
-- **What it gave me:** Backoff retries as the fix for rate limiting.
-- **What was wrong with it:** Each retry re-sends the same request, so it spends more of the quota that is already exhausted. The user just waits longer for the same error.
-- **What I did instead:** Stopped the requests at the source with a 3-second client-side cooldown that locks the input and send button after every message.
-- **Commit:** https://github.com/SeanRDC/Velo-A-better-canvas/commit/7609355
-
-### Case 2 - `canLaunchUrl` blocked valid links
-
-- **What it gave me:** A link opener that checks `canLaunchUrl(uri)` before calling `launchUrl`.
-- **What was wrong with it:** `canLaunchUrl` returned false for valid Canvas file links, so tapping an attachment only showed "Could not open the link."
-- **What I did instead:** Removed the pre-check and called `launchUrl` directly, using its returned boolean to decide whether to show the error.
-- **Commit:** https://github.com/SeanRDC/Velo-A-better-canvas/commit/ad29463
-
-### Case 3 - Recommended an outdated package
+### Case 1 - Out of date: recommended an unmaintained package
 
 - **What it gave me:** `flutter_html: ^3.0.0` as the HTML renderer.
 - **What was wrong with it:** The package has not been updated for the current Dart HTML parser, so it conflicted with the rest of my dependencies.
 - **What I did instead:** Replaced it with `flutter_widget_from_html`, which is still maintained, and rewrote the rendering block for that package.
 - **Commit:** https://github.com/SeanRDC/Velo-A-better-canvas/commit/bec0060
 
-### Case 4 - Wrong request body for Canvas
+### Case 2 - Wrong: request body Canvas ignores
 
 - **What it gave me:** A `PUT` with a form body of `{'workflow_state': 'archived'}`.
 - **What was wrong with it:** Canvas expects `workflow_state` nested inside a `conversation` object, so the request went through but nothing was archived or marked as read.
 - **What I did instead:** Sent JSON as `{'conversation': {'workflow_state': ...}}` with a `Content-Type: application/json` header, applied the same fix to `markConversationAsRead`, and added the status code to the error message.
 - **Commit:** https://github.com/SeanRDC/Velo-A-better-canvas/commit/1ea52af
 
-### Case 5 - One huge prompt on every chat
+### Case 3 - Worse than what I did instead: one huge prompt on every chat
 
 - **What it gave me:** A single method that loads everything into the system prompt up front.
 - **What was wrong with it:** It sent every course's data on every chat, even for a simple question, which burned through the token quota. The pending-tasks block was also duplicated, so assignments were fetched and written twice.
 - **What I did instead:** Split it into three small methods (`buildTasksContext`, `buildGradesContext`, `buildAnnouncementsContext`) and switched to function calling so the model only requests the one it needs.
 - **Commit:** https://github.com/SeanRDC/Velo-A-better-canvas/commit/b605e1b
-
-### Case 6 - `vercel.json` in the wrong folder
-
-- **What it gave me:** A `vercel.json` with the rewrites placed inside the `web/` folder.
-- **What was wrong with it:** Vercel only reads `vercel.json` from the project root, so the `/api` proxy to Canvas was never applied.
-- **What I did instead:** Moved `vercel.json` to the project root and deleted the one in `web/`.
-- **Commit:** https://github.com/SeanRDC/Velo-A-better-canvas/commit/3d7fed2
 
 ---
 
@@ -168,38 +147,11 @@ it in your own words.
 
 ### The AI-written part I understand best
 
-#### Rate-limit retry loop
-
-- **File:** `lib/screens/ai_assistant_screen.dart`
-- **Commit:** https://github.com/SeanRDC/Velo-A-better-canvas/commit/3e6c98b
-- **What it does and why we kept it:** On a 429 or quota error it waits `1000ms + random(0..2000 * 2^attempt)` and tries again, rethrowing after the 4th attempt. The jitter keeps retries from firing at the same instant. Kept because short network blips recover on their own without the user resending.
-
-#### File size formatter
-
-- **File:** `lib/screens/course_announcements_screen.dart`
-- **Commit:** https://github.com/SeanRDC/Velo-A-better-canvas/commit/e88b9c9
-- **What it does and why we kept it:** `_formatFileSize` turns a byte count into B, KB or MB by comparing against 1024 and 1024². Kept because Canvas only returns raw bytes and students need a readable size before downloading on mobile data.
-
-#### HTML announcement rendering
-
-- **File:** `lib/screens/course_announcements_screen.dart`
-- **Commit:** https://github.com/SeanRDC/Velo-A-better-canvas/commit/bec0060
-- **What it does and why we kept it:** Renders the announcement's HTML body as real Flutter widgets instead of stripped text. Kept because professors post links, lists and bold text that plain text loses.
-
-#### Archive conversation request
-
-- **File:** `lib/services/canvas_service.dart`
-- **Commit:** https://github.com/SeanRDC/Velo-A-better-canvas/commit/1ea52af
-- **What it does and why we kept it:** `archiveConversation` sends a JSON `PUT` that sets the conversation's `workflow_state` to `archived` and throws if Canvas does not return 200. Kept because it changes the real Canvas inbox, so the archive stays in sync with the website.
-
-#### Function-calling loop
-
 - **File:** `lib/screens/ai_assistant_screen.dart`
 - **Commit:** https://github.com/SeanRDC/Velo-A-better-canvas/commit/fe59be1
-- **What it does and why we kept it:** Declares three tools to the model, then loops while the response contains function calls: it runs the matching Canvas method, sends the result back, and repeats until the model answers in text. Kept because the model only pulls data when the question needs it.
+- **What it does and why we kept it:** The function-calling loop for the assistant. It works in three steps:
+  1. It declares three tools to the model (`get_pending_tasks`, `get_course_grades`, `get_recent_announcements`), each with a description so the model knows when to use it.
+  2. After sending the user's message, it checks `response.functionCalls`. If the model asked for a tool, it runs the matching `CanvasService` method and sends the result back with `Content.functionResponse`.
+  3. It repeats in a `while` loop until the model replies with text instead of another tool call, so one question can pull tasks and grades in the same turn.
 
-#### Vercel rewrites
-
-- **File:** `vercel.json`
-- **Commit:** https://github.com/SeanRDC/Velo-A-better-canvas/commit/3d7fed2
-- **What it does and why we kept it:** Two rewrites: `/api/*` is proxied to the Canvas server so the browser never makes a cross-origin request, and everything else falls back to `index.html` so refreshing a deep link still loads the app. The order matters because the catch-all would swallow `/api` if it came first.
+  We kept it because the model only pulls Canvas data when the question needs it. The earlier version put every course's data in the system prompt on every message, which is what kept exhausting the token quota (see Case 3). The system prompt also tells the model it does not know the student's deadlines by default, which stops it from inventing them.
