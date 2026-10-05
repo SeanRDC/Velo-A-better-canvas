@@ -1,34 +1,33 @@
 # Demo video
 
-**File:** `demo.mp4` in this folder, or the hosted link (see below)
-**Length:** aim for 3 to 5 minutes
-**Recorded on:** the device you used
+**File:** hosted on Google Drive: [Watch the demo video](https://drive.google.com/file/d/1srRAMAWLhorcxRxCmBE96qDclZ4s_ygR/view?usp=sharing)
+**Length:** about 10 minutes
+**Recorded on:** the web build of Velo in a desktop browser, with VS Code for the code walkthrough
 
 ## What it shows
 
-A short list, in order, so a viewer can skip to what they need:
+A short list, in order, so a viewer can skip to what they need. Times are approximate.
 
-- 0:00 what the app is and who it is for
-- 0:20 ...
-- 1:10 ...
+- 0:00 what Velo is and who it is for: university students whose Canvas deadlines are spread across every course
+- 0:20 signing in with a Canvas access token
+- 0:30 the To do feed: every unsubmitted task across all courses, sorted by deadline, with course images
+- 0:45 Courses, and one course's announcements, modules, grades and assignments
+- 0:55 an assignment: instructions from Canvas, the comment thread, and a real submission
+- 1:20 the Planner and Auto-Plan, which breaks assignments into daily milestones
+- 1:40 the AI Assistant answering from live Canvas data, with links that open tasks in the app
+- 1:55 the Inbox, with Canvas messages and announcements together
+- 2:00 offline mode, showing saved data and the last sync time
+- 2:10 the code: the cached fetch in `lib/services/canvas_service.dart` and the global state in `lib/state/app_state.dart`
+- 2:40 the AI segment: how AI was used to build the app, three cases where it was wrong, and the parts written by hand
+- 4:50 what is next
 
-Cover, in this order: the main user journey end to end, anything that only works
-on a real device (camera, GPS, sensors), and the thing you are proudest of.
+The walkthrough follows the main user journey end to end: sign in, see what is due, open the course, read the assignment, submit it, and plan the rest. Deadline reminders only work on a mobile build, so they are not shown in this recording.
+
+More detail on each part is in the [presentation notes](presentation/README.md).
 
 ## Getting it into the repo
 
-GitHub **blocks any file over 100 MB** and warns over 50 MB, so compress before
-you commit:
-
-```bash
-ffmpeg -i raw.mp4 -vcodec libx264 -crf 28 -preset slow \
-       -vf scale=-2:720 -acodec aac -b:a 96k demo.mp4
-```
-
-Raise `-crf` (28 to 32) or drop to `-2:480` if it is still too large. If it still
-does not fit, attach it to a **GitHub Release** or upload it unlisted and link it
-here. Never commit the raw capture: git keeps it forever even after you delete
-it.
+The video is not committed to this repository. GitHub blocks any file over 100 MB and warns over 50 MB, so the recording is hosted on Google Drive and linked at the top of this page.
 
 ## Before you record
 
