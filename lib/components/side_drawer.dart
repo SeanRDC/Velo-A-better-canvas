@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import '../services/safe_launch.dart';
 import '../state/app_state.dart';
 import '../services/canvas_service.dart';
+import '../screens/ai_assistant_screen.dart';
 
 class SideDrawer extends StatefulWidget {
   final String? activeTab;
@@ -275,9 +276,12 @@ class _SideDrawerState extends State<SideDrawer> {
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
               child: InkWell(
-                onTap: () {
+                onTap: () async {
+                  final router = GoRouter.of(context);
                   if (!widget.isDesktop) Navigator.pop(context);
-                  context.go('/');
+                  await _canvasService.clearSession();
+                  AiAssistantScreen.resetConversation();
+                  router.go('/');
                 },
                 borderRadius: BorderRadius.circular(8),
                 child: Container(
