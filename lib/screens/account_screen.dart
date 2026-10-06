@@ -536,8 +536,10 @@ class _AccountScreenState extends State<AccountScreen> {
             width: double.infinity,
             child: OutlinedButton.icon(
               onPressed: () async {
+                final appState = context.read<AppState>();
                 await _canvasService.clearSession();
                 AiAssistantScreen.resetConversation();
+                appState.resetSession();
                 if (context.mounted) context.go('/');
               },
               icon: Icon(Icons.logout, size: 18, color: theme.colorScheme.onSurface),

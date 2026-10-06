@@ -18,9 +18,9 @@ Velo has no database or backend of its own. Work the user submits (files, text e
 
 - Values my app needs at run time: `CANVAS_BASE_URL`, `GROQ_API_KEY`. The Canvas token is never built in: each user pastes their own at login, and it is verified against Canvas before it is saved.
 - Where they live locally: `.env`, which is git-ignored. `.env.example` is committed with empty values.
-- Where the deploy gets them: the published build is deployed on Vercel. `vercel_build.sh` writes `.env` at build time from the Vercel project's environment variables, so no secret is stored in this repository or in GitHub Actions.
+- Where the deploy gets them: the published build is deployed on Vercel. `GROQ_API_KEY` is a Vercel environment variable read only by the serverless function `api/groq.js`; `vercel_build.sh` writes a `.env` with an empty key, so no secret is stored in this repository, in GitHub Actions or in the web build.
 - Anything my deployed web build carries that a visitor could read, and why that
-  is acceptable: The Flutter web build bundles `.env` as an asset, so `GROQ_API_KEY` can be read by any visitor of the deployed site. This was confirmed on the live site on 2026-10-06. It is a known, unresolved risk of this prototype and is not acceptable for wider use: the key should be rotated, given a spend limit, and moved behind a server-side proxy. No Canvas token is bundled.
+  is acceptable: The Flutter web build bundles `.env` as an asset, but on the deployed site it holds no key. AI requests go to `/api/groq`, which adds the key on the server, fixes the model, and only answers callers whose Canvas token is accepted by Canvas. Until 2026-10-06 the key was bundled in the build and readable by visitors, so that key must be rotated. No Canvas token is bundled.
 
 ## What protects the data on the service side
 
@@ -30,7 +30,7 @@ Velo has no database or backend of its own. Work the user submits (files, text e
 - The app only attaches the Canvas token to requests for the Canvas host. Links returned by Canvas that point to another host are not followed with the token.
 - File submissions are uploaded to the upload location Canvas issues for that submission. Course images load from Canvas's file storage.
 - Links inside Canvas content and AI replies only open if they are `http`, `https` or `mailto`.
-- The AI Assistant and the Planner's Auto-Plan send the coursework details needed for a reply (assignment names and deadlines, grades, announcements, inbox messages) to Groq. Nothing is sent to Groq unless the user uses those features.
+- The AI Assistant and the Planner's Auto-Plan send the coursework details needed for a reply (assignment names and deadlines, grades, announcements, inbox messages) to Groq. Nothing is sent to Groq unless the user uses those features. On the web build these requests pass through the `/api/groq` function on Vercel together with the user's Canvas token, which the function uses only to confirm the caller is a Canvas user; Velo does not log or store either.
 - Submitting, commenting and other changes are blocked while the app is in offline mode.
 - The token and cached data sit in plain `shared_preferences` storage, not encrypted storage. Logging out removes the token, all cached Canvas data, saved study plans and the assistant conversation.
 

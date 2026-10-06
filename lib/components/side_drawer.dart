@@ -37,6 +37,7 @@ class _SideDrawerState extends State<SideDrawer> {
   void initState() {
     super.initState();
     _fetchProfile();
+    context.read<AppState>().loadUnreadInboxCount();
   }
 
   Future<void> _fetchProfile() async {
@@ -278,9 +279,11 @@ class _SideDrawerState extends State<SideDrawer> {
               child: InkWell(
                 onTap: () async {
                   final router = GoRouter.of(context);
+                  final appState = context.read<AppState>();
                   if (!widget.isDesktop) Navigator.pop(context);
                   await _canvasService.clearSession();
                   AiAssistantScreen.resetConversation();
+                  appState.resetSession();
                   router.go('/');
                 },
                 borderRadius: BorderRadius.circular(8),

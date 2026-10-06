@@ -455,7 +455,9 @@ class _AiAssistantScreenState extends State<AiAssistantScreen> {
       if (mounted) {
         setState(() {
           _messages.add(ChatMessage(
-            text: 'Connection error. Please try again.',
+            text: e is GroqException && e.isRateLimited
+                ? 'The AI is getting too many requests right now. Please wait a few seconds and try again.'
+                : 'Connection error. Please try again.',
             isUser: false
           ));
         });

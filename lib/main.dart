@@ -196,6 +196,11 @@ GoRouterRedirect _requireExtra<T>(String fallback) =>
 final _router = GoRouter(
   initialLocation: _initialLocation,
   extraCodec: const _ExtraCodec(),
+  // Every screen except login needs a saved Canvas token.
+  redirect: (context, state) {
+    final signedIn = context.read<AppState>().isSignedIn;
+    return (!signedIn && state.matchedLocation != '/') ? '/' : null;
+  },
   routes: [
     GoRoute(
       path: '/',

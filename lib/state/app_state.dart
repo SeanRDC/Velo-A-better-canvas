@@ -22,8 +22,37 @@ class AppState extends ChangeNotifier {
   final List<String> _reminderOffsets;
   int unreadInboxCount = 0;
 
+  bool _unreadRequested = false;
+  int _unreadEpoch = 0;
+
   void updateUnreadInboxCount(int count) {
+    _unreadEpoch++;
+    _unreadRequested = true;
     unreadInboxCount = count;
+    notifyListeners();
+  }
+
+  // Loads the unread badge once per session, so it shows before the Inbox is first opened.
+  Future<void> loadUnreadInboxCount() async {
+    if (_unreadRequested) return;
+    if (!isSignedIn) return;
+    _unreadRequested = true;
+    final epoch = _unreadEpoch;
+    try {
+      final count = await CanvasService().fetchUnreadInboxCount();
+      if (epoch != _unreadEpoch) return;
+      unreadInboxCount = count;
+      notifyListeners();
+    } catch (_) {
+      if (epoch == _unreadEpoch) _unreadRequested = false;
+    }
+  }
+
+  // Drops per-user state held in memory when the user logs out.
+  void resetSession() {
+    _unreadEpoch++;
+    _unreadRequested = false;
+    unreadInboxCount = 0;
     notifyListeners();
   }
 
@@ -54,6 +83,7 @@ class AppState extends ChangeNotifier {
     if (_isOffline) _startWatchingConnection();
   }
 
+  bool get isSignedIn => (_prefs.getString('canvas_api_token') ?? '').isNotEmpty;
   bool get isOffline => _isOffline;
   ThemeMode get themeMode => _themeMode;
   bool get pushEnabled => _pushEnabled;

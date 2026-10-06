@@ -623,6 +623,25 @@ class CanvasService {
     return data.cast<Map<String, dynamic>>();
   }
 
+  Future<int> fetchUnreadInboxCount() async {
+    final conversations = await fetchConversations();
+    int unread = conversations.where((c) => c['workflow_state'] == 'unread').length;
+
+    final courses = await fetchActiveCourses();
+    final counts = await Future.wait(courses.map((course) async {
+      try {
+        final announcements = await fetchAnnouncementsForCourse(course.id);
+        return announcements.where((a) => a['read_state'] == 'unread').length;
+      } catch (_) {
+        return 0;
+      }
+    }));
+    for (final count in counts) {
+      unread += count;
+    }
+    return unread;
+  }
+
   Future<void> markConversationAsRead(String conversationId) async {
     final prefs = await SharedPreferences.getInstance();
     if (prefs.getBool('isOffline') ?? false) return;

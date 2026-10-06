@@ -75,7 +75,12 @@ class _CoursesScreenState extends State<CoursesScreen> with CanvasRefreshMixin<C
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
-    final String headerTerm = _courses.isNotEmpty ? _courses.first.term : 'Current Term';
+    final terms = _courses.map((c) => c.term).toSet();
+    final String headerTerm = terms.isEmpty
+        ? 'Current Term'
+        : terms.length == 1
+            ? terms.first
+            : 'Active Courses';
 
     return AppShell(
       title: 'My Courses',

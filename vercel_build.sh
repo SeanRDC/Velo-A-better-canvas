@@ -1,7 +1,8 @@
 #!/bin/bash
 
-# 1. Securely inject your Groq key and leave Canvas URL blank for Method 2
-echo "GROQ_API_KEY=$GROQ_API_KEY" > .env
+# 1. Leave the Groq key out of the build (api/groq.js reads it on the server) and leave
+#    Canvas URL blank for Method 2
+echo "GROQ_API_KEY=" > .env
 echo "CANVAS_BASE_URL=" >> .env
 
 # 2. Download the Flutter SDK

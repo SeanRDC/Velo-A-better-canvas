@@ -58,7 +58,9 @@ class TaskCard extends StatelessWidget {
     } else {
       statusColor = theme.colorScheme.secondary;
     }
-    final dueLabel = isToday ? 'Today' : DateFormat('MMM d').format(due);
+    final dueLabel = isToday
+        ? 'Today'
+        : DateFormat(due.year == now.year ? 'MMM d' : 'MMM d, y').format(due);
     final meta = task.points > 0 ? '${task.courseCode} · ${task.points} pts' : task.courseCode;
 
     return Material(
