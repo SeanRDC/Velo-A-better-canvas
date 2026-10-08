@@ -7,6 +7,7 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/course.dart';
 import '../models/task.dart';
+import 'net.dart' as net;
 import 'planner_store.dart';
 
 // Turns a thrown error into a sentence that can be shown to the student.
@@ -77,7 +78,7 @@ class CanvasService {
 
   Future<String> _fetchPages(String url, {required bool paginate}) async {
     final headers = await _getHeaders();
-    var response = await http.get(Uri.parse(url), headers: headers).timeout(_timeout);
+    var response = await net.get(Uri.parse(url), headers: headers).timeout(_timeout);
     if (response.statusCode != 200) {
       throw Exception('Failed to load data from Canvas (Status: ${response.statusCode}).');
     }
@@ -91,7 +92,7 @@ class CanvasService {
 
     final items = List<dynamic>.from(firstPage);
     for (int page = 1; page < _maxPages && next != null; page++) {
-      response = await http.get(Uri.parse(next), headers: headers).timeout(_timeout);
+      response = await net.get(Uri.parse(next), headers: headers).timeout(_timeout);
       if (response.statusCode != 200) break;
       items.addAll(jsonDecode(response.body) as List<dynamic>);
       next = _nextPageUrl(response.headers['link']);
@@ -204,7 +205,7 @@ class CanvasService {
 
     try {
       final url = '$_baseUrl/api/v1/users/self/profile';
-      final response = await http.get(
+      final response = await net.get(
         Uri.parse(url),
         headers: {
           'Authorization': 'Bearer $token',
@@ -286,7 +287,7 @@ class CanvasService {
       throw Exception('Cannot update profile while offline.');
     }
     
-    final response = await http.put(
+    final response = await net.put(
       Uri.parse('$_baseUrl/api/v1/users/self/profile'),
       headers: await _getHeaders(),
       body: {'user[bio]': newBio},
@@ -525,7 +526,7 @@ class CanvasService {
     await _requireOnline('upload files');
     final headers = await _getHeaders();
 
-    final slotResponse = await http.post(
+    final slotResponse = await net.post(
       Uri.parse('$_baseUrl/api/v1/courses/$courseId/assignments/$assignmentId/submissions/self/files'),
       headers: headers,
       body: {'name': fileName, 'size': bytes.length.toString()},
@@ -551,14 +552,14 @@ class CanvasService {
       filename: fileName,
     ));
 
-    final uploaded = await http.Response.fromStream(await request.send().timeout(_uploadTimeout));
+    final uploaded = await http.Response.fromStream(await net.send(request).timeout(_uploadTimeout));
     var file = _decodeMap(uploaded.body);
 
     if (file?['id'] == null) {
       final location = uploaded.headers['location'];
       final confirmUrl = location == null ? null : _toBaseUrl(location);
       if (confirmUrl != null) {
-        final confirmed = await http.get(Uri.parse(confirmUrl), headers: headers).timeout(_timeout);
+        final confirmed = await net.get(Uri.parse(confirmUrl), headers: headers).timeout(_timeout);
         file = _decodeMap(confirmed.body);
       }
     }
@@ -587,7 +588,7 @@ class CanvasService {
     if (fileId != null) fields['submission[file_ids][]'] = fileId;
     if (comment != null && comment.trim().isNotEmpty) fields['comment[text_comment]'] = comment.trim();
 
-    final response = await http.post(
+    final response = await net.post(
       Uri.parse('$_baseUrl/api/v1/courses/$courseId/assignments/$assignmentId/submissions'),
       headers: await _getHeaders(),
       body: fields,
@@ -603,7 +604,7 @@ class CanvasService {
   Future<void> addSubmissionComment(String courseId, String assignmentId, String text) async {
     await _requireOnline('post comments');
 
-    final response = await http.put(
+    final response = await net.put(
       Uri.parse('$_baseUrl/api/v1/courses/$courseId/assignments/$assignmentId/submissions/self'),
       headers: await _getHeaders(),
       body: {'comment[text_comment]': text.trim()},
@@ -646,7 +647,7 @@ class CanvasService {
     final prefs = await SharedPreferences.getInstance();
     if (prefs.getBool('isOffline') ?? false) return;
     
-    await http.put(
+    await net.put(
       Uri.parse('$_baseUrl/api/v1/conversations/$conversationId'),
       headers: await _getHeaders(),
       body: {'conversation[workflow_state]': 'read'},
@@ -658,7 +659,7 @@ class CanvasService {
     final prefs = await SharedPreferences.getInstance();
     if (prefs.getBool('isOffline') ?? false) return;
 
-    await http.put(
+    await net.put(
       Uri.parse('$_baseUrl/api/v1/courses/$courseId/discussion_topics/$topicId/read'),
       headers: await _getHeaders(),
     ).timeout(_timeout);
@@ -671,7 +672,7 @@ class CanvasService {
       throw Exception('Cannot archive messages while offline.');
     }
 
-    final response = await http.put(
+    final response = await net.put(
       Uri.parse('$_baseUrl/api/v1/conversations/$conversationId'),
       headers: await _getHeaders(),
       body: jsonEncode({'conversation': {'workflow_state': 'archived'}}),
@@ -689,7 +690,7 @@ class CanvasService {
       throw Exception('Cannot delete messages while offline.');
     }
 
-    final response = await http.delete(
+    final response = await net.delete(
       Uri.parse('$_baseUrl/api/v1/conversations/$conversationId'),
       headers: await _getHeaders(),
     ).timeout(_timeout);
@@ -707,7 +708,7 @@ class CanvasService {
   }
 
   Future<void> replyToConversation(String conversationId, String messageBody) async {
-    final response = await http.post(
+    final response = await net.post(
       Uri.parse('$_baseUrl/api/v1/conversations/$conversationId/add_message'),
       headers: await _getHeaders(),
       body: {'body': messageBody},
@@ -726,7 +727,7 @@ class CanvasService {
   }
 
   Future<void> createConversation(String courseId, String recipientId, String subject, String messageBody) async {
-    final response = await http.post(
+    final response = await net.post(
       Uri.parse('$_baseUrl/api/v1/conversations'),
       headers: await _getHeaders(),
       body: jsonEncode({
@@ -829,7 +830,7 @@ class CanvasService {
         orElse: () => throw Exception('Assignment not found locally'),
       );
 
-      final response = await http.get(
+      final response = await net.get(
         Uri.parse('$_baseUrl/api/v1/courses/${task.courseId}/assignments/${task.id}'),
         headers: await _getHeaders(),
       ).timeout(_timeout);

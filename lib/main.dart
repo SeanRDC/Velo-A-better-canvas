@@ -10,7 +10,9 @@ import 'package:device_preview/device_preview.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 import 'state/app_state.dart';
+import 'components/demo_banner.dart';
 import 'components/reconnect_prompt.dart';
+import 'services/demo_mode.dart';
 import 'theme/app_theme.dart';
 import 'screens/login_screen.dart';
 import 'screens/dashboard_screen.dart';
@@ -36,7 +38,12 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await dotenv.load(fileName: ".env");
   tz.initializeTimeZones();
+
+  // The /demo link opens the showcase version: no sign-in, and mock data instead of Canvas.
+  if (DemoMode.requestedBy(Uri.base)) DemoMode.enable();
+
   final prefs = await SharedPreferences.getInstance();
+  if (DemoMode.enabled) await DemoMode.startSession(prefs);
 
   if ((prefs.getString('canvas_api_token') ?? '').isNotEmpty) {
     _initialLocation = '/dashboard';
@@ -374,7 +381,7 @@ class VeloApp extends StatelessWidget {
         context,
         ReconnectPrompt(
           navigatorKey: _router.routerDelegate.navigatorKey,
-          child: child ?? const SizedBox.shrink(),
+          child: DemoBanner(child: child ?? const SizedBox.shrink()),
         ),
       ),
       theme: AppTheme.light,

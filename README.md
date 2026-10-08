@@ -15,6 +15,7 @@
 | --- | --- |
 | **Landing page** | [velo-landing-page-delta.vercel.app](https://velo-landing-page-delta.vercel.app/) |
 | **Live app** | [velo-canvas-copilot.vercel.app][live] |
+| **Live demo (mock data)** | [velo-canvas-copilot.vercel.app/demo][demo] - no sign-in needed, for viewers without a HAU Canvas account |
 | **Demo video** | [Watch on Google Drive](https://drive.google.com/file/d/1srRAMAWLhorcxRxCmBE96qDclZ4s_ygR/view?usp=sharing) |
 | **Course** | Applications Development and Emerging Technologies (6ADET), Holy Angel University |
 | **Author** | Sean Rhani J. Dela Cruz |
@@ -42,7 +43,9 @@ Velo is published on the web, so there is nothing to install.
 2. In Canvas, go to **Account > Settings > New Access Token** and generate a token.
 3. Paste the token on Velo's sign-in screen.
 
-The live app is connected to Holy Angel University's Canvas, so it needs a HAU Canvas account. On a phone, use your browser's **Add to Home Screen** to install it like an app.
+The live app is connected to Holy Angel University's Canvas, so it needs a HAU Canvas account. No HAU account? Open the [live demo][demo] instead: it is the same app with sign-in skipped and every screen filled with mock data, and a banner at the top says so. Nothing in the demo is real or sent to Canvas, the AI Assistant gives sample replies, and changes reset when the page is reloaded.
+
+On a phone, use your browser's **Add to Home Screen** to install it like an app.
 
 ## Screenshots
 
@@ -164,3 +167,4 @@ This project was built with AI assistance. Assistant used and how much: `TODO`. 
 MIT, see [LICENSE](LICENSE).
 
 [live]: https://velo-canvas-copilot.vercel.app/
+[demo]: https://velo-canvas-copilot.vercel.app/demo

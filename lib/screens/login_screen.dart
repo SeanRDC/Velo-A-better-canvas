@@ -6,6 +6,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../components/error_dialog.dart';
 import '../services/canvas_service.dart';
+import '../services/demo_mode.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -41,6 +42,13 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   Future<void> _handleLogin() async {
+    // The demo has no Canvas account to check, so it goes straight back in.
+    if (DemoMode.enabled) {
+      await DemoMode.signIn(await SharedPreferences.getInstance());
+      if (mounted) context.go('/dashboard');
+      return;
+    }
+
     final token = _tokenController.text.trim();
     if (token.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -328,7 +336,7 @@ class _LoginScreenState extends State<LoginScreen> {
         ),
         const SizedBox(height: 36),
 
-        TextField(
+        if (!DemoMode.enabled) TextField(
           controller: _tokenController,
           obscureText: _obscureToken,
           decoration: InputDecoration(
@@ -390,15 +398,15 @@ class _LoginScreenState extends State<LoginScreen> {
                     width: 20,
                     child: CircularProgressIndicator(strokeWidth: 2, color: theme.colorScheme.onPrimary),
                   )
-                : const Text(
-                    'Connect to Canvas',
-                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                : Text(
+                    DemoMode.enabled ? 'Explore the demo' : 'Connect to Canvas',
+                    style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                   ),
           ),
         ),
         const SizedBox(height: 12),
 
-        TextButton.icon(
+        if (!DemoMode.enabled) TextButton.icon(
           onPressed: () => _showInstructionsSheet(theme),
           style: onCard ? null : TextButton.styleFrom(padding: const EdgeInsets.symmetric(horizontal: 4)),
           icon: Icon(Icons.help_outline, size: 16, color: theme.colorScheme.secondary),

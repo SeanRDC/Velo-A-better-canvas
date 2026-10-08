@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
+import 'net.dart' as net;
 
 class GroqException implements Exception {
   final int? statusCode;
@@ -52,7 +53,7 @@ class GroqService {
 
     http.Response? response;
     for (int attempt = 0; attempt < _maxRetries; attempt++) {
-      response = await http.post(
+      response = await net.post(
         uri,
         headers: {
           'Authorization': 'Bearer $bearer',
