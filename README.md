@@ -49,6 +49,8 @@ On a phone, use your browser's **Add to Home Screen** to install it like an app.
 
 ## Screenshots
 
+These were taken on a mock account with sample data.
+
 | Log in | To do | Courses |
 | :---: | :---: | :---: |
 | <img src="docs/assets/login-final.png" alt="Log in" width="250"> | <img src="docs/assets/todo-final.png" alt="To do" width="250"> | <img src="docs/assets/courses-final.png" alt="Courses" width="250"> |
@@ -106,7 +108,7 @@ On a phone, use your browser's **Add to Home Screen** to install it like an app.
 - **Personal data:** Velo is local-first. Your Canvas token, profile and cached course data are stored on your device with `shared_preferences`, and Velo has no database of its own. Signing out clears them.
 - **What leaves the device:** requests go to Canvas, through the hosting proxy on the web build. When you use the AI Assistant or Auto-Plan, the Canvas data needed to answer (such as task names, deadlines, grades or messages) is sent to Groq.
 - **Secrets:** API keys are read from a `.env` file that is not in this repository.
-- **Sample data:** the screenshots in this repository are checked for personal information before they are added.
+- **Sample data:** the app screenshots in this repository were taken in demo mode on a mock account, with made-up courses, grades and messages. They show no real Canvas data.
 
 ## Project documentation
 

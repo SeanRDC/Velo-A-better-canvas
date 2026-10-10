@@ -133,6 +133,8 @@ Velo-A-better-canvas/
 | --- | --- | --- |
 | <img src="/docs/assets/modules_w2.png" alt="Modules" width="250"> | <img src="/docs/assets/grades_w2.png" alt="Grades" width="250"> | <img src="/docs/assets/assignments_w2.png" alt="Assignments" width="250"> |
 
+*Note: these screenshots were retaken on the final build with a mock account, to keep real Canvas data out of the repository. The week 2 build looked slightly different (for example, the To do screen was still called My Tasks).*
+
 ## 7. Known issues and next steps
 **Known Issues:**
 - The Master Dashboard UI is currently in progress and being actively refined.
